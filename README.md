@@ -39,6 +39,14 @@ npm run dev:seed                                # usuarios de desarrollo + imág
 **Usuarios de desarrollo** (contraseña `Chola-Dev-2026!`): `admin@madeinchola.test` (admin) · `cliente@madeinchola.test` · teléfono `71111111`.
 Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run admin:promote -- correo@dominio.com` (solo con la service key; el rol admin jamás se asigna desde el navegador).
 
+### Backend en la nube (Supabase de Made In Chola)
+- **Un solo Supabase para la app; Docker solo para las pruebas.** `npm run dev` y los despliegues apuntan al proyecto de la nube (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`, la clave _publicable_, en `.env.local` o en las variables de Vercel). Las pruebas destructivas (`db reset`, pgTAP, mutaciones, concurrencia, integración, E2E) **solo** corren en el contenedor local desechable, nunca contra la nube.
+- **Subir migraciones**: `supabase db push --db-url "postgresql://postgres:$SUPABASE_DB_PASSWORD@db.<ref>.supabase.co:5432/postgres" --dry-run` (primero el ensayo) y luego sin `--dry-run`. La contraseña va SOLO en una variable de entorno: nunca en un archivo ni en el repo (es público). `db push` no ejecuta `seed.sql`: los datos de ejemplo no llegan a la nube.
+- **No empujar `supabase/config.toml` completo** (`supabase config push`): trae valores de desarrollo (límite de inicios de sesión subido a 1000, `site_url` local). Los ajustes de Auth de la nube se hacen en el panel o con la API de gestión, campo por campo.
+- **Edge Functions**: `SUPABASE_ACCESS_TOKEN=… supabase functions deploy --project-ref <ref>` y `supabase secrets set ALLOWED_ORIGINS=…` (obligatoria: el dominio de Vercel y, si se desarrolla en local contra la nube, `http://localhost:5173`).
+- Activar `pg_cron` en el proyecto (Database → Extensions) si no lo está: sin él las reservas vencidas igual dejan de contar, pero no se marcan `expired`.
+- **Proyecto nuevo = registro público ACTIVADO por defecto.** Hay que desactivarlo (Authentication → Sign In / Providers → "Allow new users to sign up"): solo la función `register` debe crear cuentas.
+
 ### Autenticación (Sprint 1)
 - **Login por email o teléfono** vía la Edge Function `login` (todo en servidor): normaliza el identificador, resuelve la cuenta, devuelve la sesión. Nunca revela si una cuenta existe ni el email asociado a un teléfono; mismo mensaje y tiempo de respuesta parecido ante cualquier fallo.
 - **Solo-teléfono (S-02)**: Auth recibe un email sintético `<e164 sin +>@phone.madeinchola.invalid` (dominio `.invalid` reservado: no se puede registrar a mano). `profiles.phone_e164` es el identificador real.
