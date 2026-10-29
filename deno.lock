@@ -1,0 +1,90 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@std/assert@1": "1.0.19",
+    "jsr:@std/internal@^1.0.12": "1.0.14"
+  },
+  "jsr": {
+    "@std/assert@1.0.19": {
+      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.14": {
+      "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
+    }
+  },
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.112.3",
+    "https://esm.sh/@types/bcryptjs@~2.4.6/index.d.ts": "https://esm.sh/@types/bcryptjs@2.4.6/index.d.ts"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.112.3": "f6b9130984301066587e8917dfab3b3d60be47dc966bd3d04c733bc9423c1cf9",
+    "https://esm.sh/bcryptjs@2.4.3": "49851f367e562ad6e108c851ced8948944ea392fd46e576f7fdb1eb9e1ffddf0",
+    "https://esm.sh/zod@3.25.76": "3fb2d6fc9ba6facc140a9875710339f90e89befb26fd9b39da83644d4dd6a701",
+    "https://esm.sh/zod@3.25.76/denonext/v3/ZodError.mjs": "7cb18052dad1b35a84cb7a3c1dc825e455f6c3fec0d89c4c4cc4059120042e30",
+    "https://esm.sh/zod@3.25.76/denonext/v3/errors.mjs": "9a89b379ac5877d8c0bf4d14d6535ec5e6ab3afb526922acdc61299bac97790c",
+    "https://esm.sh/zod@3.25.76/denonext/v3/external.mjs": "21935d798cd2c0c9709cabf9abfb0ed16b884a354beeaa214bfbe5f536267dcf",
+    "https://esm.sh/zod@3.25.76/denonext/v3/helpers/util.mjs": "06f7d99705d93b009c1929407b1636e9c78fa69069f89361ceb3998e3b78b053",
+    "https://esm.sh/zod@3.25.76/denonext/v3/locales/en.mjs": "6562956f1dd23d6a2d98b44b9e8116835a9fa6a7ec9cedd7f1d48d9e9dd1a7a0",
+    "https://esm.sh/zod@3.25.76/denonext/zod.mjs": "c5134912da19c386fa022c7c5be6a68ef4c8679e42f435324208ef6e76a64161"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@axe-core/playwright@^4.14.0",
+        "npm:@dnd-kit/core@^6.3.1",
+        "npm:@dnd-kit/sortable@10",
+        "npm:@dnd-kit/utilities@^3.2.2",
+        "npm:@eslint/js@^9.39.5",
+        "npm:@hookform/resolvers@^3.10.0",
+        "npm:@playwright/test@^1.64.1",
+        "npm:@radix-ui/react-slot@^1.5.0",
+        "npm:@supabase/supabase-js@^2.118.0",
+        "npm:@tanstack/react-query@^5.104.5",
+        "npm:@testing-library/dom@^10.4.2",
+        "npm:@testing-library/jest-dom@^7.0.1",
+        "npm:@testing-library/react@^16.3.3",
+        "npm:@testing-library/user-event@^14.6.8",
+        "npm:@types/node@^22.20.5",
+        "npm:@types/papaparse@^5.5.2",
+        "npm:@types/react-dom@^18.3.7",
+        "npm:@types/react@^18.3.31",
+        "npm:@vitejs/plugin-react-swc@^4.3.3",
+        "npm:autoprefixer@^10.6.1",
+        "npm:class-variance-authority@~0.7.1",
+        "npm:clsx@^2.1.1",
+        "npm:date-fns@^3.6.0",
+        "npm:embla-carousel-react@^8.6.0",
+        "npm:eslint-plugin-react-hooks@^5.2.0",
+        "npm:eslint-plugin-react-refresh@~0.5.7",
+        "npm:eslint@^9.39.5",
+        "npm:globals@^17.13.0",
+        "npm:husky@^9.1.7",
+        "npm:jsdom@^29.1.1",
+        "npm:lint-staged@^17.6.0",
+        "npm:lucide-react@^1.61.0",
+        "npm:papaparse@^5.7.0",
+        "npm:postcss@^8.5.31",
+        "npm:prettier-plugin-tailwindcss@~0.8.1",
+        "npm:prettier@^3.9.10",
+        "npm:react-dom@^18.3.1",
+        "npm:react-hook-form@^7.90.0",
+        "npm:react-router-dom@^7.18.4",
+        "npm:react@^18.3.1",
+        "npm:recharts@^2.15.4",
+        "npm:sonner@^1.7.4",
+        "npm:supabase@^2.121.0",
+        "npm:tailwind-merge@^3.7.0",
+        "npm:tailwindcss-animate@^1.0.7",
+        "npm:tailwindcss@^3.4.19",
+        "npm:typescript-eslint@^8.72.0",
+        "npm:typescript@^5.9.3",
+        "npm:vite@^5.4.21",
+        "npm:vitest@^3.2.7",
+        "npm:zod@^3.25.76"
+      ]
+    }
+  }
+}

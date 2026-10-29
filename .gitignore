@@ -1,0 +1,26 @@
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+.vercel
+.DS_Store
+*.log
+playwright-report
+test-results
+supabase/.branches
+supabase/.temp
+.claude
+
+# El repo es PÚBLICO: nada de datos personales ni material ajeno.
+# Respuestas de las administradoras (nombres, correos), cuestionarios y decisiones internas del negocio:
+PENDIENTES_ADMIN.md
+Cuestionario_Admin_Made_In_Chola.pdf
+docs/admin/
+# Diseño de la diseñadora (PDF de 24 MB, propiedad intelectual de terceros):
+docs/diseno/
+# Archivos de entornos reales (claves, contraseñas de BD): cualquier .env.* ya se ignora arriba; esto cubre variantes:
+*.pem
+*.key
+supabase/.env*

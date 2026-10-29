@@ -1,0 +1,25 @@
+/*
+ * TOKENS PROVISIONALES — único archivo a reemplazar cuando llegue el diseño de la diseñadora (Sprint 4).
+ * Valores HSL sin `hsl()` para que Tailwind pueda aplicar opacidad.
+ */
+:root {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
+
+  --background: 36 38% 96%;
+  --foreground: 20 25% 12%;
+  --primary: 350 55% 30%;
+  --primary-foreground: 36 38% 96%;
+  --secondary: 36 25% 88%;
+  --secondary-foreground: 20 25% 12%;
+  --muted: 36 20% 91%;
+  --muted-foreground: 20 10% 38%;
+  --accent: 28 70% 52%;
+  --accent-foreground: 20 25% 12%;
+  --destructive: 0 70% 40%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 30 18% 82%;
+  --input: 30 18% 82%;
+  --ring: 350 55% 30%;
+  --radius: 0.5rem;
+}
