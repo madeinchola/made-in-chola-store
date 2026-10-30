@@ -1,0 +1,60 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  VITE_SUPABASE_URL: http://127.0.0.1:54321
+  VITE_APP_ENV: local
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+        env:
+          VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key-not-a-secret
+      - run: npm run build
+        env:
+          VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key-not-a-secret
+
+  # Base de datos + Edge Functions + integración + E2E contra un Supabase local real.
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: npm }
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.117.0 }
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - run: npm ci
+      - run: supabase start -x logflare,vector
+      - run: supabase db reset
+      - run: supabase test db
+      - run: npm run test:edge
+      - name: Edge Functions en segundo plano
+        run: |
+          nohup supabase functions serve > functions.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -s -o /dev/null -X OPTIONS http://127.0.0.1:54321/functions/v1/login && exit 0
+            sleep 2
+          done
+          cat functions.log; exit 1
+      - name: Claves locales para el build y las pruebas
+        run: |
+          echo "VITE_SUPABASE_ANON_KEY=$(supabase status -o env | sed -n 's/^ANON_KEY="\(.*\)"/\1/p')" >> "$GITHUB_ENV"
+      - run: npm run test:integration
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - if: failure()
+        run: cat functions.log | tail -100
