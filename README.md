@@ -80,6 +80,8 @@ Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run 
 
 `test:integration` y `e2e` **restauran la BD** (`db reset` + `dev:seed`) al terminar, pase o falle: nada de datos de prueba en tu base de desarrollo.
 
+**CI de GitHub** (`.github/workflows/ci.yml`): en cada push y PR corre solo `quality` (lint, formato, tipos, `npm test` y build). Todo lo que necesita Supabase local (pgTAP, Edge Functions, integración y E2E) se ejecuta en local con `npm run verify`, por ejemplo antes de cada release. El job `backend` se quitó el 2026-10-30; la versión anterior está en el commit `9d886df`.
+
 ## Estructura
 ```
 src/app          rutas, layouts, páginas       src/lib       money, env, logger, errors, supabase…
@@ -95,7 +97,7 @@ e2e/             Playwright                       scripts/      dev.mjs
 - **Textos** en `src/i18n/es.ts`, nunca quemados. **Logs** solo vía `lib/logger` (redacta PII, lleva correlación); `console.*` está prohibido por ESLint.
 - **Migraciones**: `YYYYMMDDHHMMSS_nombre.sql` (14 dígitos desde S1: puede haber varias el mismo día; la de S0 conserva `YYYYMMDD`), idempotentes, con rollback documentado al final.
 - **Env**: solo `VITE_*` públicas, validadas con zod al arrancar (falla con pantalla explicativa; rechaza claves `service_role`). Secretos solo en Supabase/Vercel.
-- **Ramas**: `main` protegida; trabajo en `feature/*` con PR (CI debe pasar).
+- **Ramas**: `main` es la rama de producción (Vercel despliega cada push) y por decisión del dueño no está protegida; el único colaborador es quien desarrolla. El CI (`quality`) corre en cada push y PR.
 - **Tokens de diseño provisionales**: todo el look está en `src/styles/tokens.css`; cambiarlo es un solo archivo.
 
 ## Diferencias respecto a Acrosoft (a propósito)
