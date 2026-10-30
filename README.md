@@ -4,12 +4,12 @@ Ecommerce B2C de ropa (Bolivia primero; multi-país/moneda después). Plan compl
 
 ## Requisitos
 - Node ≥ 20 (`.nvmrc` fija 24) y **npm** (único gestor; lockfile: `package-lock.json`).
-- Para Supabase local: **Docker** y Supabase CLI (probado con 2.117.0). En macOS sin Docker Desktop: `brew install colima docker && colima start --cpu 4 --memory 6`. Para tests de Edge Functions: **Deno** (`brew install deno`).
+- Para Supabase local: **Docker**. El CLI de Supabase **no se instala aparte**: viene fijado en `package.json` (2.121.0, versión exacta) y se usa con `npm run db:*` o `npx supabase …`; no uses uno global (ver «Backend local»). En macOS sin Docker Desktop: `brew install colima docker && colima start --cpu 4 --memory 6`. Para tests de Edge Functions: **Deno** (`brew install deno`).
 
 ## Primeros pasos
 ```bash
 npm install
-cp .env.example .env.local   # completa VITE_SUPABASE_ANON_KEY con la que imprime `supabase start`
+cp .env.example .env.local   # completa VITE_SUPABASE_ANON_KEY con la que imprime `npm run db:start`
 npm run dev                  # Supabase local (si hay Docker) + Vite en http://localhost:5173
 ```
 `npm run dev` avisa claramente y arranca solo el front si Docker no está disponible. `npm run dev:web` arranca solo Vite.
@@ -22,28 +22,31 @@ npm run dev                  # Supabase local (si hay Docker) + Vite en http://l
 | `npm run lint` · `format:check` · `typecheck` | Calidad estática |
 | `npm test` | Unit + componentes (Vitest) |
 | `npm run e2e` | Playwright contra el **build** de producción (móvil y escritorio) |
-| `npm run test:integration` | Tests contra Supabase local real (requiere `supabase start`) |
+| `npm run test:integration` | Tests contra Supabase local real (requiere `npm run db:start` y `functions:serve`) |
 | `npm run test:edge` | Tests Deno de `supabase/functions/_shared` |
-| `npm run db:reset` · `db:test` | `supabase db reset` · tests SQL (pgTAP) — requieren Docker |
+| `npm run db:start` · `db:stop` · `functions:serve` | Arranca / detiene el Supabase local · sirve las Edge Functions |
+| `npm run db:reset` · `db:test` | Reinicia la BD local desde cero · tests SQL (pgTAP) — requieren Docker |
 | `npm run types` | Regenera `src/lib/database.types.ts` desde la BD local |
 
 ## Backend local (Supabase)
 ```bash
 colima start --cpu 4 --memory 6                 # (macOS sin Docker Desktop)
-supabase start -x logflare,vector               # BD, Auth, Studio (http://127.0.0.1:54323), Mailpit (http://127.0.0.1:54324)
-supabase functions serve                        # Edge Functions: login, register, set-password, deactivate-account
+npm run db:start                                # BD, Auth, Studio (http://127.0.0.1:54323), Mailpit (http://127.0.0.1:54324)
+npm run functions:serve                         # Edge Functions: login, register, set-password, deactivate-account
 npm run dev:seed                                # usuarios de desarrollo + imágenes de ejemplo (solo funciona contra Supabase LOCAL)
 ```
-> **Los cambios en `supabase/config.toml` solo se aplican tras `supabase stop && supabase start`** (y reiniciar `functions serve`).
+> **Los cambios en `supabase/config.toml` solo se aplican tras `npm run db:stop && npm run db:start`** (y reiniciar `functions:serve`).
+
+> **Una sola versión del CLI.** Usa siempre `npm run db:*` / `npx supabase`, nunca un `supabase` global (otra versión): cada CLI fija una imagen distinta de Storage y, si se mezclan, `db reset` deja el esquema interno de Storage más nuevo que el servidor que corre. Síntoma: **toda subida de imagen responde 500 `42P10`** y fallan los tests de Storage y «imágenes de ejemplo». Diagnóstico: `docker ps` (imagen de `storage-api`) y `select max(id) from storage.migrations` (74 con `storage-api:v1.72.1` = roto; con `v1.82.1` = correcto). Cura: `npm run db:stop && npm run db:start`. `scripts/toolchain.test.mjs` vigila la versión fijada y este README.
 
 **Usuarios de desarrollo** (contraseña `Chola-Dev-2026!`): `admin@madeinchola.test` (admin) · `cliente@madeinchola.test` · teléfono `71111111`.
 Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run admin:promote -- correo@dominio.com` (solo con la service key; el rol admin jamás se asigna desde el navegador).
 
 ### Backend en la nube (Supabase de Made In Chola)
 - **Un solo Supabase para la app; Docker solo para las pruebas.** `npm run dev` y los despliegues apuntan al proyecto de la nube (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`, la clave _publicable_, en `.env.local` o en las variables de Vercel). Las pruebas destructivas (`db reset`, pgTAP, mutaciones, concurrencia, integración, E2E) **solo** corren en el contenedor local desechable, nunca contra la nube.
-- **Subir migraciones**: `supabase db push --db-url "postgresql://postgres:$SUPABASE_DB_PASSWORD@db.<ref>.supabase.co:5432/postgres" --dry-run` (primero el ensayo) y luego sin `--dry-run`. La contraseña va SOLO en una variable de entorno: nunca en un archivo ni en el repo (es público). `db push` no ejecuta `seed.sql`: los datos de ejemplo no llegan a la nube.
+- **Subir migraciones**: `npx supabase db push --db-url "postgresql://postgres:$SUPABASE_DB_PASSWORD@db.<ref>.supabase.co:5432/postgres" --dry-run` (primero el ensayo) y luego sin `--dry-run`. La contraseña va SOLO en una variable de entorno: nunca en un archivo ni en el repo (es público). `db push` no ejecuta `seed.sql`: los datos de ejemplo no llegan a la nube.
 - **No empujar `supabase/config.toml` completo** (`supabase config push`): trae valores de desarrollo (límite de inicios de sesión subido a 1000, `site_url` local). Los ajustes de Auth de la nube se hacen en el panel o con la API de gestión, campo por campo.
-- **Edge Functions**: `SUPABASE_ACCESS_TOKEN=… supabase functions deploy --project-ref <ref>` y `supabase secrets set ALLOWED_ORIGINS=…` (obligatoria: el dominio de Vercel y, si se desarrolla en local contra la nube, `http://localhost:5173`).
+- **Edge Functions**: `SUPABASE_ACCESS_TOKEN=… npx supabase functions deploy --project-ref <ref>` y `npx supabase secrets set ALLOWED_ORIGINS=…` (obligatoria: el dominio de Vercel y, si se desarrolla en local contra la nube, `http://localhost:5173`).
 - Activar `pg_cron` en el proyecto (Database → Extensions) si no lo está: sin él las reservas vencidas igual dejan de contar, pero no se marcan `expired`.
 - **Proyecto nuevo = registro público ACTIVADO por defecto.** Hay que desactivarlo (Authentication → Sign In / Providers → "Allow new users to sign up"): solo la función `register` debe crear cuentas.
 

@@ -91,6 +91,7 @@ BR-CHK-01, BR-CHK-02, BR-CHK-04, BR-CHK-05, BR-ORD-01, BR-ORD-02, BR-ORD-04, BR-
 ## Riesgos
 - Es el sprint más crítico en integridad → tiempo de buffer para pruebas de concurrencia.
 - Pedidos por WhatsApp sin confirmación pueden "bloquear" stock (S-05) → recordatorio y cancelación manual ágil (S12).
+- `create_order` recibe una lista de líneas: aplicar lo decidido en S7 sobre el aviso de `zod` < 4.6.6 (tamaño del cuerpo y largo de lista antes de parsear).
 
 ## Pendientes externos
 Número de WhatsApp y plantilla de mensaje; política de contra entrega (zonas/montos) y lista negra; formato de factura (si aplica).

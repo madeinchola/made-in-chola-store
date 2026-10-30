@@ -63,11 +63,12 @@ BR-ACC-01 (base), BR-ACC-02, BR-ACC-03, BR-ACC-07, BR-ACC-08, BR-ADM-03 (base), 
 - Cuenta sin verificación: riesgo de *squatting* (alguien registra el teléfono/email de otra persona) → mitigación: aviso en recuperación y revisión manual; registrado como riesgo aceptado (BR-ACC-03).
 
 ## Revisión
-- [ ] Checklist universal.
-- [ ] Revisión de todas las funciones `SECURITY DEFINER`.
-- [ ] Verificar que ninguna clave de servicio llega al bundle.
-- [ ] Revisar mensajes de error para fuga de información.
-- [ ] Prueba manual de recuperación de contraseña de punta a punta.
+> Revisión de cierre del 2026-10-29 (ver S0 para la corrida completa).
+- [x] Checklist universal.
+- [x] Funciones `SECURITY DEFINER`: hay 33 en `public` y las 33 fijan `search_path` (consulta directa a la BD + test `05_estructura_seguridad`, que falla si una no lo hace).
+- [x] Ninguna clave de servicio llega al bundle: en `dist/` solo aparece la cadena de nuestro validador (`env.ts`, que *rechaza* `service_role`) y el prefijo `sb_secret_` que `supabase-js` detecta; el único JWT incrustado tiene `role=anon`.
+- [x] Mensajes de error sin fuga de información: cubierto por los tests de integración de enumeración y tiempos.
+- [x] Recuperación de contraseña de punta a punta: automatizada con correo real (Mailpit) en integración. **No** se repitió un recorrido manual en navegador.
 
 ## Riesgos
 - Auth por teléfono sin SMS depende de nuestro mapeo → pruebas exhaustivas y documentación del esquema sintético.

@@ -29,7 +29,8 @@ async function main() {
     );
   } else if (plan.startSupabase) {
     process.stdout.write("Iniciando Supabase local…\n");
-    const started = run("npx", ["supabase", "start"]);
+    // Mismo script que el README (`db:start`): lleva las exclusiones que Colima necesita y usa el CLI fijado del repo.
+    const started = run("npm", ["run", "--silent", "db:start"]);
     if (started.status !== 0) {
       process.stderr.write(
         `\n⚠️  supabase start falló:\n${started.stderr}\nSe inicia solo el frontend.\n\n`,

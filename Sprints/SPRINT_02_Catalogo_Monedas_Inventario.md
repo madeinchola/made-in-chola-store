@@ -78,11 +78,12 @@ BR-CAT-01..06, BR-INV-01..06, BR-PRC-01, BR-PRC-02, BR-PRC-06, BR-DAT-01, BR-DAT
 - Reintentos del cliente (doble clic) en `reserve_stock` → idempotente.
 
 ## Revisión
-- [ ] Checklist universal.
-- [ ] Revisión de índices (EXPLAIN) en listados y búsqueda.
-- [ ] Revisión de `SECURITY DEFINER` en RPC de stock.
-- [ ] Confirmar ausencia de N+1 en vistas públicas.
-- [ ] Documentar el diccionario de datos actualizado.
+> Revisión de cierre del 2026-10-29 (ver S0 para la corrida completa).
+- [x] Checklist universal.
+- [ ] Revisión de índices (EXPLAIN) en listados y búsqueda — **pendiente, aplazado a S16**: con 30 productos el plan no es representativo; hay que medir con datos a escala real.
+- [x] `SECURITY DEFINER` en RPC de stock: `reserve_stock`/`release_stock`/`apply_stock_change` solo las ejecuta `service_role` (pgTAP 05 y 08).
+- [ ] Ausencia de N+1 en vistas públicas — **pendiente** (S5 la mide al consumirlas; las vistas hijas usan `product_id in (select id from public_products)`).
+- [ ] Diccionario de datos — **parcial**: README (sección de S2) y tipos generados (`src/lib/database.types.ts`), sin diccionario narrativo por columna.
 
 ## Riesgos
 - Lógica de variantes con `NULL` en unique → usar índices parciales/`COALESCE`.

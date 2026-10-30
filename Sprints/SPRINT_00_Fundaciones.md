@@ -66,11 +66,14 @@ Ninguna directamente; habilita BR-DAT-01 (convenciones de migración/archivado) 
 - Fallo del CLI de Supabase en Windows/Mac distintos → documentar versión.
 
 ## Revisión
-- [ ] Checklist universal del índice.
-- [ ] Revisión de `vercel.json` y CSP por segunda persona.
-- [ ] Confirmar que `.env` no está en git (probar `git ls-files`).
-- [ ] Licencias de dependencias aceptables.
-- [ ] Peso inicial del bundle registrado como línea base.
+> Revisión de cierre del 2026-10-29 (ejecutada, no solo leída): lint, formato, tipos y build limpios · 410 unit · 724 pgTAP · 15 Deno · 119 integración · 58 E2E, todo en verde.
+- [x] Checklist universal del índice (lint/tipos/build/tests, `db reset`, RLS por rol, sin secretos). Responsive y teclado: solo vía E2E (móvil y escritorio) y axe, sin revisión manual.
+- [ ] Revisión de `vercel.json` y CSP por segunda persona — **pendiente** (los encabezados sí se vieron en el despliegue real el 2026-10-29).
+- [x] `.env` fuera de git (`git ls-files` sin `.env*`, PENDIENTES_ADMIN, cuestionarios ni PDFs).
+- [x] Licencias: 155 paquetes de producción, todos permisivos (MIT, ISC, Apache-2.0, BSD-3-Clause, 0BSD; `victory-vendor` MIT AND ISC). Ninguno copyleft.
+- [x] Peso inicial del bundle registrado como línea base (README y S1).
+- **Criterio de aceptación 2 (PR bloqueado si falla el CI): NO cumplido, por decisión del dueño** (`main` sin proteger). El CI sí corre en cada push y PR (job `quality`; verde en `a28685b`).
+- **`npm audit` (2026-10-29):** `zod` < 4.6.6 con aviso alto; no afecta al código actual, se decide antes de S7 (ver su sección de riesgos).
 
 ## Riesgos
 - Cuentas aún no disponibles → trabajar solo en local y dejar staging/prod como tarea final del sprint (no bloquea el resto).

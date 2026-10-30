@@ -76,6 +76,7 @@ BR-ACC-01, BR-ACC-05, BR-INV-02, BR-INV-03, BR-INV-04, BR-PRC-05, BR-CHK-03, BR-
 ## Riesgos
 - Acaparamiento de stock (D-02) → flag + topes; decisión final con datos reales.
 - Complejidad de sincronización offline → alcance limitado: invitado local, usuario servidor.
+- **`zod` < 4.6.6 tiene un aviso alto** (GHSA-mrhx-c7xc-m3w5: puede agotar memoria validando colecciones enormes con restricciones). Hoy no afecta (no hay `z.array` en el código), pero **este sprint introduce la primera lista validada** (líneas del carrito) en una Edge Function pública. **Antes de escribirla**, decidir: (a) migrar a zod 4.x (cambio mayor; revisar `@hookform/resolvers`) o (b) limitar el tamaño del cuerpo y validar el largo de la lista **antes** de parsear sus elementos, con test de cuerpo gigante. Lo mismo vale para S10.
 
 ## Pendientes externos
 Confirmación S-04 (7 días de garantía de precio) y D-02.

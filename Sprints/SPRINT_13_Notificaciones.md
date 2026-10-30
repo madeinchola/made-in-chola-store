@@ -15,7 +15,7 @@ BR-SHP-04, BR-INV-05 (correo), BR-MKT-01, BR-LEG-01 (consentimiento marketing vs
 ## Tareas
 
 ### BD
-- [ ] Completar `notification_outbox` (tipo, canal, destinatario, `payload`, `template`, estado `pending|sending|sent|failed|dead`, intentos, `next_retry_at`, `dedupe_key` único, `sent_at`, error).
+- [ ] Completar `notification_outbox` (la crea S3 con tipo, canal, destinatario, `payload`, estado `pending|sent|failed`, intentos, `next_retry_at` y `dedupe_key` único; aquí se añaden `template`, `sent_at`, error y los estados `sending|dead`).
 - [ ] `notification_templates` (clave, canal, idioma, asunto, cuerpo con variables, activo) editables por admin con vista previa y valores de ejemplo.
 - [ ] `notification_preferences` (por cliente: canal preferido, consentimiento) y valores por defecto de la tienda.
 - [ ] Triggers/función que encolan eventos de estado: **confirmado, empacado (`preparing`), enviado, entregado**, además de cancelación/reembolso, pago recibido/rechazado, comprobante rechazado.

@@ -16,6 +16,14 @@ BR-CAT-01..06, BR-INV-05, BR-PRC-02, BR-PRC-06, BR-ADM-03, BR-ADM-04, BR-DAT-01,
 
 ## Tareas
 
+### Base de datos (migración de S3)
+> Añadido en la revisión del 2026-10-29: S3 consume estas piezas y **ningún sprint anterior las creó**.
+- [ ] **`notification_outbox` mínima** (S13 la completa): `id`, `type`, `channel` (`email|whatsapp`), `recipient`, `payload jsonb`, `status` (`pending|sent|failed`), `attempts`, `next_retry_at`, **`dedupe_key` único**, `created_at`. Deny-by-default: solo el admin la lee; el navegador no inserta; se escribe con una función `SECURITY DEFINER` (con `search_path`) ejecutable solo por `service_role`/triggers. Entra en la lista blanca de `05_estructura_seguridad.test.sql`.
+- [ ] **Alerta de stock** (BR-INV-05): al cruzar el umbral (ok→bajo, bajo→agotado) se encola `stock_alert` con `dedupe_key` por variante+estado; no se repite cada minuto y se re-arma cuando el stock vuelve a subir de umbral.
+- [ ] **`product_slug_history`** (`product_id`, `slug`, `changed_at`, `changed_by`) + trigger en `products` al cambiar `slug`. Lectura pública solo por una vista (`public_product_slug_redirects`: slug antiguo → slug actual, solo productos visibles), igual que el resto de S2: `anon` sin privilegios sobre la tabla. Si un slug antiguo vuelve a ser vigente en otro producto, prevalece el vigente. S5 consume esto para sus redirecciones.
+- [ ] **Control optimista** (criterio 5): las tablas de catálogo ya tienen `updated_at` con trigger (S2). Guardar con `… where id = $1 and updated_at = $leído`; 0 filas = conflicto. **Ojo:** `timestamptz` guarda microsegundos y `Date` de JS solo milisegundos: el cliente debe devolver el `updated_at` como **texto tal cual lo recibió**, nunca pasarlo por `Date`, o todo guardado parecerá un conflicto.
+- [ ] Tests pgTAP de las tres piezas (RLS por rol, deduplicación, historial) y mutaciones sobre ellas.
+
 ### Shell admin
 - [ ] `AdminLayout` (sidebar colapsable, header con usuario, breadcrumbs), responsive para tablet.
 - [ ] Rutas: `/admin`, `/admin/productos`, `/admin/categorias`, `/admin/colecciones`, `/admin/ajustes`, `/admin/monedas`, `/admin/auditoria`.
@@ -38,6 +46,15 @@ BR-CAT-01..06, BR-INV-05, BR-PRC-02, BR-PRC-06, BR-ADM-03, BR-ADM-04, BR-DAT-01,
 - [ ] **Monedas:** activar/desactivar, tipo de cambio fijo o variable, historial de cambios, vista previa de impacto en precios calculados.
 - [ ] Alerta visual de **stock bajo/crítico** en el panel (campana + tarjeta) y escritura en `notification_outbox` (tipo `stock_alert`) con deduplicación (no repetir cada minuto).
 - [ ] Pantalla de **auditoría** (filtro por entidad/usuario/fecha) en solo lectura.
+
+## Notas heredadas de S0–S2 (verificadas el 2026-10-29)
+- **S-03 / `product_delivery` NO existe** (S2 no lo implementó: supuesto sin confirmar con el dueño). El formulario **omite la sección "Delivery"** hasta que se confirme; no inventar la tabla.
+- **El modelo tiene un precio por producto, no por variante:** el "DESDE $X" del diseño no aplica.
+- **Escritura del admin = INSERT/UPDATE por columnas bajo RLS** (no hay RPC por tabla): toda columna nueva que el panel deba editar hay que añadirla a su `GRANT` por columna / `_apply_admin_rls`, o el panel recibirá 403. Asociaciones por RPC `admin_set_product_categories|collections|related`; quitar un precio, `admin_delete_product_price`.
+- **Nada se borra, ni `service_role`:** se archiva. Archivar un color o talla archiva sus variantes; no se puede archivar la última variante de un producto publicado.
+- **`exchange_rates` es inmutable:** un error de tipeo no se corrige, solo se supera con otra fila ⇒ confirmación ante un tipo de cambio muy distinto del anterior o con fecha lejana.
+- El formulario usa el ajuste `default_out_of_stock_behavior` como valor por defecto. La vista previa del slug usa `slugify` (paridad exacta con SQL hasta U+017F).
+- **Storage en local:** usar solo `npx supabase` / `npm run db:*` (ver README, «Una sola versión del CLI»); con un CLI mezclado toda subida de imagen da 500 `42P10`.
 
 ## Criterios de aceptación
 1. Un admin crea un producto completo (3 colores × 4 tallas, 5 imágenes, 2 categorías, precio BOB) en < 5 minutos sin ayuda.
