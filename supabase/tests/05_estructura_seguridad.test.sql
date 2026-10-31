@@ -53,7 +53,7 @@ select is(
 select is(
   (select coalesce(string_agg(c.relname, ', ' order by c.relname), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind in ('r', 'p') and has_table_privilege('authenticated', c.oid, 'select')),
-  'audit_log, categories, collections, countries, currencies, exchange_rates, home_section_items, home_sections, news_banners, product_categories, product_collections, product_colors, product_images, product_prices, product_related, product_sizes, product_variants, products, profiles, stock_movements, stock_reservations, store_settings',
+  'audit_log, categories, collections, countries, currencies, exchange_rates, home_section_items, home_sections, news_banners, notification_outbox, product_categories, product_collections, product_colors, product_images, product_prices, product_related, product_sizes, product_slug_history, product_variants, products, profiles, stock_movements, stock_reservations, store_settings',
   'lista blanca de tablas legibles por authenticated (ampliar a propósito en cada sprint)');
 
 -- 7. Columnas actualizables por authenticated: profiles = solo full_name; variantes = nunca el stock
@@ -90,7 +90,7 @@ select is(
   (select coalesce(string_agg(p.proname, ', ' order by p.proname), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.prokind = 'f' and p.prorettype not in ('trigger'::regtype, 'event_trigger'::regtype)  -- las de event trigger (p. ej. rls_auto_enable de Supabase) no se llaman por la API
       and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
-  'adjust_stock, admin_delete_product_price, admin_set_product_categories, admin_set_product_collections, admin_set_product_related, current_app_role, f_unaccent, healthcheck, home_media_ok, is_admin, is_safe_link, public_price_for, public_search_products, slugify, stock_status, storage_path_ok',
+  'adjust_stock, admin_delete_product_price, admin_duplicate_product, admin_set_product_categories, admin_set_product_collections, admin_set_product_related, admin_set_stock, current_app_role, f_unaccent, healthcheck, home_media_ok, is_admin, is_safe_link, public_price_for, public_search_products, slugify, stock_status, storage_path_ok',
   'lista blanca de funciones ejecutables desde el navegador');
 
 -- 10. Las funciones de reserva/stock/precio internos NO las ejecuta el navegador
@@ -98,7 +98,7 @@ select is(
   (select coalesce(string_agg(p.proname, ', ' order by p.proname), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.proname in ('reserve_stock', 'release_stock', 'expire_reservations', 'purge_stock_reservations',
-                        'apply_stock_change', 'price_for', 'current_rate', 'setting_int')
+                        'apply_stock_change', 'price_for', 'current_rate', 'setting_int', 'enqueue_notification')
       and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
   '', 'reserve_stock/release_stock/apply_stock_change/price_for no son ejecutables por anon ni authenticated');
 
@@ -106,7 +106,7 @@ select is(
 select is(
   (select coalesce(string_agg(c.relname, ', ' order by c.relname), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind in ('v', 'm') and has_table_privilege('anon', c.oid, 'select')),
-  'public_categories, public_collections, public_home_section_items, public_home_sections, public_news_banners, public_product_categories, public_product_collections, public_product_colors, public_product_detail, public_product_images, public_product_related, public_product_sizes, public_product_variants, public_products, public_store_settings',
+  'public_categories, public_collections, public_home_section_items, public_home_sections, public_news_banners, public_product_categories, public_product_collections, public_product_colors, public_product_detail, public_product_images, public_product_related, public_product_sizes, public_product_slug_redirects, public_product_variants, public_products, public_store_settings',
   'lista blanca de vistas legibles por anon');
 select is(
   (select coalesce(string_agg(c.relname || '.' || a.attname, ', ' order by c.relname, a.attname), '')

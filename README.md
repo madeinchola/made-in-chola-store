@@ -71,6 +71,18 @@ Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run 
 - **Front**: `src/features/catalog` → `catalogService` (lectura pública), `priceService`, `stockService` y hooks de TanStack Query con claves `catalogKeys`. `slugify` existe en SQL y en TypeScript y un test de integración verifica que dan lo mismo.
 - **Datos de ejemplo**: `supabase/seed.sql` carga 30 productos con casos límite (agotados, ocultos, borrador, archivado) en cada `db reset`; `npm run dev:seed` sube además imágenes de ejemplo **provisionales** a 8 productos. Las imágenes oficiales las sube el admin desde el panel.
 
+### Panel de administración (Sprint 3)
+- **Rutas** (`/admin/*`, todas tras `RequireAdmin`; la autorización real es la RLS de la base): resumen, productos (listado, nuevo, edición), categorías, colecciones, monedas, ajustes (con banner de noticias) y auditoría. Cada pantalla se carga bajo demanda (`React.lazy`): la tienda pública no descarga código del panel.
+- **Edición concurrente**: toda actualización de una fila existente pasa por `src/features/admin/lib/versioned.ts` → `updateVersioned(tabla, id, updated_at, parche)`. Solo actualiza si el `updated_at` sigue siendo el que se leyó; si no, lanza `StaleVersionError` y la pantalla avisa sin pisar a nadie. **El `updated_at` viaja como TEXTO tal cual lo devolvió la base** (pasarlo por `Date` pierde los microsegundos y todo guardado parecería un conflicto).
+- **Listado de productos**: una sola consulta a la vista `admin_product_list` (filtros, orden, paginación y conteo exacto en el servidor, con el mismo cálculo de estado "agotado/oculto" que la tienda). El estado de la pantalla vive en la URL (`?q=&estado=&categoria=&coleccion=&stock=&orden=&pagina=`). Una página más allá del final salta a la última válida.
+- **Producto**: se crea como borrador (precio, colores y tallas → todas las variantes con stock 0). La edición tiene secciones que se guardan por separado: datos, precios, colores/tallas (re-sincroniza variantes sin perder stock: `variantPlan`), stock (cada cambio es un movimiento del libro mayor, con motivo), imágenes (se reducen en el navegador a ≤ 2000 px antes de subir; orden por arrastre o botones), categorías/colecciones/relacionados, vista previa. Publicar muestra qué falta: sin precio en BOB o sin variantes **bloquea** (la base lo exige); sin imágenes o sin stock solo **avisa**.
+- **Stock exacto**: la matriz edita "nuevo stock = N" y usa `admin_set_stock(variante, esperado, nuevo, motivo)`: bloquea la variante y **rechaza si el stock ya no es el que se vio** (una venta o un compañero lo cambió), diciendo cuánto hay ahora. Nunca se aplica un delta a ciegas.
+- **Alertas de stock**: un trigger sobre `stock_movements` encola un `stock_alert` en `notification_outbox` solo al **cruzar** un umbral hacia peor (y solo de variantes activas de productos publicados); no repite mientras haya una pendiente del mismo nivel. La campana y el resumen se calculan en la base (`admin_product_stock`). El envío real del correo llega en S13.
+- **Slugs**: renombrar un producto guarda el slug anterior en `product_slug_history`; la vista pública `public_product_slug_redirects` lo resuelve (la tienda, S5, redirige). **Solo redirige lo que era público al renombrar** (producto publicado y no archivado, columna `was_public`): los nombres de trabajo de un borrador no se filtran al publicarlo. Limitación conocida: si un producto publicado se pasa a borrador, se renombra y se vuelve a publicar, el slug público anterior no redirige.
+- **Diálogos**: usa `components/ui/dialog.tsx`, que devuelve el foco a quien abrió el diálogo (Radix solo lo hace con un `DialogTrigger`). Los diálogos de confirmación bloquean el doble clic y se quedan abiertos si la acción falla.
+- **Textos del producto**: la descripción se guarda como texto plano (se quitan caracteres de control; el HTML no se altera). **La tienda debe mostrarla siempre como texto, nunca con `dangerouslySetInnerHTML`.**
+- **Tipos de cambio**: `exchange_rates` es un libro inmutable; un error de tipeo se supera con otra fila. La pantalla pide confirmación si la tasa cambia más de 25 % o la fecha está a más de 7 días. "Vigente" se calcula con el reloj del navegador (la base usa el suyo).
+
 ## Pruebas
 | Comando | Qué prueba | Requiere |
 |---|---|---|
@@ -88,7 +100,7 @@ Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run 
 ## Estructura
 ```
 src/app          rutas, layouts, páginas       src/lib       money, env, logger, errors, supabase…
-src/features     (vacío: lo llenan los sprints)  src/i18n      es.ts + t()
+src/features     auth · catalog · admin (panel)  src/i18n      es.ts + t()
 src/components   ui/ (shadcn) y compartidos      src/styles    tokens.css (tokens provisionales)
 supabase/        migrations · functions/_shared · tests (pgTAP) · seed.sql
 e2e/             Playwright                       scripts/      dev.mjs
@@ -107,4 +119,4 @@ e2e/             Playwright                       scripts/      dev.mjs
 TypeScript `strict` + `noUncheckedIndexedAccess` (Acrosoft: `strict: false`); `no-console` e `unused-vars` como error; CSP sin `'unsafe-inline'` en scripts y con `frame-ancestors 'none'` global; E2E contra el build; imports de i18n tipados.
 
 ## Línea base del bundle
-S0: JS 365 kB (gzip ≈ 111 kB) · CSS 10.6 kB. Se mide de nuevo al cerrar cada sprint (ver tabla en el documento de cada sprint).
+S0: JS 365 kB (gzip ≈ 111 kB) · CSS 10.6 kB. S1: gzip ≈ 202 kB. **S3: entrada pública gzip ≈ 214 kB** (`index` 71 + `App` 143) · CSS 5.3 kB gzip; el panel son ~38 chunks de carga diferida (≈ 100 kB gzip en total) que solo descarga un admin. Se mide de nuevo al cerrar cada sprint.

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useLocation, useRoutes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { asAdmin, asCustomer, fakeAuth, WithAuth } from "@/test/auth-test-utils";
 import type { AuthContextValue } from "@/features/auth/auth-context";
 import { routes } from "./router";
@@ -10,9 +11,18 @@ import { routes } from "./router";
 // el redirect en un navegador real lo cubre e2e/auth.spec.ts.
 let location!: ReturnType<typeof useLocation>;
 
+// El panel consulta alertas de stock: se simula esa capa (no hay base de datos en este test) y se provee un QueryClient.
+vi.mock("@/features/admin/stock/api", () => ({
+  ALERT_LIGHTS: ["out", "critical", "low"],
+  getStockAlertSummary: async () => ({ low: 0, critical: 0, out: 0, total: 0 }),
+  listStockAlertVariants: async () => [],
+}));
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
 function Routes() {
   location = useLocation();
-  return useRoutes(routes);
+  const element = useRoutes(routes);
+  return <QueryClientProvider client={queryClient}>{element}</QueryClientProvider>;
 }
 
 function renderAt(path: string, auth: AuthContextValue = fakeAuth()) {
@@ -80,14 +90,16 @@ describe("guards de /admin", () => {
     expect(router.location.pathname).toBe("/");
     expect(screen.queryByText("Panel de administración")).not.toBeInTheDocument();
   });
-  it("admin → accede al panel", () => {
+  it("admin → accede al panel", async () => {
     const router = renderAt("/admin", asAdmin());
     expect(router.location.pathname).toBe("/admin");
-    expect(screen.getByRole("heading", { name: "Panel de administración" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Panel de administración" }),
+    ).toBeInTheDocument();
   });
-  it("admin también accede a sub-rutas", () => {
+  it("admin también accede a sub-rutas", async () => {
     renderAt("/admin/pedidos", asAdmin());
-    expect(screen.getByText(/disponible pronto/i)).toBeInTheDocument();
+    expect(await screen.findByText(/disponible pronto/i)).toBeInTheDocument();
   });
   it("mientras la sesión carga NO redirige ni muestra el panel (evita parpadeo y fuga)", () => {
     const router = renderAt("/admin", fakeAuth({ status: "loading" }));
@@ -100,7 +112,7 @@ describe("guards de /admin", () => {
     expect(router.location.pathname).toBe("/administrador");
     expect(screen.getByRole("heading", { name: "Página no encontrada" })).toBeInTheDocument();
   });
-  it("un admin degradado (isAdmin pasa a false) pierde el acceso al re-renderizar", () => {
+  it("un admin degradado (isAdmin pasa a false) pierde el acceso al re-renderizar", async () => {
     const view = render(
       <WithAuth value={asAdmin()}>
         <MemoryRouter initialEntries={["/admin"]}>
@@ -108,7 +120,9 @@ describe("guards de /admin", () => {
         </MemoryRouter>
       </WithAuth>,
     );
-    expect(screen.getByRole("heading", { name: "Panel de administración" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Panel de administración" }),
+    ).toBeInTheDocument();
     view.rerender(
       <WithAuth value={asCustomer()}>
         <MemoryRouter initialEntries={["/admin"]}>

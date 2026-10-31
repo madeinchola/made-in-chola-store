@@ -5,10 +5,12 @@ select plan(117);
 
 alter table public.stock_movements disable trigger user;
 alter table public.exchange_rates disable trigger user;
+alter table public.product_slug_history disable trigger user;
 truncate public.products, public.categories, public.collections, public.news_banners, public.home_sections,
          public.exchange_rates restart identity cascade;
 alter table public.stock_movements enable trigger user;
 alter table public.exchange_rates enable trigger user;
+alter table public.product_slug_history enable trigger user;
 
 insert into auth.users (id, email, raw_user_meta_data, aud, role) values
   ('c0000000-0000-0000-0000-0000000000c1', 'cliente.s2@test.com', '{"full_name":"Cliente S2"}', 'authenticated', 'authenticated'),

@@ -149,7 +149,7 @@ test.describe("acceso a /admin por rol", () => {
     await page.getByRole("button", { name: "Ingresar" }).click();
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole("heading", { name: "Panel de administración" })).toBeVisible();
-    // /admin aún no tiene shell propio (Sprint 3): el enlace "Panel" se ve en la cabecera pública.
+    // Un admin ve el enlace "Panel" en la cabecera pública de la tienda.
     await page.goto("/");
     await expect(page.getByRole("banner").getByRole("link", { name: "Panel" })).toBeVisible();
   });

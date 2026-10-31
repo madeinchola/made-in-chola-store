@@ -177,6 +177,12 @@ isOneToOne: false
       foreignKeyName: "home_section_items_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "home_section_items_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -263,6 +269,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"notification_outbox": {
+                  Row: {
+                    "attempts": number,"channel": string,"created_at": string,"dedupe_key": string,"id": number,"next_retry_at": string,"payload": NonNullable<Json>,"recipient": string | null,"status": string,"type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "attempts"?: number,"channel": string,"created_at"?: string,"dedupe_key": string,"id"?: never,"next_retry_at"?: string,"payload"?: NonNullable<Json>,"recipient"?: string | null,"status"?: string,"type": string
+                  }
+                  Update: {
+                    "attempts"?: number,"channel"?: string,"created_at"?: string,"dedupe_key"?: string,"id"?: never,"next_retry_at"?: string,"payload"?: NonNullable<Json>,"recipient"?: string | null,"status"?: string,"type"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"product_categories": {
                   Row: {
                     "category_id": string,"created_at": string,"product_id": string
@@ -286,6 +306,12 @@ isOneToOne: false
       columns: ["category_id"]
 isOneToOne: false
       referencedRelation: "public_categories"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_categories_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "product_categories_product_id_fkey"
@@ -341,6 +367,12 @@ isOneToOne: false
       foreignKeyName: "product_collections_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_collections_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -376,6 +408,12 @@ isOneToOne: false
                   }
                   Relationships: [
                     {
+      foreignKeyName: "product_colors_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "product_colors_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
@@ -425,6 +463,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "public_product_colors"
       referencedColumns: ["id","product_id"]
+    },{
+      foreignKeyName: "product_images_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
     },{
       foreignKeyName: "product_images_product_id_fkey"
       columns: ["product_id"]
@@ -479,6 +523,12 @@ isOneToOne: false
       foreignKeyName: "product_prices_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_prices_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -517,6 +567,12 @@ isOneToOne: false
       foreignKeyName: "product_related_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_related_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -536,6 +592,12 @@ isOneToOne: false
       columns: ["product_id"]
 isOneToOne: false
       referencedRelation: "public_products"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_related_related_id_fkey"
+      columns: ["related_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "product_related_related_id_fkey"
@@ -579,6 +641,12 @@ isOneToOne: false
       foreignKeyName: "product_sizes_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_sizes_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -595,6 +663,50 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "product_sizes_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "public_products"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"product_slug_history": {
+                  Row: {
+                    "changed_at": string,"changed_by": string | null,"id": number,"product_id": string,"slug": string,"was_public": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "changed_at"?: string,"changed_by"?: string | null,"id"?: never,"product_id": string,"slug": string,"was_public"?: boolean
+                  }
+                  Update: {
+                    "changed_at"?: string,"changed_by"?: string | null,"id"?: never,"product_id"?: string,"slug"?: string,"was_public"?: boolean
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "product_slug_history_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_slug_history_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_stock"
+      referencedColumns: ["product_id"]
+    },{
+      foreignKeyName: "product_slug_history_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "products"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_slug_history_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "public_product_detail"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_slug_history_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
       referencedRelation: "public_products"
@@ -625,6 +737,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "public_product_colors"
       referencedColumns: ["id","product_id"]
+    },{
+      foreignKeyName: "product_variants_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
     },{
       foreignKeyName: "product_variants_product_id_fkey"
       columns: ["product_id"]
@@ -798,7 +916,15 @@ isOneToOne: false
                 }
           }
           Views: {
-            "admin_product_stock": {
+            "admin_product_list": {
+                  Row: {
+                    "archived_at": string | null,"category_ids": (string)[] | null,"code": string | null,"collection_ids": (string)[] | null,"cover_path": string | null,"created_at": string | null,"display_state": string | null,"id": string | null,"is_new": boolean | null,"name": string | null,"out_of_stock_behavior": string | null,"price_bob": number | null,"slug": string | null,"status": string | null,"total_available": number | null,"total_on_hand": number | null,"updated_at": string | null,"variants_count": number | null,"variants_out": number | null,"worst_light": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
+                },"admin_product_stock": {
                   Row: {
                     "archived_at": string | null,"code": string | null,"name": string | null,"product_id": string | null,"status": string | null,"total_available": number | null,"total_on_hand": number | null,"variants_count": number | null,"variants_out": number | null,"worst_light": string | null
                   }
@@ -813,6 +939,12 @@ isOneToOne: false
                   ComputedFields: never
                   Relationships: [
                     {
+      foreignKeyName: "product_variants_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "product_variants_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
@@ -954,6 +1086,12 @@ isOneToOne: false
       foreignKeyName: "product_categories_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_categories_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -1004,6 +1142,12 @@ isOneToOne: false
       foreignKeyName: "product_collections_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_collections_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -1039,6 +1183,12 @@ isOneToOne: false
                          }
                         Relationships: [
                     {
+      foreignKeyName: "product_colors_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "product_colors_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
@@ -1094,6 +1244,12 @@ isOneToOne: false
       foreignKeyName: "product_images_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_images_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -1132,6 +1288,12 @@ isOneToOne: false
       foreignKeyName: "product_related_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_related_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -1151,6 +1313,12 @@ isOneToOne: false
       columns: ["product_id"]
 isOneToOne: false
       referencedRelation: "public_products"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_related_related_id_fkey"
+      columns: ["related_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "product_related_related_id_fkey"
@@ -1194,6 +1362,12 @@ isOneToOne: false
       foreignKeyName: "product_sizes_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_sizes_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -1216,6 +1390,14 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"public_product_slug_redirects": {
+                  Row: {
+                    "current_slug": string | null,"old_slug": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
                 },"public_product_variants": {
                   Row: {
                     "color_id": string | null,"id": string | null,"product_id": string | null,"size_id": string | null,"stock_status": string | null
@@ -1234,6 +1416,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "public_product_colors"
       referencedColumns: ["id","product_id"]
+    },{
+      foreignKeyName: "product_variants_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
     },{
       foreignKeyName: "product_variants_product_id_fkey"
       columns: ["product_id"]
@@ -1304,6 +1492,12 @@ isOneToOne: false
       foreignKeyName: "product_variants_product_id_fkey"
       columns: ["product_id"]
 isOneToOne: false
+      referencedRelation: "admin_product_list"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "product_variants_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
       referencedRelation: "admin_product_stock"
       referencedColumns: ["product_id"]
     },{
@@ -1338,6 +1532,9 @@ isOneToOne: false
 "admin_delete_product_price":
 { Args: { "p_country"?: string,"p_currency": string,"p_product_id": string }; Returns: undefined
                            },
+"admin_duplicate_product":
+{ Args: { "p_new_code": string,"p_new_name": string,"p_product_id": string }; Returns: string
+                           },
 "admin_set_product_categories":
 { Args: { "p_category_ids": (string)[],"p_product_id": string }; Returns: undefined
                            },
@@ -1346,6 +1543,9 @@ isOneToOne: false
                            },
 "admin_set_product_related":
 { Args: { "p_product_id": string,"p_related_ids": (string)[] }; Returns: undefined
+                           },
+"admin_set_stock":
+{ Args: { "p_expected": number,"p_new": number,"p_note"?: string,"p_reason": string,"p_variant_id": string }; Returns: number
                            },
 "apply_stock_change":
 { Args: { "p_delta": number,"p_note"?: string,"p_reason": string,"p_ref"?: string,"p_user"?: string,"p_variant_id": string }; Returns: number
@@ -1363,6 +1563,9 @@ isOneToOne: false
                            },
 "deactivate_profile":
 { Args: { "p_anonymize"?: boolean,"p_id": string }; Returns: undefined
+                           },
+"enqueue_notification":
+{ Args: { "p_channel": string,"p_dedupe_key": string,"p_payload": Json,"p_recipient": string,"p_type": string }; Returns: number
                            },
 "expire_reservations":
 { Args: Record<PropertyKey, never>; Returns: number

@@ -82,6 +82,12 @@ BR-CAT-02, BR-CAT-03, BR-CAT-04, BR-INV-05 (visual), BR-PRC-01, BR-PRC-02, BR-PR
 - [ ] **Demo de cierre de R1** con el dueño y la diseñadora; checklist de fidelidad visual firmado.
 - [ ] Go/No-Go del MVP (ver índice).
 
+## Lo que entrega S3 y S5 debe respetar (añadido el 2026-10-30)
+- **Redirecciones de slugs:** la vista pública `public_product_slug_redirects` (`old_slug` → `current_slug`) lista solo productos visibles **y solo slugs que eran públicos al renombrar** (`was_public`). Si `/producto/:slug` no encuentra el slug, S5 debe consultarla y redirigir (301/replace) al `current_slug`.
+- **Descripción del producto = texto plano.** El panel guarda `description`, `materials` y `washcare` sin alterar el HTML (solo quita caracteres de control). S5 debe mostrarlos **siempre como texto** (React ya escapa; prohibido `dangerouslySetInnerHTML`) y respetar los saltos de línea (`white-space: pre-line`).
+- **Estado "agotado/oculto":** `admin_product_list.display_state` aplica las mismas reglas que `public_products` ("Ocultar" depende del stock físico; "agotado", de lo disponible); no las dupliques con otra interpretación.
+- **Imagen principal** = la primera por `sort_order` entre las no archivadas cuyo color (si lo tiene) sigue activo; el panel ya muestra esa misma.
+
 ## Riesgos
 - SPA y SEO (D-01) → medición temprana y plan alterno documentado.
 - Consultas lentas con catálogo grande → índices y vistas materializadas si hace falta.

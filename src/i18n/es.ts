@@ -1,3 +1,9 @@
+import { adminCommon } from "./admin/common";
+import { adminProducts } from "./admin/products";
+import { adminTaxonomy } from "./admin/taxonomy";
+import { adminConfig } from "./admin/config";
+import { adminAudit } from "./admin/audit";
+
 export const es = {
   app: { name: "Made In Chola" },
   nav: {
@@ -109,7 +115,13 @@ export const es = {
     },
   },
   guard: { loading: "Cargando…" },
-  admin: { title: "Panel de administración", body: "El panel se construye en el Sprint 3." },
+  admin: {
+    ...adminCommon,
+    products: adminProducts,
+    taxonomy: adminTaxonomy,
+    config: adminConfig,
+    audit: adminAudit,
+  },
   account: { title: "Mi cuenta", name: "Nombre", email: "Email", phone: "Teléfono", none: "—" },
   placeholder: { soon: "Esta sección estará disponible pronto." },
   error: {
