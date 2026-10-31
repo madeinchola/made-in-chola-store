@@ -10,7 +10,11 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-/** Paginación del servidor: total exacto, anterior/siguiente y estado anunciado. */
+/**
+ * Paginación del servidor: total exacto, anterior/siguiente y estado anunciado. Los extremos usan `aria-disabled` y no
+ * `disabled`: quien avanza con el teclado hasta la última página no pierde el foco (un botón que se desactiva estando
+ * enfocado lo suelta).
+ */
 export function Pagination({ page, pageSize, total, onPageChange }: PaginationProps) {
   const pages = pageCount(total, pageSize);
   return (
@@ -24,8 +28,8 @@ export function Pagination({ page, pageSize, total, onPageChange }: PaginationPr
           type="button"
           variant="outline"
           size="sm"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
+          aria-disabled={page <= 1}
+          onClick={() => page > 1 && onPageChange(page - 1)}
         >
           {t("admin.table.prev")}
         </Button>
@@ -34,8 +38,8 @@ export function Pagination({ page, pageSize, total, onPageChange }: PaginationPr
           type="button"
           variant="outline"
           size="sm"
-          disabled={page >= pages}
-          onClick={() => onPageChange(page + 1)}
+          aria-disabled={page >= pages}
+          onClick={() => page < pages && onPageChange(page + 1)}
         >
           {t("admin.table.next")}
         </Button>

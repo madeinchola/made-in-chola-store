@@ -115,7 +115,7 @@ function ImageCard({
         )}
       </div>
       {hidden && (
-        <p className="mt-2 text-xs text-amber-800">{t("admin.products.images.hiddenNote")}</p>
+        <p className="mt-2 text-xs text-warning">{t("admin.products.images.hiddenNote")}</p>
       )}
       <div className="mt-2 flex items-center justify-between gap-1">
         <button

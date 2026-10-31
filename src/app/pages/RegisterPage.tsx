@@ -9,6 +9,7 @@ import { useAuth } from "@/features/auth/useAuth";
 import { authErrorMessage } from "@/features/auth/messages";
 import { safeRedirectPath } from "@/features/auth/redirect";
 import { COUNTRIES } from "@/lib/countries";
+import { applyPhoneMask } from "@/lib/phoneMask";
 import { t, type MessageKey } from "@/i18n";
 import { normalizeEmail, normalizePhone } from "@shared/identity";
 import { validatePassword } from "@shared/password-policy";
@@ -139,6 +140,14 @@ export function RegisterPage() {
                 autoComplete="tel-national"
                 inputMode="tel"
                 {...register("phone", {
+                  // Máscara en vivo (7123 4567) conservando el cursor. RHF lee el valor del campo DESPUÉS de este
+                  // manejador, así que lo que se valida y se envía es el ya enmascarado (tests de teclear y de pegar).
+                  onChange: (event: { target: HTMLInputElement; nativeEvent?: Event }) => {
+                    applyPhoneMask(
+                      event.target,
+                      (event.nativeEvent as InputEvent | undefined)?.inputType,
+                    );
+                  },
                   validate: (v) => {
                     if (mode !== "phone") return true;
                     const r = normalizePhone(v, getValues("country"));

@@ -189,7 +189,10 @@ describe("ProductsListPage", () => {
     await screen.findByRole("table");
     expect(screen.getByText("45 resultados")).toBeInTheDocument();
     expect(screen.getByText("Página 1 de 3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Anterior" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Anterior" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
     await waitFor(() => expect(lastParams().page).toBe(2));
     expect(search).toBe("?pagina=2");
@@ -209,7 +212,10 @@ describe("ProductsListPage", () => {
     api.listAdminProducts.mockResolvedValue({ rows: [row()], total: 45 });
     renderPage("/admin/productos?pagina=3");
     await screen.findByText("Página 3 de 3");
-    expect(screen.getByRole("button", { name: "Siguiente" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Siguiente" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 
   it("sin productos y sin filtros: invita a crear el primero", async () => {

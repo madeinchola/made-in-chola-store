@@ -35,9 +35,7 @@ async function loginAsAdmin(page: Page, then = "/admin") {
   await page.getByLabel("Email o teléfono").fill(admin.identifier);
   await page.getByLabel("Contraseña", { exact: true }).fill(admin.password);
   await page.getByRole("button", { name: "Ingresar" }).click();
-  await expect(
-    page.getByRole("banner").getByRole("button", { name: "Cerrar sesión" }),
-  ).toBeVisible();
+  await expect(page.getByTestId("account-menu")).toBeVisible(); // sesión iniciada: el icono de la cuenta
   await page.goto(then);
 }
 
@@ -472,7 +470,12 @@ test.describe("categorías y colecciones", () => {
     const child = page.getByRole("dialog");
     await child.getByRole("textbox", { name: "Nombre", exact: true }).fill(`Camisas ${tag}`);
     await child.getByRole("button", { name: "Crear categoría" }).click();
-    await expect(page.getByText(`Camisas ${tag}`, { exact: true })).toBeVisible();
+    // En el ÁRBOL: el mismo nombre aparece un instante también como opción del selector «Categoría padre» (ambigüedad).
+    await expect(
+      page
+        .getByRole("navigation", { name: "Árbol de categorías" })
+        .getByText(`Camisas ${tag}`, { exact: true }),
+    ).toBeVisible();
 
     // el padre con una subcategoría ACTIVA no se puede archivar: la base lo impide y la pantalla lo dice
     await page.getByRole("button", { name: `Archivar Ropa ${tag}` }).click();

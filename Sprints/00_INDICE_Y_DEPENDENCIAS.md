@@ -29,6 +29,7 @@
 | 16 | [Hardening y lanzamiento v1.0](SPRINT_16_Hardening_Lanzamiento.md) | R4 | 0–15 | 5 d |
 | 17 | [Facturación electrónica (condicional)](SPRINT_17_Facturacion_Electronica.md) | R5 | 12, 16 + respuesta admin | 5 d |
 | 18 | [Multi-país y pasarelas internacionales](SPRINT_18_MultiPais_Pasarelas.md) | R5 | 11, 16 | 8 d |
+| 19 | [Acciones manuales del dueño (transversal)](SPRINT_19_Acciones_Manuales.md) | todas | — (en paralelo; bloquea S5, S6, S7 y S16 según la tarea) | acciones del dueño |
 
 \* Días de desarrollo asistido por persona, orientativos; se reestiman al cerrar cada sprint.
 

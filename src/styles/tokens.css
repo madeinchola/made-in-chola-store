@@ -1,25 +1,107 @@
 /*
- * TOKENS PROVISIONALES — único archivo a reemplazar cuando llegue el diseño de la diseñadora (Sprint 4).
- * Valores HSL sin `hsl()` para que Tailwind pueda aplicar opacidad.
+ * TOKENS DE DISEÑO — fuente única de verdad del aspecto (Sprint 4).
+ * Cambiar un valor aquí cambia toda la interfaz (tienda y panel). Tailwind los lee desde tailwind.config.ts.
+ *
+ * Colores como "H S% L%" SIN `hsl()` para que Tailwind pueda aplicar opacidad (`bg-primary/90`).
+ * Muestreados de los PDFs de diseño: fondo #F5F4F4, marrón #382F21 (pie/botón principal), baldosa #E2DEDE.
+ * Desviaciones deliberadas respecto al PDF (para cumplir WCAG AA 2.1), cubiertas por src/styles/tokens.test.ts:
+ *  - el texto atenuado es más oscuro que el gris claro del PDF (≥ 4.5:1 sobre fondo, baldosa y atenuado);
+ *  - el borde de los campos de formulario es más oscuro que un borde decorativo (≥ 3:1, criterio 1.4.11).
+ *
+ * Modo oscuro: NO incluido (opcional en el sprint; el diseño solo existe en claro). Para añadirlo basta
+ * redefinir estas variables bajo `.dark` (Tailwind ya está en `darkMode: class`).
  */
 :root {
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: Georgia, "Times New Roman", serif;
+  color-scheme: light;
 
-  --background: 36 38% 96%;
-  --foreground: 20 25% 12%;
-  --primary: 350 55% 30%;
-  --primary-foreground: 36 38% 96%;
-  --secondary: 36 25% 88%;
-  --secondary-foreground: 20 25% 12%;
-  --muted: 36 20% 91%;
-  --muted-foreground: 20 10% 38%;
-  --accent: 28 70% 52%;
-  --accent-foreground: 20 25% 12%;
-  --destructive: 0 70% 40%;
+  /* Tipografía (caras definidas en fonts.css) */
+  --font-sans: "Jost", "Jost Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Baskervville", "Baskervville Fallback", "Times New Roman", Georgia, serif;
+
+  /* Escala tipográfica fluida de los títulos (el texto corrido usa la escala estándar de Tailwind) */
+  --text-display-xl: clamp(2.5rem, 1.6rem + 4vw, 4.75rem);
+  --text-display-lg: clamp(2rem, 1.4rem + 2.6vw, 3.5rem);
+  --text-display-md: clamp(1.625rem, 1.3rem + 1.4vw, 2.25rem);
+  --text-display-sm: clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem);
+  --tracking-eyebrow: 0.14em;
+
+  /* Superficies y texto */
+  --background: 0 5% 96%; /* #F5F4F4 */
+  --foreground: 36.5 26.1% 17.5%; /* #382F21 */
+  --card: 0 0% 98.5%;
+  --card-foreground: 36.5 26.1% 17.5%;
+  --popover: 0 0% 98.5%;
+  --popover-foreground: 36.5 26.1% 17.5%;
+  --primary: 36.5 26.1% 17.5%; /* #382F21 */
+  --primary-foreground: 0 5% 96%;
+  --secondary: 0 6% 88%; /* #E2DEDE (baldosa de imagen / botón secundario) */
+  --secondary-foreground: 36.5 26.1% 17.5%;
+  --muted: 0 6% 92%;
+  --muted-foreground: 30 8% 36%;
+  --accent: 0 6% 90%;
+  --accent-foreground: 36.5 26.1% 17.5%;
+
+  /* Bordes: `border` es decorativo; `input` delimita controles (≥ 3:1) */
+  --border: 0 5% 82%;
+  --input: 30 6% 50%;
+  --ring: 36.5 26.1% 17.5%;
+
+  /* Estados (cada uno: color de texto/icono/borde + fondo suave; ambos AA entre sí) */
+  --destructive: 0 65% 38%;
   --destructive-foreground: 0 0% 100%;
-  --border: 30 18% 82%;
-  --input: 30 18% 82%;
-  --ring: 350 55% 30%;
-  --radius: 0.5rem;
+  --destructive-soft: 0 70% 95%;
+  --success: 150 60% 22%;
+  --success-soft: 150 45% 92%;
+  --warning: 30 90% 24%;
+  --warning-soft: 40 90% 92%;
+  --info: 205 75% 28%;
+  --info-soft: 205 70% 93%;
+
+  /* Radios: controles casi rectos (como el diseño), tarjetas redondeadas, píldora para chips y contadores */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-card: 14px;
+  --radius-pill: 9999px;
+
+  /* Sombras (sutiles: el diseño es plano) */
+  --shadow-sm: 0 1px 2px 0 hsl(36.5 26.1% 17.5% / 0.06);
+  --shadow-md: 0 4px 12px -2px hsl(36.5 26.1% 17.5% / 0.1);
+  --shadow-lg: 0 16px 40px -8px hsl(36.5 26.1% 17.5% / 0.18);
+
+  /* Movimiento */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Maquetación */
+  --gutter: clamp(1rem, 0.5rem + 2.5vw, 2.5rem);
+  --section-y: clamp(3rem, 2rem + 5vw, 6rem);
+  --header-height: 4.5rem; /* móvil (sin diseño); ≥ lg ver abajo */
+}
+
+/* Cabecera del diseño: 130 px a 1366 px de ancho (logotipo disperso en 3 filas). */
+@media (min-width: 1024px) {
+  :root {
+    --header-height: 8.125rem;
+  }
+}
+
+/*
+ * Superficie invertida (pie de página, barra de anuncios): redefine las variables semánticas, de modo que
+ * todo lo que va dentro (`text-foreground`, `border-border`, el anillo de foco…) se adapta solo.
+ */
+.theme-inverse {
+  --background: 36.5 26.1% 17.5%;
+  --foreground: 0 5% 96%;
+  --muted: 37 20% 22%;
+  --muted-foreground: 0 5% 76%;
+  --border: 37 14% 32%;
+  --input: 0 5% 70%;
+  --ring: 0 5% 96%;
+  --primary: 0 5% 96%;
+  --primary-foreground: 36.5 26.1% 17.5%;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }

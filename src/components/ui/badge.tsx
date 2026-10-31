@@ -3,18 +3,24 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
+  "inline-flex items-center rounded-pill border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
   {
     variants: {
       tone: {
         neutral: "border-border bg-muted text-foreground",
-        success: "border-emerald-300 bg-emerald-100 text-emerald-900",
-        warning: "border-amber-300 bg-amber-100 text-amber-900",
-        danger: "border-red-300 bg-red-100 text-red-900",
-        info: "border-sky-300 bg-sky-100 text-sky-900",
+        success: "border-success/40 bg-success-soft text-success",
+        warning: "border-warning/40 bg-warning-soft text-warning",
+        danger: "border-destructive/40 bg-destructive-soft text-destructive",
+        info: "border-info/40 bg-info-soft text-info",
+        /** Marca de la tienda ("NUEVO"): relleno marrón. */
+        solid: "border-primary bg-primary text-primary-foreground",
+        /** Etiqueta discreta sobre imagen o fondo liso. */
+        outline: "border-foreground/40 bg-transparent text-foreground",
       },
+      /** Mayúsculas con espaciado (chips de la tienda). */
+      caps: { true: "eyebrow", false: "" },
     },
-    defaultVariants: { tone: "neutral" },
+    defaultVariants: { tone: "neutral", caps: false },
   },
 );
 
@@ -22,6 +28,6 @@ export interface BadgeProps
   extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
 
 /** Etiqueta de estado. El significado SIEMPRE va en el texto (no solo en el color). */
-export function Badge({ className, tone, ...props }: BadgeProps) {
-  return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
+export function Badge({ className, tone, caps, ...props }: BadgeProps) {
+  return <span className={cn(badgeVariants({ tone, caps }), className)} {...props} />;
 }

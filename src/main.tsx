@@ -1,9 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { EnvError, getEnv } from "@/lib/env";
+import { installZodSpanish } from "@/lib/zodEs";
 import { EnvErrorScreen } from "@/components/EnvErrorScreen";
 import "./index.css";
 
+installZodSpanish();
 const root = createRoot(document.getElementById("root")!);
 
 async function bootstrap() {

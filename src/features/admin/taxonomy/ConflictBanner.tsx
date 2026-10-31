@@ -6,7 +6,7 @@ export function ConflictBanner({ onReload }: { onReload: () => void }) {
   return (
     <div
       role="alert"
-      className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+      className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning-soft p-4 text-sm text-warning"
     >
       <div>
         <p className="font-medium">{t("admin.conflict.title")}</p>

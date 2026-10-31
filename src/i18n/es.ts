@@ -3,6 +3,9 @@ import { adminProducts } from "./admin/products";
 import { adminTaxonomy } from "./admin/taxonomy";
 import { adminConfig } from "./admin/config";
 import { adminAudit } from "./admin/audit";
+import { ui } from "./ui";
+import { store } from "./store";
+import { layout } from "./layout";
 
 export const es = {
   app: { name: "Made In Chola" },
@@ -115,6 +118,9 @@ export const es = {
     },
   },
   guard: { loading: "Cargando…" },
+  ui,
+  store,
+  layout,
   admin: {
     ...adminCommon,
     products: adminProducts,

@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
  */
 export function ConflictBanner({ onReload }: { onReload: () => void }) {
   return (
-    <div role="alert" className="rounded-lg border border-amber-400 bg-amber-50 p-4 text-sm">
+    <div
+      role="alert"
+      className="rounded-lg border border-warning/50 bg-warning-soft p-4 text-sm text-warning"
+    >
       <p className="font-semibold">{t("admin.conflict.title")}</p>
       <p className="mt-1">{t("admin.conflict.body")}</p>
       <Button type="button" size="sm" className="mt-3" onClick={onReload}>

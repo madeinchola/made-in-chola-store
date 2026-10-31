@@ -33,8 +33,16 @@ async function uiLogin(page: Page, identifier: string, password: string) {
   await page.getByRole("button", { name: "Ingresar" }).click();
 }
 
-const headerLogout = (page: Page) =>
-  page.getByRole("banner").getByRole("button", { name: "Cerrar sesión" });
+/** Icono de usuario de la cabecera: con sesión es un botón (se llama como la persona) que despliega su cuenta. */
+const headerAccount = (page: Page) => page.getByTestId("account-menu");
+
+/** Cierra sesión como lo haría una persona: abre su cuenta en la cabecera y pulsa «Cerrar sesión». */
+async function logoutViaHeader(page: Page) {
+  await headerAccount(page).click();
+  await page.getByRole("banner").getByRole("button", { name: "Cerrar sesión" }).click();
+  // La sesión se cierra por red: hasta ver «Ingresar» no hay que navegar (abortaría el cierre y seguiría dentro).
+  await expect(page.getByRole("banner").getByRole("link", { name: "Ingresar" })).toBeVisible();
+}
 
 test.describe("registro, sesión y logout", () => {
   test("registro por email → queda dentro → /cuenta muestra sus datos → logout → /cuenta lo manda a login", async ({
@@ -49,17 +57,20 @@ test.describe("registro, sesión y logout", () => {
     await page.getByLabel("Repite la contraseña").fill(STRONG_PASSWORD);
     await page.getByRole("button", { name: "Crear cuenta" }).click();
 
-    await expect(headerLogout(page)).toBeVisible();
+    await expect(headerAccount(page)).toBeVisible();
     await expect(
-      page.getByRole("banner").getByRole("link", { name: "Lucía Mamani" }),
+      page.getByRole("banner").getByRole("button", { name: "Lucía Mamani" }),
     ).toBeVisible();
+    await headerAccount(page).click();
+    await expect(page.getByRole("banner").getByRole("link", { name: "Mi cuenta" })).toBeVisible();
     await expect(page.getByRole("banner").getByRole("link", { name: "Panel" })).toHaveCount(0); // cliente: sin Panel
+    await page.keyboard.press("Escape");
 
     await page.goto("/cuenta");
     await expect(page.getByTestId("account-name")).toHaveText("Lucía Mamani");
     await expect(page.getByText(email)).toBeVisible();
 
-    await headerLogout(page).click();
+    await logoutViaHeader(page);
     await expect(page.getByRole("banner").getByRole("link", { name: "Ingresar" })).toBeVisible();
     await page.goto("/cuenta");
     await expect(page).toHaveURL(/\/login$/);
@@ -77,11 +88,13 @@ test.describe("registro, sesión y logout", () => {
     await page.getByLabel("Contraseña", { exact: true }).fill(STRONG_PASSWORD);
     await page.getByLabel("Repite la contraseña").fill(STRONG_PASSWORD);
     await page.getByRole("button", { name: "Crear cuenta" }).click();
-    await expect(headerLogout(page)).toBeVisible();
+    await expect(headerAccount(page)).toBeVisible();
 
-    await headerLogout(page).click();
+    await logoutViaHeader(page);
     await uiLogin(page, `+591-${phone}`, STRONG_PASSWORD);
-    await expect(page.getByRole("banner").getByRole("link", { name: "Rosa Choque" })).toBeVisible();
+    await expect(
+      page.getByRole("banner").getByRole("button", { name: "Rosa Choque" }),
+    ).toBeVisible();
     await page.goto("/cuenta");
     await expect(page.getByText(`+591${phone}`)).toBeVisible();
   });
@@ -89,9 +102,11 @@ test.describe("registro, sesión y logout", () => {
   test("la sesión sobrevive a recargar la página", async ({ page }) => {
     const u = await registerAndLogin({ name: "Persistente" });
     await uiLogin(page, u.identifier, u.password);
-    await expect(headerLogout(page)).toBeVisible();
+    await expect(headerAccount(page)).toBeVisible();
     await page.reload();
-    await expect(page.getByRole("banner").getByRole("link", { name: "Persistente" })).toBeVisible();
+    await expect(
+      page.getByRole("banner").getByRole("button", { name: "Persistente" }),
+    ).toBeVisible();
   });
 
   test("contraseña incorrecta y usuario inexistente muestran EXACTAMENTE el mismo mensaje", async ({
@@ -151,13 +166,14 @@ test.describe("acceso a /admin por rol", () => {
     await expect(page.getByRole("heading", { name: "Panel de administración" })).toBeVisible();
     // Un admin ve el enlace "Panel" en la cabecera pública de la tienda.
     await page.goto("/");
+    await headerAccount(page).click(); // «Panel» vive en el menú de la cuenta de la cabecera
     await expect(page.getByRole("banner").getByRole("link", { name: "Panel" })).toBeVisible();
   });
 
   test("un cliente que escribe /admin a mano NO ve el panel", async ({ page }) => {
     const u = await registerAndLogin();
     await uiLogin(page, u.identifier, u.password);
-    await expect(headerLogout(page)).toBeVisible();
+    await expect(headerAccount(page)).toBeVisible();
     await page.goto("/admin/productos");
     await expect(page.getByRole("heading", { name: "Panel de administración" })).toHaveCount(0);
     await expect(page).toHaveURL(/\/$/);
@@ -169,7 +185,7 @@ test.describe("acceso a /admin por rol", () => {
     const a = await registerAndLogin({ name: "Admin Temporal" });
     await svcRpc("promote_admin", { p_email: a.email });
     await uiLogin(page, a.identifier, a.password);
-    await expect(headerLogout(page)).toBeVisible(); // esperar a que el login termine antes de navegar
+    await expect(headerAccount(page)).toBeVisible(); // esperar a que el login termine antes de navegar
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Panel de administración" })).toBeVisible();
 
@@ -189,7 +205,7 @@ test.describe("sesiones revocadas", () => {
   }) => {
     const u = await registerAndLogin({ name: "A Desactivar" });
     await uiLogin(page, u.identifier, u.password);
-    await expect(headerLogout(page)).toBeVisible();
+    await expect(headerAccount(page)).toBeVisible();
     await svcRpc("deactivate_profile", { p_id: u.id, p_anonymize: false });
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
     await expect(page.getByRole("banner").getByRole("link", { name: "Ingresar" })).toBeVisible();
@@ -201,11 +217,11 @@ test.describe("sesiones revocadas", () => {
     const u = await registerAndLogin({ name: "Dos Pestañas" });
     const a = await context.newPage();
     await uiLogin(a, u.identifier, u.password);
-    await expect(headerLogout(a)).toBeVisible();
+    await expect(headerAccount(a)).toBeVisible();
     const b = await context.newPage();
     await b.goto("/");
-    await expect(b.getByRole("banner").getByRole("link", { name: "Dos Pestañas" })).toBeVisible();
-    await headerLogout(a).click();
+    await expect(b.getByRole("banner").getByRole("button", { name: "Dos Pestañas" })).toBeVisible();
+    await logoutViaHeader(a);
     await expect(a.getByRole("banner").getByRole("link", { name: "Ingresar" })).toBeVisible();
     await expect(b.getByRole("banner").getByRole("link", { name: "Ingresar" })).toBeVisible({
       timeout: 10_000,
@@ -271,10 +287,12 @@ test.describe("recuperación de contraseña (UI + correo real)", () => {
     await page.getByRole("button", { name: "Guardar contraseña" }).click();
     await expect(page).toHaveURL(/\/$/);
 
-    await headerLogout(page).click();
+    await logoutViaHeader(page);
     await clearRateLimits();
     await uiLogin(page, u.identifier, nueva);
-    await expect(page.getByRole("banner").getByRole("link", { name: "Olvidadiza" })).toBeVisible();
+    await expect(
+      page.getByRole("banner").getByRole("button", { name: "Olvidadiza" }),
+    ).toBeVisible();
   });
 
   test("email inexistente: MISMO mensaje que uno existente y no llega ningún correo", async ({

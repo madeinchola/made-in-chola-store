@@ -1,0 +1,61 @@
+/*
+ * FUENTES — autoalojadas (CSP `font-src 'self'`), solo subconjunto latino (cubre á é í ó ú ñ ü ¿ ¡ y comillas).
+ *
+ * PROVISIONALES: Baskervville + Jost (licencia OFL, ver public/fonts/LICENSE-*.txt) hacen de sustitutas de
+ * Baskerville (títulos) e Intelo (texto) hasta que se confirme la licencia web de las originales.
+ * Para cambiarlas: 1) copiar los .woff2 nuevos a public/fonts/ con NOMBRE NUEVO (el caché es inmutable),
+ * 2) actualizar las rutas de abajo y los <link rel="preload"> de index.html, 3) recalcular las métricas de
+ * las caras "Fallback" (receta en docs/sistema-ui.md, sección Fuentes).
+ *
+ * Solo hay pesos 400 (y 500 para el texto): cada cara declara el RANGO que cubre (`400 700`) para que el navegador
+ * NO fabrique una negrita falsa cuando el código pide `font-semibold`/`font-bold` (se vería borrosa y ancha).
+ *
+ * `font-display: swap` + una cara de respaldo con métricas ajustadas (`size-adjust` y overrides) hacen que el
+ * texto sea legible al instante y que el cambio de fuente no mueva la página (CLS).
+ */
+@font-face {
+  font-family: "Baskervville";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/baskervville-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Baskervville";
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/baskervville-400-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Jost";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/jost-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Jost";
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("/fonts/jost-500.woff2") format("woff2");
+}
+
+/* Respaldos con métricas calculadas sobre las fuentes reales (fontTools, texto de muestra en español). */
+@font-face {
+  font-family: "Jost Fallback";
+  src: local("Arial"), local("Helvetica"), local("Liberation Sans");
+  size-adjust: 95.7%;
+  ascent-override: 111.8%;
+  descent-override: 39.2%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Baskervville Fallback";
+  src: local("Times New Roman"), local("Liberation Serif");
+  size-adjust: 108.9%;
+  ascent-override: 91.6%;
+  descent-override: 27.1%;
+  line-gap-override: 0%;
+}

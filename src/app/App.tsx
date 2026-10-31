@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { installGlobalErrorHandlers } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -32,7 +33,7 @@ export function App() {
         <AuthProvider>
           <RouterProvider router={router} />
         </AuthProvider>
-        <Toaster richColors position="top-center" />
+        <Toaster />
       </QueryClientProvider>
     </ErrorBoundary>
   );

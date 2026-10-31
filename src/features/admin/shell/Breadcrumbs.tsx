@@ -1,5 +1,14 @@
+import { Fragment } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { t } from "@/i18n";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { crumbsFor } from "./crumbs";
 
 export function Breadcrumbs() {
@@ -7,28 +16,28 @@ export function Breadcrumbs() {
   const crumbs = crumbsFor(pathname);
   if (crumbs.length === 0) return null;
   return (
-    <nav aria-label={t("admin.breadcrumbs.label")} className="mb-4 text-sm text-muted-foreground">
-      <ol className="flex flex-wrap items-center gap-1.5">
-        <li>
-          <Link to="/admin" className="hover:underline">
-            {t("admin.breadcrumbs.home")}
-          </Link>
-        </li>
+    <Breadcrumb label={t("admin.breadcrumbs.label")} className="mb-4">
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link to="/admin">{t("admin.breadcrumbs.home")}</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
         {crumbs.map((c, i) => (
-          <li key={c.to} className="flex items-center gap-1.5">
-            <span aria-hidden="true">/</span>
-            {i === crumbs.length - 1 ? (
-              <span aria-current="page" className="text-foreground">
-                {t(c.key)}
-              </span>
-            ) : (
-              <Link to={c.to} className="hover:underline">
-                {t(c.key)}
-              </Link>
-            )}
-          </li>
+          <Fragment key={c.to}>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              {i === crumbs.length - 1 ? (
+                <BreadcrumbPage>{t(c.key)}</BreadcrumbPage>
+              ) : (
+                <BreadcrumbLink asChild>
+                  <Link to={c.to}>{t(c.key)}</Link>
+                </BreadcrumbLink>
+              )}
+            </BreadcrumbItem>
+          </Fragment>
         ))}
-      </ol>
-    </nav>
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 }

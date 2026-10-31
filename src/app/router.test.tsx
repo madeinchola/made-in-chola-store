@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useLocation, useRoutes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -26,7 +27,7 @@ function Routes() {
 }
 
 function renderAt(path: string, auth: AuthContextValue = fakeAuth()) {
-  render(
+  const { unmount } = render(
     <WithAuth value={auth}>
       <MemoryRouter initialEntries={[path]}>
         <Routes />
@@ -34,6 +35,7 @@ function renderAt(path: string, auth: AuthContextValue = fakeAuth()) {
     </WithAuth>,
   );
   return {
+    unmount,
     get location() {
       return location;
     },
@@ -149,20 +151,49 @@ describe("guard de /cuenta", () => {
 });
 
 describe("cabecera según sesión", () => {
-  it("visitante ve Ingresar y Crear cuenta; no ve Cerrar sesión", () => {
+  it("visitante ve el icono «Ingresar»; no ve Cerrar sesión ni la cuenta", () => {
     renderAt("/");
-    expect(screen.getByRole("link", { name: "Ingresar" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Crear cuenta" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ingresar" })).toHaveAttribute("href", "/login");
     expect(screen.queryByRole("button", { name: "Cerrar sesión" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Panel" })).not.toBeInTheDocument();
   });
-  it("cliente ve su nombre y Cerrar sesión, pero NO el enlace al Panel", () => {
+  it("cliente ve su nombre y, al abrir su cuenta, Cerrar sesión; NO el enlace al Panel", async () => {
     renderAt("/", asCustomer());
-    expect(screen.getByRole("link", { name: "Ana Cliente" })).toBeInTheDocument();
+    const account = screen.getByRole("button", { name: "Ana Cliente" });
+    // cerrado: el menú no ofrece nada todavía
+    expect(screen.queryByRole("button", { name: "Cerrar sesión" })).not.toBeInTheDocument();
+    await userEvent.setup().click(account);
     expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Panel" })).not.toBeInTheDocument();
   });
-  it("admin ve el enlace al Panel", () => {
+  it("admin ve el enlace al Panel en el menú de su cuenta", async () => {
     renderAt("/", asAdmin());
+    await userEvent.setup().click(screen.getByRole("button", { name: "Admin Uno" }));
     expect(screen.getByRole("link", { name: "Panel" })).toHaveAttribute("href", "/admin");
+  });
+  it("la portada lleva la cabecera transparente sobre el hero y las demás páginas la llevan sólida", () => {
+    const { unmount } = renderAt("/");
+    expect(screen.getByRole("banner")).toHaveClass("absolute", "text-white");
+    unmount();
+    renderAt("/login");
+    expect(screen.getByRole("banner")).toHaveClass("border-b", "bg-background");
+    expect(screen.getByRole("banner")).not.toHaveClass("absolute");
+  });
+  it("las pantallas que enlaza el pie existen (provisionales hasta S15) y no dan 404", () => {
+    for (const [path, name] of [
+      ["/nosotros", /disponible pronto/i],
+      ["/contacto", /disponible pronto/i],
+      ["/legal/privacidad", /disponible pronto/i],
+      ["/legal/reembolsos", /disponible pronto/i],
+      ["/legal/envios", /disponible pronto/i],
+      ["/legal/terminos", /disponible pronto/i],
+    ] as const) {
+      const { unmount } = renderAt(path);
+      expect(screen.getByText(name), path).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Página no encontrada" }),
+      ).not.toBeInTheDocument();
+      unmount();
+    }
   });
 });

@@ -182,6 +182,37 @@ describe("RegisterPage", () => {
     });
   });
 
+  it("el teléfono se enmascara mientras se escribe (7123 4567) y se envía enmascarado", async () => {
+    const signUp = vi.fn(async (): Promise<AuthResult> => ({ ok: true }));
+    const user = userEvent.setup();
+    renderPage(<RegisterPage />, fakeAuth({ signUp }), "/registro");
+    await user.click(screen.getByRole("button", { name: "Con teléfono" }));
+    const phone = screen.getByLabelText("Teléfono");
+    await user.type(phone, "71234567");
+    expect(phone).toHaveValue("7123 4567");
+    await fill(user, "Chola-Cielo-2026!");
+    await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
+    await waitFor(() => expect(signUp).toHaveBeenCalledTimes(1));
+    expect(signUp).toHaveBeenCalledWith(
+      expect.objectContaining({ phone: "7123 4567", phoneCountry: "BO" }),
+    );
+  });
+
+  it("pegar el número de golpe también se enmascara y se envía enmascarado (no solo al teclear)", async () => {
+    const signUp = vi.fn(async (): Promise<AuthResult> => ({ ok: true }));
+    const user = userEvent.setup();
+    renderPage(<RegisterPage />, fakeAuth({ signUp }), "/registro");
+    await user.click(screen.getByRole("button", { name: "Con teléfono" }));
+    const phone = screen.getByLabelText("Teléfono");
+    await user.click(phone);
+    await user.paste("71234567");
+    expect(phone).toHaveValue("7123 4567");
+    await fill(user, "Chola-Cielo-2026!");
+    await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
+    await waitFor(() => expect(signUp).toHaveBeenCalledTimes(1));
+    expect(signUp).toHaveBeenCalledWith(expect.objectContaining({ phone: "7123 4567" }));
+  });
+
   it("muestra los requisitos incumplidos de la contraseña y NO envía", async () => {
     const signUp = vi.fn();
     const user = userEvent.setup();

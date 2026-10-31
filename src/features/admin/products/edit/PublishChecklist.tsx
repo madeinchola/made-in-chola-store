@@ -21,11 +21,11 @@ export function PublishChecklist({ checks }: { checks: PublishChecks }) {
       {rows.map((r) => (
         <li key={r.label} className="flex items-center gap-2">
           {r.ok ? (
-            <Check className="h-4 w-4 text-emerald-700" aria-hidden="true" />
+            <Check className="h-4 w-4 text-success" aria-hidden="true" />
           ) : r.blocking ? (
             <X className="h-4 w-4 text-destructive" aria-hidden="true" />
           ) : (
-            <TriangleAlert className="h-4 w-4 text-amber-700" aria-hidden="true" />
+            <TriangleAlert className="h-4 w-4 text-warning" aria-hidden="true" />
           )}
           <span>{r.label}</span>
           <span className="text-muted-foreground">

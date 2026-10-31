@@ -11,6 +11,7 @@ import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { RouteError } from "@/components/RouteError";
 import { RequireAdmin, RequireAuth } from "@/features/auth/guards";
 import { lazyPage } from "./lazyPage";
+import { UI_GUIDE_ENABLED } from "./uiGuide";
 
 export const routes: RouteObject[] = [
   {
@@ -26,6 +27,25 @@ export const routes: RouteObject[] = [
       { path: "producto/:slug", element: <PlaceholderPage /> },
       { path: "categoria/:slug", element: <PlaceholderPage /> },
       { path: "coleccion/:slug", element: <PlaceholderPage /> },
+      // La bolsa de la cabecera enlaza aquí; el carrito real llega en S7.
+      { path: "carrito", element: <PlaceholderPage /> },
+      // Enlaces del pie del diseño: pantallas provisionales hasta que lleguen sus contenidos (nosotros/contacto con la
+      // diseñadora; legales en S15).
+      { path: "nosotros", element: <PlaceholderPage /> },
+      { path: "contacto", element: <PlaceholderPage /> },
+      { path: "legal/privacidad", element: <PlaceholderPage /> },
+      { path: "legal/reembolsos", element: <PlaceholderPage /> },
+      { path: "legal/envios", element: <PlaceholderPage /> },
+      { path: "legal/terminos", element: <PlaceholderPage /> },
+      // Guía de componentes: solo en desarrollo o en el build del E2E (nunca en producción).
+      ...(UI_GUIDE_ENABLED
+        ? [
+            {
+              path: "_ui",
+              element: lazyPage(() => import("./pages/ui-guide/UiGuidePage"), "UiGuidePage"),
+            },
+          ]
+        : []),
     ],
   },
   {

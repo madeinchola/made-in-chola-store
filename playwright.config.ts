@@ -17,7 +17,7 @@ export default defineConfig({
   ],
   // E2E contra el build de producción (lo que realmente se despliega), no contra el dev server.
   webServer: {
-    command: `npm run build && npm run preview -- --port ${PORT} --host 127.0.0.1`,
+    command: `VITE_UI_GUIDE=true npm run build && npm run preview -- --port ${PORT} --host 127.0.0.1`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

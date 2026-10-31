@@ -83,6 +83,16 @@ Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run 
 - **Textos del producto**: la descripción se guarda como texto plano (se quitan caracteres de control; el HTML no se altera). **La tienda debe mostrarla siempre como texto, nunca con `dangerouslySetInnerHTML`.**
 - **Tipos de cambio**: `exchange_rates` es un libro inmutable; un error de tipeo se supera con otra fila. La pantalla pide confirmación si la tasa cambia más de 25 % o la fecha está a más de 7 días. "Vigente" se calcula con el reloj del navegador (la base usa el suyo).
 
+### Sistema de UI (Sprint 4)
+- **Guía de componentes**: `npm run dev:web` → `/_ui` (tokens con contraste calculado en vivo, tipografía y cada componente en sus estados). **Solo existe en desarrollo y en el build del E2E** (`VITE_UI_GUIDE=true`); el build de producción no la incluye. Documentación completa del sistema en [`docs/sistema-ui.md`](docs/sistema-ui.md).
+- **Tokens**: todo el aspecto (color, tipografía, radios, sombras, movimiento, medidas) sale de `src/styles/tokens.css` y se nombra en `tailwind.config.ts`; cambiar un valor cambia tienda **y** panel. Paleta muestreada de los PDF de diseño; los contrastes WCAG AA los vigila `src/styles/tokens.test.ts` leyendo el CSS real. **Prohibido** usar colores crudos de Tailwind (`amber-300`) o hex en componentes.
+- **Fuentes provisionales y autoalojadas** (`public/fonts/`, Baskervville + Jost, licencia OFL) hasta confirmar la licencia web de Baskerville/Intelo; el cambio es de un solo sitio (receta en `docs/sistema-ui.md`).
+- **Componentes**: primitivas (`components/ui`), producto (`components/store`) y layouts de la tienda (`components/layout`: cabecera y pie **fieles al PDF de Inicio**, medidos a 1366 px: cabecera transparente sobre el hero en la portada y sólida en las demás páginas, logotipo disperso, «Tienda ⌄ · Nosotros» / «Bolivia ⌄ · bolsa (0) · usuario · lupa»; pie con símbolo y 4 columnas). El pie **no** lleva boletín ni cupón (decisión del dueño). La búsqueda aún no tiene ruta (campo desactivado con «próximamente») y la bolsa enlaza a una pantalla provisional hasta S7.
+- **Accesibilidad**: foco visible global, teclado completo, `prefers-reduced-motion`, zonas seguras iOS. Un botón que se desactiva mientras tiene el foco lo pierde: los extremos de paginación, carrusel, stepper y galería usan `aria-disabled`.
+- **Formularios**: mensajes de zod en español (`lib/zodEs.ts`, instalado al arrancar; un mensaje escrito en el esquema siempre gana) y máscara de teléfono en vivo (`lib/phoneMask.ts`, `7123 4567`, conserva el cursor; es solo presentación porque `normalizePhone` acepta espacios).
+- **Si ves «The `tracking-eyebrow` class does not exist» (o un error de importación de Radix) en el servidor de desarrollo**: es un `vite` que arrancó antes de estos cambios y no recargó `tailwind.config.ts` ni las dependencias nuevas. Reinícialo (`Ctrl+C` y `npm run dev:web`); tras tocar `tailwind.config.ts` o `package.json` conviene reiniciarlo siempre.
+- **Sin modo oscuro** (opcional en el sprint; no hay diseño): decisión pendiente con la diseñadora.
+
 ## Pruebas
 | Comando | Qué prueba | Requiere |
 |---|---|---|
@@ -101,7 +111,7 @@ Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run 
 ```
 src/app          rutas, layouts, páginas       src/lib       money, env, logger, errors, supabase…
 src/features     auth · catalog · admin (panel)  src/i18n      es.ts + t()
-src/components   ui/ (shadcn) y compartidos      src/styles    tokens.css (tokens provisionales)
+src/components   ui/ (shadcn) y compartidos      src/styles    tokens.css · fonts.css (sistema de UI)
 supabase/        migrations · functions/_shared · tests (pgTAP) · seed.sql
 e2e/             Playwright                       scripts/      dev.mjs
 ```
@@ -113,10 +123,10 @@ e2e/             Playwright                       scripts/      dev.mjs
 - **Migraciones**: `YYYYMMDDHHMMSS_nombre.sql` (14 dígitos desde S1: puede haber varias el mismo día; la de S0 conserva `YYYYMMDD`), idempotentes, con rollback documentado al final.
 - **Env**: solo `VITE_*` públicas, validadas con zod al arrancar (falla con pantalla explicativa; rechaza claves `service_role`). Secretos solo en Supabase/Vercel.
 - **Ramas**: `main` es la rama de producción (Vercel despliega cada push) y por decisión del dueño no está protegida; el único colaborador es quien desarrolla. El CI (`quality`) corre en cada push y PR.
-- **Tokens de diseño provisionales**: todo el look está en `src/styles/tokens.css`; cambiarlo es un solo archivo.
+- **Tokens de diseño**: todo el look está en `src/styles/tokens.css`; cambiarlo es un solo archivo (ver «Sistema de UI»).
 
 ## Diferencias respecto a Acrosoft (a propósito)
 TypeScript `strict` + `noUncheckedIndexedAccess` (Acrosoft: `strict: false`); `no-console` e `unused-vars` como error; CSP sin `'unsafe-inline'` en scripts y con `frame-ancestors 'none'` global; E2E contra el build; imports de i18n tipados.
 
 ## Línea base del bundle
-S0: JS 365 kB (gzip ≈ 111 kB) · CSS 10.6 kB. S1: gzip ≈ 202 kB. **S3: entrada pública gzip ≈ 214 kB** (`index` 71 + `App` 143) · CSS 5.3 kB gzip; el panel son ~38 chunks de carga diferida (≈ 100 kB gzip en total) que solo descarga un admin. Se mide de nuevo al cerrar cada sprint.
+S0: JS 365 kB (gzip ≈ 111 kB) · CSS 10.6 kB. S1: gzip ≈ 202 kB. **S3: entrada pública gzip ≈ 214 kB** (`index` 71 + `App` 143) · CSS 5.3 kB gzip; el panel son ~38 chunks de carga diferida (≈ 100 kB gzip en total) que solo descarga un admin. **S4: entrada pública gzip ≈ 244 kB** (`index` 73 + `App` 171; +30 kB por Radix Dialog/Accordion, lucide y los layouts de la tienda) · CSS ≈ 9 kB gzip · fuentes 57 kB (4 `.woff2` latinos, se descargan según se usan). Mejora posible, no hecha: cargar bajo demanda `MobileMenu` y `SearchSheet` (≈ −20 kB gzip), junto con la partición por rutas de S5. Se mide de nuevo al cerrar cada sprint.

@@ -1,3 +1,4 @@
+@import "./styles/fonts.css";
 @import "./styles/tokens.css";
 
 @tailwind base;
@@ -13,5 +14,23 @@
   }
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  /* Respeta a quien pide menos movimiento: sin transiciones ni animaciones (Radix espera `animationend`). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Etiqueta pequeña en mayúsculas con tracking (rótulos de sección, chips, botones de la tienda). */
+  .eyebrow {
+    @apply text-xs font-medium uppercase tracking-eyebrow;
   }
 }

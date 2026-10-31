@@ -245,7 +245,7 @@ function RateForm({
             : t("admin.config.currencies.rateDialog.noCurrent")}
         </p>
         {!currency.enabled && (
-          <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="rounded-md border border-warning/40 bg-warning-soft p-3 text-sm text-warning">
             {t("admin.config.currencies.rateDialog.disabledWarning", { name: currency.name })}
           </p>
         )}

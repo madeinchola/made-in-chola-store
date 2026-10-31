@@ -46,17 +46,17 @@ export function DashboardPage() {
                   <Counter
                     label={t("admin.dashboard.alerts.low")}
                     value={summary.data.low}
-                    tone="border-amber-300 bg-amber-50"
+                    tone="border-warning/40 bg-warning-soft"
                   />
                   <Counter
                     label={t("admin.dashboard.alerts.critical")}
                     value={summary.data.critical}
-                    tone="border-red-300 bg-red-50"
+                    tone="border-destructive/30 bg-destructive-soft"
                   />
                   <Counter
                     label={t("admin.dashboard.alerts.out")}
                     value={summary.data.out}
-                    tone="border-red-400 bg-red-100"
+                    tone="border-destructive/50 bg-destructive-soft"
                   />
                 </div>
                 <h3 className="mb-2 mt-6 text-sm font-semibold">
