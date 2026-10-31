@@ -15,10 +15,17 @@ async function open(searchPath?: string | null) {
 }
 
 describe("SearchSheet", () => {
-  it("hoy no existe página de resultados: campo y botón desactivados con aviso «muy pronto»", async () => {
-    await open(); // por defecto usa storeRoutes.search (= null mientras no exista la ruta)
-    expect(screen.getByLabelText("¿Qué buscas?")).toBeDisabled();
+  it("por defecto busca en /buscar: campo y botón activos y sin aviso «muy pronto»", async () => {
+    await open(); // usa storeRoutes.search
+    expect(screen.getByLabelText("¿Qué buscas?")).toBeEnabled();
     // Con el cajón modal abierto el botón de fuera queda oculto: el único «Buscar» accesible es el de enviar.
+    expect(screen.getByRole("button", { name: "Buscar" })).toBeEnabled();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("si la ruta de resultados no existiera (null): campo y botón desactivados con aviso «muy pronto»", async () => {
+    await open(null);
+    expect(screen.getByLabelText("¿Qué buscas?")).toBeDisabled();
     expect(screen.getByRole("button", { name: "Buscar" })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent(
       "La búsqueda estará disponible muy pronto.",
@@ -51,6 +58,21 @@ describe("SearchSheet", () => {
     await user.type(input, "    {Enter}");
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(/^\/$/);
+  });
+
+  it("limpia el texto igual que la página de resultados: espacios colapsados y 80 caracteres como máximo", async () => {
+    const user = await open("/buscar");
+    await user.type(screen.getByLabelText("¿Qué buscas?"), "  vestido     rojo  {Enter}");
+    expect(screen.getByTestId("location")).toHaveTextContent("/buscar?q=vestido%20rojo");
+  });
+
+  it("un texto de 200 letras se recorta a 80 en la URL", async () => {
+    const user = await open("/buscar");
+    await user.click(screen.getByLabelText("¿Qué buscas?"));
+    await user.paste("a".repeat(200));
+    await user.keyboard("{Enter}");
+    expect(screen.getByTestId("location")).toHaveTextContent(`/buscar?q=${"a".repeat(80)}`);
+    expect(screen.getByTestId("location").textContent).not.toContain("a".repeat(81));
   });
 
   it("exactamente 2 letras ya busca", async () => {

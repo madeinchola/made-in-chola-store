@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { useCategoryTree, useStoreSettings } from "@/features/catalog/hooks";
+import { useStoreSettings } from "@/features/catalog/hooks";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "./BrandMark";
@@ -65,10 +65,8 @@ function OutsideItem({ link, newTab = false }: { link: ContactLink; newTab?: boo
  * para cumplir el contraste AA.
  */
 export function Footer() {
-  const { data: tree } = useCategoryTree();
   const { data: settings } = useStoreSettings();
   const { email, phone, whatsapp, socials } = contactLinks(settings);
-  const shopTarget = tree?.[0] ? storeRoutes.category(tree[0].slug) : null;
   const hasContact = Boolean(email ?? phone ?? whatsapp);
 
   return (
@@ -87,7 +85,7 @@ export function Footer() {
           )}
         >
           <Column title={t("layout.footer.index")}>
-            {shopTarget && <Item to={shopTarget}>{t("layout.footer.shopNow")}</Item>}
+            <Item to={storeRoutes.shop}>{t("layout.footer.shopNow")}</Item>
             <Item to={storeRoutes.home}>{t("nav.home")}</Item>
             <Item to={storeRoutes.about}>{t("layout.header.about")}</Item>
             <Item to={storeRoutes.contact}>{t("layout.footer.contactUs")}</Item>

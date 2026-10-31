@@ -29,8 +29,22 @@ describe("storeRoutes", () => {
     }
   });
 
-  it("las rutas de categoría existen y codifican el slug", () => {
+  it("las rutas de categoría y colección existen y codifican el slug", () => {
     expect(exists(storeRoutes.category("mujer"))).toBe(true);
     expect(storeRoutes.category("a b/c")).toBe("/categoria/a%20b%2Fc");
+    expect(exists(storeRoutes.collection("verano-2027"))).toBe(true);
+    expect(storeRoutes.collection("a b/c")).toBe("/coleccion/a%20b%2Fc");
+  });
+
+  it("la búsqueda ya existe: /buscar está en el router y ya no figura como pendiente", () => {
+    expect(storeRoutes.search).toBe("/buscar");
+    expect(exists("/buscar")).toBe(true);
+    expect(PENDING_ROUTES).not.toContain("search");
+  });
+
+  it("la tienda y la búsqueda no caen en la 404", () => {
+    for (const path of ["/tienda", "/buscar", "/categoria/x", "/coleccion/x"]) {
+      expect(exists(path), path).toBe(true);
+    }
   });
 });

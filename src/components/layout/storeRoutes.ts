@@ -5,6 +5,7 @@
  */
 export const storeRoutes = {
   home: "/",
+  shop: "/tienda",
   login: "/login",
   register: "/registro",
   account: "/cuenta",
@@ -16,10 +17,11 @@ export const storeRoutes = {
   refunds: "/legal/reembolsos",
   shipping: "/legal/envios",
   terms: "/legal/terminos",
-  /** Página de resultados de búsqueda. null = todavía no existe (el buscador muestra «próximamente»). */
-  search: null as string | null,
+  /** Página de resultados de búsqueda. null = no existe (el buscador del cajón queda desactivado con «próximamente»). */
+  search: "/buscar" as string | null,
   category: (slug: string) => `/categoria/${encodeURIComponent(slug)}`,
+  collection: (slug: string) => `/coleccion/${encodeURIComponent(slug)}`,
 } as const;
 
 /** Claves de `storeRoutes` cuya ruta aún no existe en el router. */
-export const PENDING_ROUTES: readonly (keyof typeof storeRoutes)[] = ["search"];
+export const PENDING_ROUTES: readonly (keyof typeof storeRoutes)[] = [];

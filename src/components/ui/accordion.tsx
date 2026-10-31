@@ -17,26 +17,34 @@ export const AccordionItem = React.forwardRef<
 ));
 AccordionItem.displayName = "AccordionItem";
 
-/** Cabecera del acordeón: botón real (Intro/Espacio), con el signo + que gira al abrir. `asHeading` fija el nivel (h3 por defecto). */
+/**
+ * Cabecera del acordeón: botón real (Intro/Espacio), con el signo + que gira al abrir. `asHeading` fija el nivel del
+ * título que lo envuelve (h3 por defecto): debe seguir el orden del documento (tras un h1, h2; los lectores de pantalla
+ * navegan por encabezados y Lighthouse marca el salto de h1 a h3).
+ */
 export const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
-    <AccordionPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        "eyebrow group flex flex-1 items-center justify-between gap-4 py-4 text-left transition-colors duration-fast ease-standard hover:text-muted-foreground",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <Plus
-        aria-hidden="true"
-        className="h-4 w-4 shrink-0 transition-transform duration-base ease-standard group-data-[state=open]:rotate-45"
-      />
-    </AccordionPrimitive.Trigger>
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger> & {
+    asHeading?: "h2" | "h3" | "h4";
+  }
+>(({ className, children, asHeading: Heading = "h3", ...props }, ref) => (
+  <AccordionPrimitive.Header asChild>
+    <Heading className="flex">
+      <AccordionPrimitive.Trigger
+        ref={ref}
+        className={cn(
+          "eyebrow group flex flex-1 items-center justify-between gap-4 py-4 text-left transition-colors duration-fast ease-standard hover:text-muted-foreground",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+        <Plus
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 transition-transform duration-base ease-standard group-data-[state=open]:rotate-45"
+        />
+      </AccordionPrimitive.Trigger>
+    </Heading>
   </AccordionPrimitive.Header>
 ));
 AccordionTrigger.displayName = "AccordionTrigger";

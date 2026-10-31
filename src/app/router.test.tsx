@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, useLocation, useRoutes } from "react-router-dom";
+import { MemoryRouter, matchRoutes, useLocation, useRoutes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { asAdmin, asCustomer, fakeAuth, WithAuth } from "@/test/auth-test-utils";
 import type { AuthContextValue } from "@/features/auth/auth-context";
@@ -52,8 +52,22 @@ describe("rutas públicas", () => {
     expect(screen.getByRole("heading", { name: "Página no encontrada" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Volver al inicio" })).toHaveAttribute("href", "/");
   });
-  it("rutas profundas públicas resuelven (no 404)", () => {
-    renderAt("/producto/vestido-chola-rojo");
+  it("las rutas de la tienda están declaradas con su parámetro (no caen en el 404 ni en un placeholder)", () => {
+    for (const [path, param] of [
+      ["/tienda", undefined],
+      ["/buscar", undefined],
+      ["/categoria/camisas", "camisas"],
+      ["/coleccion/otono", "otono"],
+      ["/producto/vestido-chola-rojo", "vestido-chola-rojo"],
+    ] as const) {
+      const match = matchRoutes(routes, path)?.at(-1);
+      expect(match, path).toBeDefined();
+      expect(match!.route.path, path).not.toBe("*");
+      expect(match!.params.slug, path).toBe(param);
+    }
+  });
+  it("las pantallas reservadas todavía sin contenido resuelven a un aviso, no al 404", () => {
+    renderAt("/nosotros");
     expect(screen.queryByText("Página no encontrada")).not.toBeInTheDocument();
     expect(screen.getByText(/disponible pronto/i)).toBeInTheDocument();
   });
@@ -62,7 +76,7 @@ describe("rutas públicas", () => {
     expect(screen.getByRole("navigation", { name: "Principal" })).toBeInTheDocument();
     expect(screen.getByRole("main")).toBeInTheDocument();
   });
-  it("login, registro, recuperar y restablecer existen y son accesibles sin sesión", () => {
+  it("login, registro, recuperar y restablecer existen y son accesibles sin sesión (cargan bajo demanda)", async () => {
     for (const [path, heading] of [
       ["/login", "Acceso"],
       ["/registro", "Crear cuenta"],
@@ -75,7 +89,9 @@ describe("rutas públicas", () => {
           </MemoryRouter>
         </WithAuth>,
       );
-      expect(screen.getByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
+      // son pantallas diferidas: antes de llegar el código se anuncia la carga y nunca queda la pantalla en blanco
+      expect(screen.getByRole("status")).toHaveTextContent("Cargando");
+      expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
       unmount();
     }
   });
@@ -144,9 +160,9 @@ describe("guard de /cuenta", () => {
     expect(router.location.pathname).toBe("/login");
     expect(router.location.state).toEqual({ from: "/cuenta" });
   });
-  it("cliente ve su cuenta", () => {
+  it("cliente ve su cuenta", async () => {
     renderAt("/cuenta", asCustomer());
-    expect(screen.getByTestId("account-name")).toHaveTextContent("Ana Cliente");
+    expect(await screen.findByTestId("account-name")).toHaveTextContent("Ana Cliente");
   });
 });
 

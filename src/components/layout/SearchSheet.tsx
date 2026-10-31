@@ -12,16 +12,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { isSearchable, normalizeSearchQuery } from "@/features/storefront/listing/searchQuery";
 import { iconClass } from "./headerStyles";
 import { storeRoutes } from "./storeRoutes";
-
-/** El catálogo solo busca con 2+ caracteres (igual que `searchProducts`). */
-const MIN_LENGTH = 2;
 
 interface SearchSheetProps {
   /** Cabecera sobre el hero: icono blanco. */
   overlay?: boolean;
-  /** Ruta de resultados. Sin ella (todavía no existe) el campo queda desactivado con el aviso «próximamente». */
+  /** Ruta de resultados (por defecto `/buscar`). Con `null` el campo queda desactivado con el aviso «próximamente». */
   searchPath?: string | null;
 }
 
@@ -37,9 +35,10 @@ export function SearchSheet({
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    const text = query.trim();
+    // Misma limpieza que la página de resultados (espacios colapsados, 80 caracteres): la URL queda ya normalizada.
+    const text = normalizeSearchQuery(query);
     if (!searchPath) return;
-    if (text.length < MIN_LENGTH) {
+    if (!isSearchable(text)) {
       setError(t("layout.search.tooShort"));
       return;
     }

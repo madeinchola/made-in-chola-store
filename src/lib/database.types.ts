@@ -1591,6 +1591,12 @@ isOneToOne: false
 "promote_admin":
 { Args: { "p_email": string }; Returns: string
                            },
+"public_list_products":
+{ Args: { "p_category_slug"?: string,"p_collection_slug"?: string,"p_colors"?: (string)[],"p_in_stock_only"?: boolean,"p_limit"?: number,"p_max_price"?: number,"p_min_price"?: number,"p_offset"?: number,"p_sizes"?: (string)[],"p_sort"?: string }; Returns: Json
+                           },
+"public_listing_facets":
+{ Args: { "p_category_slug"?: string,"p_collection_slug"?: string }; Returns: Json
+                           },
 "public_price_for":
 { Args: { "p_country"?: string,"p_currency"?: string,"p_product_id": string }; Returns: number
                            },

@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { usePageMeta } from "@/features/storefront/seo/usePageMeta";
 import { t } from "@/i18n";
 
+/** 404 de la aplicación. La SPA responde 200 a cualquier ruta, así que la propia pantalla se marca `noindex`. */
 export function NotFoundPage() {
+  usePageMeta({ title: t("shop.seo.notFoundTitle"), robots: "noindex,nofollow" });
   return (
     <section className="container flex min-h-[60vh] flex-col items-center justify-center gap-4 py-16 text-center">
       <p className="font-display text-6xl font-bold text-primary">404</p>

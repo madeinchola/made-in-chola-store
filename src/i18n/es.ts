@@ -6,6 +6,10 @@ import { adminAudit } from "./admin/audit";
 import { ui } from "./ui";
 import { store } from "./store";
 import { layout } from "./layout";
+import { shopHome } from "./shop/home";
+import { shopListing } from "./shop/listing";
+import { shopProduct } from "./shop/product";
+import { shopSeo } from "./shop/seo";
 
 export const es = {
   app: { name: "Made In Chola" },
@@ -121,6 +125,7 @@ export const es = {
   ui,
   store,
   layout,
+  shop: { home: shopHome, listing: shopListing, product: shopProduct, seo: shopSeo },
   admin: {
     ...adminCommon,
     products: adminProducts,

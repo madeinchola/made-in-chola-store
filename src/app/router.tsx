@@ -1,17 +1,20 @@
 import { createBrowserRouter, type RouteObject } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
-import { HomePage } from "./pages/HomePage";
-import { LoginPage } from "./pages/LoginPage";
+import { HomePage } from "@/features/storefront/home/HomePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
-import { AccountPage } from "./pages/AccountPage";
-import { RegisterPage } from "./pages/RegisterPage";
-import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
-import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { RouteError } from "@/components/RouteError";
 import { RequireAdmin, RequireAuth } from "@/features/auth/guards";
 import { lazyPage } from "./lazyPage";
 import { UI_GUIDE_ENABLED } from "./uiGuide";
+
+const listing = () => import("@/features/storefront/listing/ListingPages");
+// Cuentas: formularios con react-hook-form y zod, que la tienda no necesita para pintar la portada ni una ficha.
+const login = () => import("./pages/LoginPage");
+const register = () => import("./pages/RegisterPage");
+const forgot = () => import("./pages/ForgotPasswordPage");
+const reset = () => import("./pages/ResetPasswordPage");
+const account = () => import("./pages/AccountPage");
 
 export const routes: RouteObject[] = [
   {
@@ -19,14 +22,23 @@ export const routes: RouteObject[] = [
     errorElement: <RouteError />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: "login", element: <LoginPage /> },
-      { path: "registro", element: <RegisterPage /> },
-      { path: "recuperar", element: <ForgotPasswordPage /> },
-      { path: "restablecer", element: <ResetPasswordPage /> },
-      { element: <RequireAuth />, children: [{ path: "cuenta", element: <AccountPage /> }] },
-      { path: "producto/:slug", element: <PlaceholderPage /> },
-      { path: "categoria/:slug", element: <PlaceholderPage /> },
-      { path: "coleccion/:slug", element: <PlaceholderPage /> },
+      { path: "login", element: lazyPage(login, "LoginPage") },
+      { path: "registro", element: lazyPage(register, "RegisterPage") },
+      { path: "recuperar", element: lazyPage(forgot, "ForgotPasswordPage") },
+      { path: "restablecer", element: lazyPage(reset, "ResetPasswordPage") },
+      {
+        element: <RequireAuth />,
+        children: [{ path: "cuenta", element: lazyPage(account, "AccountPage") }],
+      },
+      // Tienda: cada pantalla va en su propio chunk (la portada, que es la entrada, no).
+      { path: "tienda", element: lazyPage(listing, "ShopPage") },
+      { path: "buscar", element: lazyPage(listing, "SearchPage") },
+      { path: "categoria/:slug", element: lazyPage(listing, "CategoryPage") },
+      { path: "coleccion/:slug", element: lazyPage(listing, "CollectionPage") },
+      {
+        path: "producto/:slug",
+        element: lazyPage(() => import("@/features/storefront/product/ProductPage"), "ProductPage"),
+      },
       // La bolsa de la cabecera enlaza aquí; el carrito real llega en S7.
       { path: "carrito", element: <PlaceholderPage /> },
       // Enlaces del pie del diseño: pantallas provisionales hasta que lleguen sus contenidos (nosotros/contacto con la

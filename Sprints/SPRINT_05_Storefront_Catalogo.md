@@ -17,29 +17,29 @@ BR-CAT-02, BR-CAT-03, BR-CAT-04, BR-INV-05 (visual), BR-PRC-01, BR-PRC-02, BR-PR
 ## Tareas
 
 ### Páginas
-- [ ] **Home:** `AnnouncementBar` (banner admin), hero, colecciones, categorías, nuevos/destacados, bloque de confianza (envíos, pagos).
-- [ ] **Listado** `/categoria/:slug` y `/coleccion/:slug`: grilla responsive, filtros (color, talla, precio, disponibilidad), orden (nuevos, precio ↑↓), paginación o "cargar más" con URL sincronizada.
-- [ ] **Búsqueda** `/buscar?q=`: tolerante a acentos/errores (`pg_trgm`), sugerencias, sin resultados útil.
-- [ ] **Detalle** `/producto/:slug`: galería (por color), selector de color y talla con disponibilidad por variante, precio final, descripción, materiales, cuidado (washcare), **delivery estimado** (S-03), modelo/código, productos relacionados.
-- [ ] Estados: **Agotado** (visible, no comprable), **Ocultar** (404 amigable/redirección a categoría), "Pocas unidades" (según semáforo, sin exponer números exactos si no se desea).
-- [ ] Selector de **país/moneda** (oculto mientras solo exista BOB, pero listo); formato por moneda.
-- [ ] 404, error y página mantenimiento con la identidad visual.
+- [x] **Home:** `AnnouncementBar` (banner admin), hero, colecciones, categorías, nuevos/destacados, bloque de confianza (envíos, pagos). — sin «bloque de confianza» de envíos y pagos: no está en el PDF de Inicio ni hay textos (se agrega con la diseñadora).
+- [x] **Listado** `/categoria/:slug` y `/coleccion/:slug`: grilla responsive, filtros (color, talla, precio, disponibilidad), orden (nuevos, precio ↑↓), paginación o "cargar más" con URL sincronizada.
+- [x] **Búsqueda** `/buscar?q=`: tolerante a acentos/errores (`pg_trgm`), sugerencias, sin resultados útil. — sin sugerencias en vivo mientras se escribe (solo resultados al enviar).
+- [x] **Detalle** `/producto/:slug`: galería (por color), selector de color y talla con disponibilidad por variante, precio final, descripción, materiales, cuidado (washcare), **delivery estimado** (S-03), modelo/código, productos relacionados. — **sin «entrega estimada» (S-03)**: decisión del dueño pendiente.
+- [x] Estados: **Agotado** (visible, no comprable), **Ocultar** (404 amigable/redirección a categoría), "Pocas unidades" (según semáforo, sin exponer números exactos si no se desea).
+- [x] Selector de **país/moneda** (oculto mientras solo exista BOB, pero listo); formato por moneda. — el selector es el de S4; precios con `money()` por moneda (hoy solo BOB).
+- [ ] 404, error y página mantenimiento con la identidad visual. — **hecho:** 404 y errores con reintento; **pendiente:** página de mantenimiento.
 
 ### Datos y rendimiento
-- [ ] Consumo exclusivo de **vistas públicas** (S2); caché con TanStack Query (`staleTime`), prefetch en hover.
-- [ ] Imágenes: tamaños responsivos (`srcset`), `loading="lazy"` (excepto LCP), formatos modernos, `aspect-ratio`.
-- [ ] Code-splitting por ruta; presupuesto de peso definido.
-- [ ] Skeletons y estados de error con reintento.
+- [x] Consumo exclusivo de **vistas públicas** (S2); caché con TanStack Query (`staleTime`), prefetch en hover.
+- [ ] Imágenes: tamaños responsivos (`srcset`), `loading="lazy"` (excepto LCP), formatos modernos, `aspect-ratio`. — **hecho:** `loading="lazy"` salvo la del LCP (con `fetchpriority`), `aspect-ratio`/dimensiones; **pendiente:** `srcset` y formatos modernos (el almacenamiento actual sirve un solo tamaño; requiere transformación de imágenes de Supabase o del CDN).
+- [x] Code-splitting por ruta; presupuesto de peso definido. — presupuesto: entrada pública ≤ 270 kB gzip (hoy 243,5).
+- [x] Skeletons y estados de error con reintento.
 
 ### SEO (decisión D-01)
-- [ ] Meta dinámicos (título/descripción) por página; canonical; paginación (`rel`) y filtros sin indexar variaciones infinitas.
-- [ ] **Edge function en Vercel** que sirve HTML con meta/OG/JSON-LD `Product` (precio, disponibilidad, marca, imagen) a bots (Googlebot, Facebook, WhatsApp, Twitter/X…).
-- [ ] `sitemap.xml` dinámico (solo activos), `robots.txt`; URLs con slug limpio; redirección de slugs antiguos (S3).
-- [ ] Datos estructurados `Organization`, `BreadcrumbList`, `Product`/`Offer`.
-- [ ] Evaluación D-01: medir indexación y previews; documentar decisión (mantener SPA+Edge o migrar storefront).
+- [x] Meta dinámicos (título/descripción) por página; canonical; paginación (`rel`) y filtros sin indexar variaciones infinitas.
+- [x] **Edge function en Vercel** que sirve HTML con meta/OG/JSON-LD `Product` (precio, disponibilidad, marca, imagen) a bots (Googlebot, Facebook, WhatsApp, Twitter/X…). — código probado con unitarias e integración; **el cableado de Vercel no se puede probar en local** (ver «Pendiente»).
+- [x] `sitemap.xml` dinámico (solo activos), `robots.txt`; URLs con slug limpio; redirección de slugs antiguos (S3).
+- [x] Datos estructurados `Organization`, `BreadcrumbList`, `Product`/`Offer`.
+- [x] Evaluación D-01: medir indexación y previews; documentar decisión (mantener SPA+Edge o migrar storefront). — decisión documentada en `docs/tienda.md` (mantener SPA + borde; medir 4–6 semanas tras desplegar).
 
 ### Analytics preparado
-- [ ] Capa `track(event, payload)` con eventos `view_item_list`, `view_item`, `search`; **sin proveedor** hasta tener IDs (S15).
+- [x] Capa `track(event, payload)` con eventos `view_item_list`, `view_item`, `search`; **sin proveedor** hasta tener IDs (S15).
 
 ## Criterios de aceptación
 1. El cliente navega de home → categoría → producto en móvil con fluidez.
@@ -97,3 +97,45 @@ Fotos y datos reales de productos; textos de home; número de WhatsApp; decisió
 
 ## Entregables para sprints siguientes
 Layout y navegación de la tienda, páginas de catálogo, capa `track`, helpers de SEO, selector de variante reutilizable (S7), componentes de relacionados (S7).
+
+---
+
+## Estado real de entrega (2026-10-31)
+
+**Entregado:** portada con las secciones que configura el admin (hero con foto o video, filas de productos, colección destacada, «Sobre nosotros», banner, lema, categorías) fiel al PDF de Inicio; `/tienda`, `/categoria/:slug`, `/coleccion/:slug` con filtros (color, talla, precio, disponibilidad), orden y paginación **en el servidor** y todo en la URL; `/buscar` (acentos, mayúsculas, código, una errata); ficha de producto con galería por color, selección de color y talla por variante, «Consultar por WhatsApp», acordeones, relacionados, 404 amable y redirección de slugs renombrados; SEO por pantalla (título, descripción, canónico limpio, Open Graph, JSON-LD) y para bots con funciones de borde de Vercel (`api/seo`, `api/sitemap`, `api/robots`); `track()` sin proveedor; migración `20261031000100_s5_listado_filtros.sql`. Documentación: `docs/tienda.md` (incluye la evaluación D-01), README «Tienda pública (Sprint 5)».
+
+**Cómo se hizo:** base y servicios por mí; portada, listado/búsqueda y ficha por tres subagentes en paralelo; revisión independiente (agente sin contexto, solo lectura) sobre la parte cerrada y revisión propia del listado; los subagentes se cortaron por el límite de uso y se reanudaron (se comprobó que ninguna mutación quedó aplicada).
+
+**Desviaciones respecto al plan (y por qué):**
+- **El listado filtra en la base** (`public_list_products`) en vez de en el navegador: antes pasaba ids por la URL y se topaba en 200 productos.
+- **Búsqueda difusa desde 5 letras** (umbral 0.52): con 0.55 una errata de una letra no entraba y con 4 letras traía ruido. Con varias palabras, las coincidencias exactas van primero y después las parciales (se actualizaron 2 pruebas de integración del catálogo que suponían solo coincidencia exacta).
+- **La portada de bots no depende solo de la función de borde:** Vercel da prioridad a `index.html` sobre la reescritura de `/`, así que `index.html` lleva su propio título y Open Graph.
+- **Listado, filtros y búsqueda son provisionales**: no existen en los PDF; se hicieron con el estilo de los PDF.
+- **Imágenes de los PDF no usadas** (directriz del dueño): marcadores provisionales.
+
+**Bugs reales encontrados por las pruebas, la revisión y las mediciones, y corregidos:** `<li>` dentro de `<li>` en las migas del listado (solo un aviso de consola; ahora las pruebas fallan ante `validateDOMNesting`) · el listado robaba el foco y desplazaba la página al montarse en desarrollo (StrictMode) · la galería móvil reordenaba por `sortOrder` y perdía «las fotos del color elegido primero» · colores con el mismo slug («Café»/«Cafe») o sin letras (emojis) no se podían elegir por enlace · `?type=constructor` en `/api/seo` devolvía una redirección con «function Object()…» · corte de descripciones en mitad de un emoji · `p_offset` cercano a 2^31 desbordaba el entero (500) y un valor de 2 MB costaba ~30× una llamada normal · las páginas de categoría y colección para bots tomaban un subconjunto arbitrario de productos · no había scroll al inicio al navegar (la ficha se abría a media página) · `VITE_SITE_URL` sin configurar dejaba canónicos a `localhost` en producción · el comodín de la SPA servía HTML con caché de un año para un chunk que ya no existe · 404 y pantallas provisionales sin `noindex` · video del hero ignoraba el ahorro de datos · un fallo de red al consultar slugs renombrados mostraba «no existe» · **CLS 0,15 en la ficha (el pie saltaba por esqueleto y fallback más cortos que la ficha real)** y salto de `h1` a `h3` en los acordeones · el patrón de User-Agent sin comodines podía no coincidir nunca si Vercel lo evalúa completo.
+
+**Revisión independiente:** 23 hallazgos. **Corregidos (17):** la regla de `/` para bots (índice estático) y el patrón de User-Agent con comodines y más bots (Meta, Pinterest, FeedFetcher), scroll al navegar, orden de la galería móvil, recorte de entradas antes de procesarlas y desbordamiento de `p_offset`, páginas de bots con `public_list_products`, prototipo en `/api/seo`, noindex de 404/provisionales y comodín de la SPA sin capturar archivos, corte de emojis, slugs de color únicos, carga perezosa de la galería móvil, video con ahorro de datos, colores agotados marcados con raya (el borde perdía contraste), error con reintento en slugs renombrados y `VITE_SITE_URL` en producción. **Documentados sin arreglar (6, ver «Límites conocidos» de `docs/tienda.md`):** coste lineal de las funciones del listado (medido), `robots.txt` igual en todos los entornos, sitemap sin `lastmod` ni índice, JSON-LD sin `sku`/`priceValidUntil`, `alt` repetido en las tarjetas, GIN no usado con `word_similarity` en un `OR`. **No verificables sin desplegar:** el comportamiento real de Vercel (precedencia de `/`, anclaje del `value`, runtime de borde) y las vistas previas de WhatsApp/Facebook.
+
+**Verificación (2026-10-31):**
+- **Unitarias:** 2527 en 131 archivos (S4: 1742), con `npm run typecheck` (aplicación y nodo), lint `--max-warnings=0` y Prettier limpios. *(Nota: durante el desarrollo usé por error `tsc -p tsconfig.json`, que no revisa la aplicación; el E2E no arrancó por errores de tipos de mis pruebas nuevas y se corrigieron.)*
+- **pgTAP:** 939 aserciones en 13 archivos (migración nueva: 75 en `12_s5_listado_filtros`). **Integración contra la base local:** 275 en 8 archivos (listado, facetas y búsqueda frente a un cálculo independiente sobre las semillas, filtros combinados, orden, paginación, acentos, entradas hostiles, columnas privadas con `anon`).
+- **E2E Chromium móvil + escritorio: 308 pasan** (S4: 208) **y 2 omitidas a propósito** (pruebas del panel que solo valen en escritorio o en móvil), 0 fallos en la corrida final; con axe WCAG 2.1 A/AA en portada, listado, filtros abiertos, búsqueda y ficha, sin desbordes a 360 y 1366 px, redirecciones de slugs, XSS en descripciones, SEO en el navegador, CLS < 0,1 con red lenta y CPU 4× más lenta, y orden de encabezados. Los E2E comparten la base: `storefront.spec.ts` aparta a borrador los productos que dejan otros specs y los devuelve.
+- **Mutación (errores inyectados a propósito):** SQL y SEO de servidor (rondas propias), portada 22/22, listado y búsqueda 36/36 (agentes), y los arreglos de la revisión 22/22 (offset, recorte de entradas —sobrevivió hasta añadir una prueba de coste relativa—, emojis, prototipo, `ScrollToTop`, galería, slugs de color, `siteUrl`, redirección y video). Supervivientes iniciales de los agentes (2 + 1) y míos (1), todos muertos con pruebas nuevas.
+- **Lighthouse móvil** (build de producción con `vite preview`, red 4G lenta simulada): portada **89** de rendimiento y ficha **88** (antes de los arreglos 79), accesibilidad **100** en ambas, buenas prácticas 100, SEO 100 (92 con `vite preview` por servir HTML en `/robots.txt`), CLS **0,045**, LCP 3,4 y 3,6 s. Criterio 4 del sprint (≥85 / ≥95 / ≥95) cumplido **en local, con baldosas planas y sin CDN**; hay que repetirlo desplegado.
+- **Peso:** entrada pública gzip **243,5 kB** (S4: 244; las pantallas de cuenta pasaron a carga diferida); listado ≈ 9 kB y ficha ≈ 11 kB en chunks propios.
+- **Costo en la base** (3 000 productos sintéticos): listado sin filtros 85–125 ms, con color y talla ≈ 680 ms, facetas ≈ 710 ms (`anon` corta a los 3 s: margen ≈ 4× a 3 000 productos; ver `docs/tienda.md`).
+
+**Criterios de aceptación:**
+1. *Home → categoría → producto en móvil con fluidez:* **cumplido** (E2E en Pixel 7 emulado; la fluidez percibida en un teléfono real no se probó).
+2. *Agotado/oculto como lo configuró el admin y vuelve solo al reponer:* **cumplido** (pgTAP, integración y E2E con producto agotado, borrador, archivado y reposición).
+3. *Compartir un enlace en WhatsApp/Facebook muestra imagen, título y precio:* **sin verificar**: el HTML para bots está probado con unitarias e integración, pero la reescritura de Vercel y las vistas previas reales solo se pueden comprobar desplegado.
+4. *Lighthouse móvil ≥ 85 / ≥ 95 / ≥ 95 en portada y ficha:* **cumplido en local** (ver arriba); repetir desplegado.
+5. *Ninguna llamada pública expone costo, archivados ni stock interno:* **cumplido** (pgTAP, integración con `anon` y revisión independiente).
+6. *Filtros y orden en la URL y con «atrás»:* **cumplido** (unitarias y E2E).
+
+**Pendiente (no hecho):**
+- **Subir a la nube la migración** `20261031000100` (y la de S3 `20261029000100`): necesita confirmación del dueño.
+- **Verificar desplegado** (`docs/tienda.md`): `curl` con User-Agent de bot, depurador de Facebook, Prueba de resultados enriquecidos, Search Console con el mapa del sitio, qué regla gana en `/`, 404 de un chunk inexistente, y Lighthouse sobre el dominio real. **La evaluación D-01 real (indexación) llega 4–6 semanas después.**
+- **Contenido y diseño:** fotos y video reales, textos de acordeones, número de WhatsApp real, imagen social por defecto, diseño de listado/búsqueda y de móvil, «entrega estimada» (S-03), decisión sobre los rastreadores de IA. Todo en `Sprints/SPRINT_19_Acciones_Manuales.md`, sección J.
+- **Código:** `srcset` y formatos modernos de imagen; función única `public_get_product` (menos viajes y *preflights*); carga diferida de `MobileMenu`/`SearchSheet`; foco a `<main>` al navegar; página de mantenimiento; sugerencias de búsqueda; revisión con VoiceOver y en iPhone/Android reales; demo de cierre de R1 con el dueño y la diseñadora y firma del checklist de fidelidad.

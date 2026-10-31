@@ -3,8 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Made In Chola</title>
-    <meta name="description" content="Ropa Made In Chola." />
+    <title>Made In Chola · Hecho a mano en Bolivia</title>
+    <meta
+      name="description"
+      content="Made In Chola: ropa, sombreros y accesorios hechos a mano en Bolivia. Envíos a todo el país."
+    />
+    <!-- Vista previa de la portada al compartir el enlace de la tienda (WhatsApp, Facebook…). Vercel da prioridad a este
+         archivo sobre la regla para bots de «/», así que la portada no puede depender solo de la función de borde.
+         Cada pantalla de la tienda reemplaza estas etiquetas en su sitio (usePageMeta). Falta og:image: pendiente de
+         una imagen social por defecto de 1200×630 (ver Sprints/SPRINT_19_Acciones_Manuales.md). -->
+    <meta property="og:site_name" content="Made In Chola" />
+    <meta property="og:locale" content="es_BO" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Made In Chola · Hecho a mano en Bolivia" />
+    <meta
+      property="og:description"
+      content="Made In Chola: ropa, sombreros y accesorios hechos a mano en Bolivia. Envíos a todo el país."
+    />
+    <meta name="twitter:card" content="summary" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- Fuentes críticas (texto y títulos): se piden en paralelo con el CSS en vez de esperar a descubrirlas. -->
     <link rel="preload" href="/fonts/jost-400.woff2" as="font" type="font/woff2" crossorigin />

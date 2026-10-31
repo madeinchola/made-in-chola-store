@@ -8,6 +8,11 @@ describe("lazyPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Cargando");
   });
 
+  it("mientras carga ocupa TODA la altura de la pantalla: el pie queda bajo el pliegue y no salta al aparecer la pantalla (CLS)", () => {
+    render(lazyPage(() => new Promise<{ Pantalla: () => null }>(() => {}), "Pantalla"));
+    expect(screen.getByRole("status")).toHaveClass("min-h-[100svh]");
+  });
+
   it("cuando llega el código pinta EXACTAMENTE el componente pedido por nombre", async () => {
     const Otra = () => <p>otra pantalla</p>;
     const Pantalla = () => <p>la pantalla correcta</p>;

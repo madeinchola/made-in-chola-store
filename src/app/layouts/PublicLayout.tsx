@@ -4,6 +4,7 @@ import { t } from "@/i18n";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 
 /** Estructura de las páginas públicas: aviso · cabecera · contenido · pie, con enlace para saltar al contenido. */
 export function PublicLayout() {
@@ -19,6 +20,7 @@ export function PublicLayout() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <ScrollToTop />
       <a
         href="#contenido"
         onClick={skip}

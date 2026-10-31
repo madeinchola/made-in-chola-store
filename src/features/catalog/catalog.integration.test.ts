@@ -492,13 +492,17 @@ describe("servicios del catálogo contra Supabase real", () => {
   });
 
   it("searchProducts ignora acentos y mayúsculas y encuentra por modelo", async () => {
-    expect((await searchProducts(`nandu ${tag}`)).map((p) => p.slug)).toEqual([chaqueta.slug]);
-    expect((await searchProducts(`ÑANDÚ ${tag.toUpperCase()}`)).map((p) => p.slug)).toEqual([
-      chaqueta.slug,
-    ]);
+    // Desde S5 la búsqueda también trae coincidencias PARCIALES por similitud (los otros productos de esta prueba
+    // comparten la etiqueta): la exacta va siempre primero y no entra nada ajeno a la etiqueta (semillas).
+    for (const query of [`nandu ${tag}`, `ÑANDÚ ${tag.toUpperCase()}`]) {
+      const slugs = (await searchProducts(query)).map((p) => p.slug);
+      expect(slugs[0]).toBe(chaqueta.slug);
+      expect(slugs.every((slug) => slug.includes(tag))).toBe(true);
+    }
     expect((await searchProducts("edicion ñ")).some((p) => p.slug === chaqueta.slug)).toBe(true);
     expect(await searchProducts("x")).toEqual([]);
-    expect((await searchProducts(`oculto ${tag}`)).length).toBe(0);
+    // El producto oculto (Ocultar + sin stock) nunca aparece, ni siquiera por similitud
+    expect((await searchProducts(`oculto ${tag}`)).some((p) => p.slug === hidden.slug)).toBe(false);
   });
 
   it("getPublicPrice: precio BOB de un producto visible; un producto oculto o inexistente → null", async () => {
@@ -1003,11 +1007,21 @@ describe("correcciones de la revisión (HTTP real)", () => {
     await rest("PATCH", "store_settings?key=eq.contact_phone", adminToken, { value: original });
   });
 
-  it("una consulta de búsqueda gigante (anon) responde vacía y rápido, sin reventar", async () => {
+  it("una consulta de búsqueda gigante (anon) responde rápido y sin reventar: sin coincidencias → vacía", async () => {
+    const started = Date.now();
+    const res = await rpc("public_search_products", { p_query: "zzzzzzzz ".repeat(25_000) });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+    expect(Date.now() - started).toBeLessThan(5_000);
+  });
+
+  it("una consulta gigante que repite una palabra real se recorta a 80 caracteres y solo devuelve productos con esa palabra", async () => {
     const started = Date.now();
     const res = await rpc("public_search_products", { p_query: "chaqueta ".repeat(25_000) });
     expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
+    // El conjunto de trigramas de «chaqueta chaqueta …» es el de «chaqueta»: salen las chaquetas, nada más.
+    expect(res.body.length).toBeGreaterThan(0);
+    expect(res.body.every((p: { name: string }) => /chaqueta/i.test(p.name))).toBe(true);
     expect(Date.now() - started).toBeLessThan(5_000);
   });
 });

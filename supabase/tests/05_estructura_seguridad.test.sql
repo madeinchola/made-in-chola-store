@@ -90,7 +90,7 @@ select is(
   (select coalesce(string_agg(p.proname, ', ' order by p.proname), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.prokind = 'f' and p.prorettype not in ('trigger'::regtype, 'event_trigger'::regtype)  -- las de event trigger (p. ej. rls_auto_enable de Supabase) no se llaman por la API
       and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
-  'adjust_stock, admin_delete_product_price, admin_duplicate_product, admin_set_product_categories, admin_set_product_collections, admin_set_product_related, admin_set_stock, current_app_role, f_unaccent, healthcheck, home_media_ok, is_admin, is_safe_link, public_price_for, public_search_products, slugify, stock_status, storage_path_ok',
+  'adjust_stock, admin_delete_product_price, admin_duplicate_product, admin_set_product_categories, admin_set_product_collections, admin_set_product_related, admin_set_stock, current_app_role, f_unaccent, healthcheck, home_media_ok, is_admin, is_safe_link, public_list_products, public_listing_facets, public_price_for, public_search_products, slugify, stock_status, storage_path_ok',
   'lista blanca de funciones ejecutables desde el navegador');
 
 -- 10. Las funciones de reserva/stock/precio internos NO las ejecuta el navegador

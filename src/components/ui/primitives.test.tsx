@@ -231,6 +231,28 @@ describe("Accordion", () => {
     await user.keyboard("{Enter}");
     expect(cambios).toHaveAttribute("aria-expanded", "false");
   });
+  it("el nivel del encabezado se elige con asHeading (h3 por defecto) y conserva el botón, el estado y el foco", async () => {
+    const user = userEvent.setup();
+    render(
+      <Accordion type="single" collapsible>
+        <AccordionItem value="a">
+          <AccordionTrigger>Por defecto</AccordionTrigger>
+          <AccordionContent>x</AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="b">
+          <AccordionTrigger asHeading="h2">Segundo nivel</AccordionTrigger>
+          <AccordionContent>y</AccordionContent>
+        </AccordionItem>
+      </Accordion>,
+    );
+    expect(screen.getByRole("heading", { level: 3, name: "Por defecto" })).toBeInTheDocument();
+    const h2 = screen.getByRole("heading", { level: 2, name: "Segundo nivel" });
+    expect(h2.tagName).toBe("H2");
+    expect(h2).toHaveAttribute("data-state", "closed");
+    await user.click(within(h2).getByRole("button"));
+    expect(h2).toHaveAttribute("data-state", "open");
+    expect(screen.queryByRole("heading", { level: 3, name: "Segundo nivel" })).toBeNull();
+  });
   it("la cabecera es un encabezado (navegable por lectores de pantalla)", () => {
     render(<Example />);
     expect(screen.getAllByRole("heading")).toHaveLength(2);

@@ -51,12 +51,12 @@ describe("Footer", () => {
     );
   });
 
-  it("Índice del sitio: Comprar ahora (primera categoría), Inicio, Nosotros y Contáctanos", async () => {
+  it("Índice del sitio: Comprar ahora (/tienda), Inicio, Nosotros y Contáctanos", async () => {
     renderWithApp(<Footer />);
     const index = await column("Índice del sitio");
     expect(await within(index).findByRole("link", { name: "Comprar ahora" })).toHaveAttribute(
       "href",
-      "/categoria/mujer",
+      "/tienda",
     );
     expect(within(index).getByRole("link", { name: "Inicio" })).toHaveAttribute("href", "/");
     expect(within(index).getByRole("link", { name: "Nosotros" })).toHaveAttribute(
@@ -206,13 +206,15 @@ describe("Footer", () => {
     expect(screen.getByRole("contentinfo").innerHTML).not.toMatch(/javascript:/i);
   });
 
-  it("sin categorías (error del servidor) el pie sigue sin «Comprar ahora» pero con Inicio y el resto", async () => {
+  it("sin categorías (error del servidor) el pie sigue entero: «Comprar ahora» no depende de las categorías", async () => {
     vi.mocked(getCategoryTree).mockRejectedValue(new Error("caído"));
     renderWithApp(<Footer />);
     const index = await column("Índice del sitio");
-    await waitFor(() => expect(getCategoryTree).toHaveBeenCalled());
     expect(within(index).getByRole("link", { name: "Inicio" })).toBeInTheDocument();
-    expect(within(index).queryByRole("link", { name: "Comprar ahora" })).not.toBeInTheDocument();
+    expect(within(index).getByRole("link", { name: "Comprar ahora" })).toHaveAttribute(
+      "href",
+      "/tienda",
+    );
     expect(await screen.findByRole("heading", { name: "Contáctanos" })).toBeInTheDocument();
   });
 });

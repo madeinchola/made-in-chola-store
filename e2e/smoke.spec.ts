@@ -7,7 +7,12 @@ test.describe("humo", () => {
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto("/");
     await expect(page).toHaveTitle(/Made In Chola/);
-    await expect(page.getByRole("heading", { level: 1, name: "Made In Chola" })).toBeVisible();
+    // El único <h1> de la portada es el título del hero que configura el admin (en la semilla, «Verano 2027»); mientras
+    // carga, o sin hero, es «Made In Chola». Se espera a que haya UNO visible sin depender de cuál (antes pasaba o
+    // fallaba según llegara antes o después el dato del hero).
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Verano 2027" })).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -19,6 +24,11 @@ test.describe("humo", () => {
   test("refresh en ruta profunda NO da 404 de servidor", async ({ page }) => {
     const response = await page.goto("/producto/vestido-chola-rojo");
     expect(response?.status()).toBe(200);
+    await page.reload();
+    // La ruta es real: un slug que no existe en la base muestra la 404 amable de la ficha, no la del servidor.
+    await expect(page.getByRole("heading", { name: "No encontramos este producto" })).toBeVisible();
+    const legal = await page.goto("/legal/privacidad");
+    expect(legal?.status()).toBe(200);
     await page.reload();
     await expect(page.getByText(/disponible pronto/i)).toBeVisible();
   });

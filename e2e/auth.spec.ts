@@ -248,7 +248,8 @@ test.describe("sesiones revocadas", () => {
       );
     });
     await page.reload();
-    await expect(page.getByRole("heading", { level: 1, name: "Made In Chola" })).toBeVisible();
+    // la portada cargó (su único <h1> es el título del hero o, mientras carga, «Made In Chola»)
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("banner").getByRole("link", { name: "Ingresar" })).toBeVisible();
   });
 });

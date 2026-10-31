@@ -255,7 +255,8 @@ select is((select count(*)::int from public.public_search_products('borrador')),
 select is((select count(*)::int from public.public_search_products('archivado')), 0, 'un archivado no aparece en la búsqueda');
 select is((select count(*)::int from public.public_search_products('sin-001')), 0, 'un producto sin precio no aparece en la búsqueda');
 select is((select count(*)::int from public.public_search_products('''; drop table public.products; --')), 0, 'una inyección SQL no hace nada (0 resultados)');
-select is((select count(*)::int from public.public_search_products(repeat('chaqueta ', 20000))), 0, 'una consulta de 180 KB no revienta: se recorta a 80 caracteres (anon la puede llamar)');
+-- Desde S5 la búsqueda es tolerante a errores: «chaqueta chaqueta …» (recortado a 80 caracteres) se parece a «Chaqueta Japandi» y la encuentra.
+select is((select count(*)::int from public.public_search_products(repeat('chaqueta ', 20000))), 1, 'una consulta de 180 KB no revienta: se recorta a 80 caracteres (anon la puede llamar)');
 select is((select count(*)::int from public.public_search_products('sombrero', 1)), 1, 'límite 1');
 select is((select count(*)::int from public.public_search_products('sombrero', 0)), 1, 'límite 0 se corrige a 1');
 select is((select count(*)::int from public.public_search_products('sombrero', null)), 2, 'límite NULL usa el valor por defecto');

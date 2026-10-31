@@ -19,7 +19,7 @@ import { ImagePlaceholder } from "./ImagePlaceholder";
 type CarouselApi = Parameters<NonNullable<React.ComponentProps<typeof Carousel>["setApi"]>>[0];
 
 interface GalleryProps {
-  /** Imágenes a mostrar (se ordenan por `sortOrder`). Al cambiar de color pásale `key={colorId}` para volver a la primera. */
+  /** Imágenes a mostrar (se ordenan por `sortOrder`: para imponer otro orden, renumera `sortOrder`). Al cambiar de color pásale `key={colorId}` para volver a la primera. */
   images: readonly ProductImage[];
   /** `alt` de respaldo para imágenes sin texto alternativo. */
   productName: string;
@@ -71,13 +71,23 @@ export function Gallery({ images, productName, className }: GalleryProps) {
     setZoomIndex(null);
   };
 
-  const renderImage = (image: ProductImage, className: string, alt?: string, inButton = false) =>
+  /** `first`: la imagen principal visible al cargar (la del LCP): carga inmediata y prioridad alta; el resto, perezosas. */
+  const renderImage = (
+    image: ProductImage,
+    className: string,
+    alt?: string,
+    inButton = false,
+    first = false,
+  ) =>
     failed.has(image.id) ? (
       <ImagePlaceholder {...(inButton ? { as: "span" as const } : {})} />
     ) : (
       <img
         src={productImageUrl(image.path)}
         alt={alt ?? (image.alt?.trim() || productName)}
+        loading={first ? "eager" : "lazy"}
+        // En minúsculas: React 18 no reconoce `fetchPriority` y avisa en consola.
+        {...(first ? { fetchpriority: "high" } : {})}
         decoding="async"
         onError={() => markFailed(image.id)}
         className={className}
@@ -112,6 +122,8 @@ export function Gallery({ images, productName, className }: GalleryProps) {
                       image,
                       "h-full w-full object-cover",
                       image.alt?.trim() || `${productName} (${index + 1}/${total})`,
+                      false,
+                      index === 0,
                     )}
                   </div>
                 </CarouselItem>
@@ -122,7 +134,13 @@ export function Gallery({ images, productName, className }: GalleryProps) {
           </Carousel>
         ) : (
           <div className="aspect-[3/4] overflow-hidden rounded-card bg-secondary">
-            {renderImage(items[0] as ProductImage, "h-full w-full object-cover")}
+            {renderImage(
+              items[0] as ProductImage,
+              "h-full w-full object-cover",
+              undefined,
+              false,
+              true,
+            )}
           </div>
         )}
         <Button

@@ -1,7 +1,9 @@
+import { usePageMeta } from "@/features/storefront/seo/usePageMeta";
 import { t } from "@/i18n";
 
-/** Ruta reservada (p. ej. /producto/:slug): existe para verificar el rewrite SPA; el contenido llega en S5. */
+/** Pantalla reservada (nosotros, contacto, carrito, legales): el contenido llega con su sprint; mientras tanto no se indexa. */
 export function PlaceholderPage() {
+  usePageMeta({ title: t("app.name"), robots: "noindex,follow" });
   return (
     <section className="container py-16 text-center text-muted-foreground">
       {t("placeholder.soon")}

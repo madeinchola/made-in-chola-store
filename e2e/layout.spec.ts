@@ -92,7 +92,8 @@ test.describe("cabecera del diseño (1366 px)", () => {
       "rgb(255, 255, 255)",
     );
     expect(await header(page).evaluate((el) => getComputedStyle(el).borderBottomWidth)).toBe("0px");
-    const hero = page.getByRole("heading", { level: 1, name: "Made In Chola" });
+    // El único <h1> de la portada es el título del hero (de la base) o, sin hero, «Made In Chola».
+    const hero = page.getByRole("heading", { level: 1 });
     const heroSection = hero.locator("xpath=ancestor::section[1]");
     const h = (await header(page).boundingBox())!;
     const s = (await heroSection.boundingBox())!;

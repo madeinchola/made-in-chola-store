@@ -1,0 +1,58 @@
+/** Textos de la ficha de producto (Sprint 5). */
+export const shopProduct = {
+  breadcrumb: { label: "Ruta de navegación", shop: "Tienda" },
+  color: "Color: {name}",
+  colorGroup: "Color",
+  sizeLabel: "Talla",
+  sizeSoldOut: "(agotada)",
+  sizeUnavailable: "(no disponible en este color)",
+  colorSoldOut: "(agotado)",
+  low: "Pocas unidades",
+  soldOut: "Agotado",
+  model: "Modelo: {model}",
+  cta: {
+    whatsapp: "Consultar por WhatsApp",
+    whatsappOpensNewTab: "(se abre en una pestaña nueva)",
+    chooseSize: "Elige una talla",
+    chooseSizeHint: "Elige una talla para continuar.",
+    soldOut: "Agotado",
+    colorSoldOut: "Agotado en este color",
+    colorSoldOutHint: "Este color está agotado: prueba con otro.",
+    soon: "Próximamente: agregar a la bolsa",
+    soonHint: "Muy pronto podrás agregar este producto a la bolsa.",
+  },
+  whatsappMessage: {
+    intro: "Hola, quiero consultar por este producto:",
+    name: "{name}",
+    color: "Color: {color}",
+    size: "Talla: {size}",
+    price: "Precio: {price}",
+  },
+  media: {
+    label: "Imágenes del producto",
+    thumbs: "Miniaturas",
+    thumb: "Ver imagen {n} de {total}",
+    imageAlt: "{name}, imagen {n} de {total}",
+  },
+  accordion: {
+    shipping: "Envíos y devoluciones",
+    assistance: "Asistencia",
+    materials: "Materiales",
+    washcare: "Cuidados",
+  },
+  related: "También te puede gustar",
+  loading: "Cargando producto…",
+  error: {
+    title: "No pudimos cargar el producto",
+    body: "Revisa tu conexión e inténtalo de nuevo.",
+  },
+  notFound: {
+    title: "No encontramos este producto",
+    body: "Puede que ya no esté disponible o que el enlace haya cambiado. Mira el resto de la colección.",
+    shop: "Ver la tienda",
+    home: "Volver al inicio",
+  },
+  seo: {
+    fallbackDescription: "{name} de Made In Chola, hecho a mano en Bolivia.",
+  },
+} as const;

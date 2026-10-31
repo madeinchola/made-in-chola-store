@@ -10,10 +10,11 @@
     "types": ["node"]
   },
   "include": [
-    "vite.config.ts",
-    "vitest.config.ts",
+    "api",
+    "e2e",
     "playwright.config.ts",
     "tailwind.config.ts",
-    "e2e"
+    "vite.config.ts",
+    "vitest.config.ts"
   ]
 }

@@ -293,3 +293,32 @@ describe("Gallery", () => {
     });
   });
 });
+
+describe("Gallery · carga de imágenes", () => {
+  it("solo la primera imagen del visor es de carga inmediata y prioridad alta (LCP); el resto, perezosas", () => {
+    setup([image(1), image(2), image(3)]);
+    const main = screen.getAllByRole("img").filter((img) => !img.closest("button"));
+    expect(main.map((img) => img.getAttribute("src"))).toEqual([
+      "https://img.test/p/1.jpg",
+      "https://img.test/p/2.jpg",
+      "https://img.test/p/3.jpg",
+    ]);
+    expect(main.map((img) => img.getAttribute("loading"))).toEqual(["eager", "lazy", "lazy"]);
+    expect(main.map((img) => img.getAttribute("fetchpriority"))).toEqual(["high", null, null]);
+  });
+
+  it("las miniaturas siempre son perezosas", () => {
+    const { container } = setup([image(1), image(2)]);
+    // decorativas (alt vacío): no tienen rol «img», se buscan dentro de los botones de miniatura
+    const thumbnails = Array.from(
+      container.querySelectorAll<HTMLImageElement>('[aria-label^="Miniatura"] img, button img'),
+    ).filter((img, index, all) => all.indexOf(img) === index && img.alt === "");
+    expect(thumbnails).toHaveLength(2);
+    expect(thumbnails.map((img) => img.getAttribute("loading"))).toEqual(["lazy", "lazy"]);
+  });
+
+  it("con una sola imagen es de carga inmediata", () => {
+    setup([image(1)]);
+    expect(screen.getByRole("img").getAttribute("loading")).toBe("eager");
+  });
+});

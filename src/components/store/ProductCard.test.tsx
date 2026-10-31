@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { ProductSummary } from "@/features/catalog/types";
@@ -68,8 +68,9 @@ describe("ProductCard", () => {
     const img = screen.getByRole("img", { name: "Poncho gris sobre fondo claro" });
     expect(img).toHaveAttribute("src", "https://img.test/p1/portada.jpg");
     expect(img).toHaveAttribute("loading", "lazy");
-    expect(img).toHaveAttribute("width", "600");
-    expect(img).toHaveAttribute("height", "800");
+    // 5:7, la proporción del PDF: la imagen reserva su espacio (sin saltos al cargar)
+    expect(img).toHaveAttribute("width", "500");
+    expect(img).toHaveAttribute("height", "700");
   });
 
   it("`priority` carga la imagen sin diferir", () => {
@@ -151,5 +152,89 @@ describe("ProductCard", () => {
     const text = screen.getByText(long);
     expect(text).toHaveClass("line-clamp-2", "break-words");
     expect(document.querySelector("article")).toHaveClass("min-w-0");
+  });
+
+  describe("fidelidad al PDF de Inicio", () => {
+    it("nombre a la IZQUIERDA y precio a la DERECHA, en la MISMA fila (el nombre va antes en el DOM)", () => {
+      renderCard();
+      const heading = screen.getByRole("heading", { name: "Poncho andino" });
+      const price = screen.getByText("Bs 120,00").closest("p") as HTMLElement;
+      const row = heading.parentElement as HTMLElement;
+      expect(price.parentElement).toBe(row);
+      expect(row).toHaveClass("flex", "justify-between");
+      expect(heading.compareDocumentPosition(price)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(price).toHaveClass("shrink-0", "uppercase", "whitespace-nowrap");
+    });
+
+    it("el rótulo de colores va DEBAJO de esa fila, no dentro de ella", () => {
+      renderCard();
+      const row = screen.getByRole("heading").parentElement as HTMLElement;
+      const colors = screen.getByText("3 colores");
+      expect(row.contains(colors)).toBe(false);
+      expect(row.compareDocumentPosition(colors)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it("la baldosa es 5:7 y con esquinas rectas (sin radio ni borde)", () => {
+      const { container } = renderCard();
+      const tile = container.querySelector("img")!.parentElement as HTMLElement;
+      expect(tile).toHaveClass("aspect-[5/7]", "bg-secondary");
+      expect(tile.className).not.toMatch(/rounded|border/);
+    });
+
+    it("los chips van ABAJO a la izquierda dentro de la baldosa (nunca arriba)", () => {
+      renderCard({ product: product({ isNew: true, soldOut: true }) });
+      const chips = screen.getByText("Nuevo").closest("div") as HTMLElement;
+      expect(chips).toHaveClass("absolute", "bottom-2.5", "left-2.5");
+      expect(chips.className).not.toMatch(/(^|\s)top-/);
+      expect(chips.parentElement).toBe(screen.getByRole("img").parentElement);
+      // «Nuevo» y «Agotado» conviven, uno encima del otro
+      expect(within(chips).getByText("Agotado")).toBeVisible();
+    });
+
+    it("`pricePrefix` añade «Desde» ANTES del precio, sin mezclarlo con la cifra", () => {
+      renderCard({ pricePrefix: "Desde" });
+      const price = screen.getByText("Bs 120,00");
+      expect(price.previousElementSibling).toHaveTextContent("Desde");
+      expect(price.closest("p")).toHaveTextContent("Desde Bs 120,00");
+    });
+
+    it("sin `pricePrefix` el precio va solo", () => {
+      renderCard();
+      expect(screen.getByText("Bs 120,00").closest("p")).toHaveTextContent(/^Bs 120,00$/);
+    });
+
+    it("`imageClassName` cambia la proporción de la baldosa (la colección destacada usa 4:5)", () => {
+      const { container } = renderCard({ imageClassName: "aspect-[4/5]" });
+      const tile = container.querySelector("img")!.parentElement as HTMLElement;
+      expect(tile).toHaveClass("aspect-[4/5]");
+      expect(tile).not.toHaveClass("aspect-[5/7]");
+    });
+
+    it("precio con decimales y moneda con símbolo ancho no parten la fila (no se rompe en 2 líneas)", () => {
+      renderCard({ product: product({ price: money(123456789, "BOB") }) });
+      expect(screen.getByText("Bs 1.234.567,89").closest("p")).toHaveClass("whitespace-nowrap");
+    });
+  });
+
+  describe("precarga (onPrefetch)", () => {
+    it("al pasar el puntero por la tarjeta avisa con el slug", () => {
+      const onPrefetch = vi.fn();
+      renderCard({ onPrefetch });
+      fireEvent.pointerEnter(screen.getByRole("article"));
+      expect(onPrefetch).toHaveBeenCalledWith("poncho-andino");
+    });
+
+    it("al enfocar el enlace con el teclado también", () => {
+      const onPrefetch = vi.fn();
+      renderCard({ onPrefetch });
+      fireEvent.focus(screen.getByRole("link"));
+      expect(onPrefetch).toHaveBeenCalledTimes(1);
+      expect(onPrefetch).toHaveBeenCalledWith("poncho-andino");
+    });
+
+    it("sin `onPrefetch` no pasa nada ni se lanza", () => {
+      renderCard();
+      expect(() => fireEvent.pointerEnter(screen.getByRole("article"))).not.toThrow();
+    });
   });
 });
