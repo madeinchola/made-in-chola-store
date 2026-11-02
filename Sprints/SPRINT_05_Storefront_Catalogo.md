@@ -135,7 +135,7 @@ Layout y navegación de la tienda, páginas de catálogo, capa `track`, helpers 
 6. *Filtros y orden en la URL y con «atrás»:* **cumplido** (unitarias y E2E).
 
 **Pendiente (no hecho):**
-- **Subir a la nube la migración** `20261031000100` (y la de S3 `20261029000100`): necesita confirmación del dueño.
+- ~~Subir a la nube las migraciones `20261031000100` y `20261029000100`~~: **hecho el 2026-11-02** con confirmación del dueño y verificado (ver `SPRINT_19`, sección J). La nube no tiene productos de ejemplo: el catálogo se carga desde el panel.
 - **Verificar desplegado** (`docs/tienda.md`): `curl` con User-Agent de bot, depurador de Facebook, Prueba de resultados enriquecidos, Search Console con el mapa del sitio, qué regla gana en `/`, 404 de un chunk inexistente, y Lighthouse sobre el dominio real. **La evaluación D-01 real (indexación) llega 4–6 semanas después.**
 - **Contenido y diseño:** fotos y video reales, textos de acordeones, número de WhatsApp real, imagen social por defecto, diseño de listado/búsqueda y de móvil, «entrega estimada» (S-03), decisión sobre los rastreadores de IA. Todo en `Sprints/SPRINT_19_Acciones_Manuales.md`, sección J.
 - **Código:** `srcset` y formatos modernos de imagen; función única `public_get_product` (menos viajes y *preflights*); carga diferida de `MobileMenu`/`SearchSheet`; foco a `<main>` al navegar; página de mantenimiento; sugerencias de búsqueda; revisión con VoiceOver y en iPhone/Android reales; demo de cierre de R1 con el dueño y la diseñadora y firma del checklist de fidelidad.

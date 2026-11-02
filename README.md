@@ -100,7 +100,7 @@ Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run 
 - **SEO**: título/descripción/canónico/Open Graph/JSON-LD por pantalla (`usePageMeta`); filtros y orden **no se indexan** (canónico al listado limpio), las páginas sí con `prev/next`. Para bots (Google, WhatsApp, Facebook…) `vercel.json` desvía por `User-Agent` a funciones de borde (`api/seo.ts`) que devuelven HTML con metadatos y JSON-LD; también `api/sitemap.ts` y `api/robots.ts`. Variables: `VITE_SITE_URL` además de las de Supabase. **Lo que no se puede probar en local** (las *rewrites* de Vercel) está en «Verificación pendiente tras el despliegue» de `docs/tienda.md`.
 - **Ficha de producto**: galería por color, selector de color y talla con disponibilidad por variante (sin exponer números de stock), «Consultar por WhatsApp» (`wa.me` con producto, color, talla y precio; el número sale de Ajustes → contacto), acordeones, relacionados, 404 amable, redirección de slugs renombrados y descripción siempre como **texto plano**.
 - **Analítica preparada**: `track()` emite `view_item_list`, `view_item` y `search` sin proveedor hasta S15.
-- **Migración nueva** `20261031000100_s5_listado_filtros.sql`: **no está en la nube** hasta que se confirme (ver `Sprints/SPRINT_19_Acciones_Manuales.md`).
+- **Migración nueva** `20261031000100_s5_listado_filtros.sql`: aplicada a la nube el 2026-11-02 junto con la de S3 (`db push` con `--dry-run` primero; ver `Sprints/SPRINT_19_Acciones_Manuales.md`).
 - **Las pruebas fallan ante HTML inválido**: `src/test/setup.ts` convierte los avisos de React `validateDOMNesting` (p. ej. `<li>` dentro de `<li>`) y de claves repetidas en errores; jsdom no los haría fallar solo.
 
 ## Pruebas
