@@ -96,7 +96,8 @@ test.describe("registro, sesión y logout", () => {
       page.getByRole("banner").getByRole("button", { name: "Rosa Choque" }),
     ).toBeVisible();
     await page.goto("/cuenta");
-    await expect(page.getByText(`+591${phone}`)).toBeVisible();
+    // La cuenta (S6) muestra el número con formato legible: +591 NNNN NNNN.
+    await expect(page.getByText(`+591 ${phone.slice(0, 4)} ${phone.slice(4)}`)).toBeVisible();
   });
 
   test("la sesión sobrevive a recargar la página", async ({ page }) => {

@@ -23,7 +23,7 @@ const problem = (key: string, raw: string) => {
 };
 
 describe("definiciones", () => {
-  it("cubren exactamente las 15 claves sembradas en la base, sin repetir", () => {
+  it("cubren exactamente las 16 claves sembradas en la base (15 de S2 + tax_id_validation de S6), sin repetir", () => {
     expect(SETTING_DEFS.map((d) => d.key).sort()).toEqual(
       [
         "base_currency",
@@ -40,6 +40,7 @@ describe("definiciones", () => {
         "social_youtube",
         "stock_critical_threshold",
         "stock_low_threshold",
+        "tax_id_validation",
         "whatsapp_orders",
       ].sort(),
     );
@@ -273,5 +274,20 @@ describe("orderChanges: el orden de guardado de los umbrales", () => {
     expect(ordered.map((c) => c.key).sort()).toEqual(
       ["business_name", CRITICAL_KEY, LOW_KEY].sort(),
     );
+  });
+});
+
+describe("tax_id_validation (rigor de NIT/CI, S6)", () => {
+  it("es un select con exactamente strict y lenient, en la sección de clientes", () => {
+    expect(def("tax_id_validation").control).toBe("select");
+    expect(def("tax_id_validation").section).toBe("customers");
+    expect(def("tax_id_validation").options).toEqual(["strict", "lenient"]);
+  });
+  it("acepta strict y lenient y rechaza cualquier otro valor (igual que la base)", () => {
+    expect(problem("tax_id_validation", "strict")).toBeNull();
+    expect(problem("tax_id_validation", "lenient")).toBeNull();
+    expect(problem("tax_id_validation", "otro")).toBe("option");
+    expect(problem("tax_id_validation", "")).toBe("option");
+    expect(problem("tax_id_validation", "STRICT")).toBe("option");
   });
 });

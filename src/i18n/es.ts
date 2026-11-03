@@ -10,6 +10,12 @@ import { shopHome } from "./shop/home";
 import { shopListing } from "./shop/listing";
 import { shopProduct } from "./shop/product";
 import { shopSeo } from "./shop/seo";
+import { acctLayout } from "./account/layout";
+import { acctAddresses } from "./account/addresses";
+import { acctProfile } from "./account/profile";
+import { acctTax } from "./account/tax";
+import { acctSecurity } from "./account/security";
+import { acctOrders } from "./account/orders";
 
 export const es = {
   app: { name: "Made In Chola" },
@@ -78,6 +84,7 @@ export const es = {
       submit: "Guardar contraseña",
       submitting: "Guardando…",
       success: "Contraseña actualizada.",
+      successRelogin: "Contraseña actualizada. Inicia sesión con la nueva.",
       invalidLink: "El enlace no es válido o ya venció. Solicita uno nuevo.",
       checking: "Verificando enlace…",
       requestNew: "Solicitar un enlace nuevo",
@@ -126,6 +133,14 @@ export const es = {
   store,
   layout,
   shop: { home: shopHome, listing: shopListing, product: shopProduct, seo: shopSeo },
+  acct: {
+    layout: acctLayout,
+    addresses: acctAddresses,
+    profile: acctProfile,
+    tax: acctTax,
+    security: acctSecurity,
+    orders: acctOrders,
+  },
   admin: {
     ...adminCommon,
     products: adminProducts,

@@ -426,3 +426,9 @@ verify_jwt = true
 
 [functions.set-password]
 verify_jwt = true
+
+[functions.update-contact]
+verify_jwt = true
+
+[functions.change-password]
+verify_jwt = true

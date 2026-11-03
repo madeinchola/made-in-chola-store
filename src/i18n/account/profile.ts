@@ -1,0 +1,113 @@
+/** Textos de «Mi cuenta» · Perfil (nombre, email, teléfono y preferencias). */
+export const acctProfile = {
+  title: "Perfil",
+  intro: "Tus datos de contacto y tus preferencias.",
+  errors: { notFound: "No encontramos tu perfil. Vuelve a iniciar sesión." },
+  personal: {
+    title: "Datos personales",
+    name: "Nombre",
+    email: "Email",
+    phone: "Teléfono",
+    none: "—",
+    change: "Cambiar",
+    add: "Agregar",
+    remove: "Quitar",
+    editName: "Editar nombre",
+    changeEmail: "Cambiar email",
+    addEmail: "Agregar email",
+    removeEmail: "Quitar email",
+    changePhone: "Cambiar teléfono",
+    addPhone: "Agregar teléfono",
+    removePhone: "Quitar teléfono",
+    onlyEmail: "Es tu único dato para ingresar. Agrega un teléfono antes de quitar el email.",
+    onlyPhone: "Es tu único dato para ingresar. Agrega un email antes de quitar el teléfono.",
+  },
+  nameDialog: {
+    title: "Editar nombre",
+    intro: "Así te llamaremos en la tienda y en tus pedidos.",
+    label: "Nombre completo",
+    required: "Ingresa tu nombre.",
+    tooLong: "Máximo {max} caracteres.",
+    submit: "Guardar",
+    cancel: "Cancelar",
+    success: "Nombre actualizado.",
+    unchanged: "Ese ya es tu nombre.",
+  },
+  contact: {
+    password: "Tu contraseña actual",
+    passwordHint: "La pedimos para confirmar que eres tú.",
+    cancel: "Cancelar",
+    country: "País",
+    sameEmail: "Ese ya es tu email actual.",
+    samePhone: "Ese ya es tu teléfono actual.",
+    noChange: "No había nada que cambiar.",
+    passwordRequired: "Escribe tu contraseña actual.",
+    email: {
+      changeTitle: "Cambiar email",
+      addTitle: "Agregar email",
+      removeTitle: "Quitar email",
+      changeIntro: "Escribe el nuevo email y confirma con tu contraseña.",
+      addIntro: "Agrega un email para ingresar y recibir avisos. Confirma con tu contraseña.",
+      removeIntro:
+        "Dejarás de poder ingresar con este email; seguirás ingresando con tu teléfono. Confirma con tu contraseña.",
+      field: "Nuevo email",
+      addField: "Email",
+      submitChange: "Cambiar email",
+      submitAdd: "Agregar email",
+      submitRemove: "Quitar email",
+      changed: "Email actualizado.",
+      added: "Email agregado.",
+      removed: "Email eliminado.",
+    },
+    phone: {
+      changeTitle: "Cambiar teléfono",
+      addTitle: "Agregar teléfono",
+      removeTitle: "Quitar teléfono",
+      changeIntro: "Escribe el nuevo teléfono y confirma con tu contraseña.",
+      addIntro: "Agrega un teléfono para ingresar y recibir avisos. Confirma con tu contraseña.",
+      removeIntro:
+        "Dejarás de poder ingresar con este teléfono; seguirás ingresando con tu email. Confirma con tu contraseña.",
+      field: "Nuevo teléfono",
+      addField: "Teléfono",
+      submitChange: "Cambiar teléfono",
+      submitAdd: "Agregar teléfono",
+      submitRemove: "Quitar teléfono",
+      changed: "Teléfono actualizado.",
+      added: "Teléfono agregado.",
+      removed: "Teléfono eliminado.",
+    },
+    errors: {
+      /** Mensaje ÚNICO: no confirma si el dato ya pertenece a otra cuenta. */
+      contact_update_failed:
+        "No pudimos actualizar ese dato de contacto. Revisa que sea tuyo y que no esté en uso en otra cuenta.",
+      /** Otro cambio de contacto se coló entre la lectura y la escritura (dos pestañas, dos dispositivos). */
+      contact_update_conflict:
+        "Tu contacto cambió mientras tanto (¿lo cambiaste en otro dispositivo?). Recarga la página e inténtalo de nuevo.",
+      /** Auth no respondió: no se afirma nada sobre el dato. */
+      contact_update_unavailable:
+        "No pudimos actualizar tu contacto en este momento. Inténtalo de nuevo en unos minutos.",
+      /** El cambio falló y no se pudo deshacer: se pide avisar. */
+      contact_update_inconsistent:
+        "Algo salió mal al actualizar tu contacto. Si no puedes ingresar, escríbenos por WhatsApp y lo resolvemos.",
+      identifier_required: "Tu cuenta necesita al menos un email o un teléfono para ingresar.",
+      nothing_to_change: "No hay nada que cambiar.",
+    },
+  },
+  preferences: {
+    title: "Preferencias",
+    intro: "Elige el idioma y la moneda con los que prefieres ver la tienda.",
+    locale: "Idioma",
+    currency: "Moneda",
+    storeCurrency: "La de la tienda",
+    locales: { es: "Español" },
+    currencyOption: "{code} — {name} ({symbol})",
+    unavailable: "{value} (no disponible)",
+    save: "Guardar preferencias",
+    saved: "Preferencias guardadas.",
+    loading: "Cargando tus preferencias…",
+    error: {
+      title: "No pudimos cargar tus preferencias",
+      description: "Revisa tu conexión e inténtalo de nuevo.",
+    },
+  },
+} as const;

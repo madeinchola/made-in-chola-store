@@ -4,6 +4,9 @@ select plan(20);
 
 -- HERMÉTICO: el test parte de una BD vacía DENTRO de su transacción (se revierte al final con el rollback),
 -- así no depende de los usuarios del seed ni de datos de pruebas anteriores, y no los toca.
+-- (S6) las direcciones y los datos fiscales referencian a profiles: se vacían antes que ellos.
+delete from public.addresses;
+delete from public.tax_profiles;
 delete from public.profiles;
 alter table public.audit_log disable trigger audit_log_no_change;
 delete from public.audit_log;

@@ -153,3 +153,47 @@ export async function mailpitMessageText(id: string): Promise<string> {
   const m = (await res.json()) as { Text: string; HTML: string };
   return `${m.Text}\n${m.HTML}`;
 }
+
+/**
+ * Consulta SQL de SOLO LECTURA contra la base LOCAL (contenedor de `supabase start`), para mirar lo que la API REST no
+ * expone (esquema `auth`: sesiones, metadatos, eventos). Solo para pruebas de integración locales.
+ */
+export function localSql(query: string): string {
+  if (!/^\s*select\b/i.test(query)) throw new Error("localSql solo admite consultas SELECT");
+  return execSync(`docker exec -i supabase_db_made-in-chola psql -U postgres -d postgres -tA`, {
+    input: query,
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "ignore"],
+  }).trim();
+}
+
+/** Sesión temporal del ENLACE DE RECUPERACIÓN del correo de esa cuenta (access_token y refresh_token). */
+export async function recoverySession(email: string): Promise<{ access: string; refresh: string }> {
+  await authApi(
+    "POST",
+    `recover?redirect_to=${encodeURIComponent("http://localhost:5173/restablecer")}`,
+    {
+      body: { email },
+    },
+  );
+  let messages: { ID: string }[] = [];
+  for (let i = 0; i < 12 && messages.length === 0; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    messages = await mailpitMessagesTo(email);
+  }
+  if (messages.length === 0) throw new Error("no llegó el correo de recuperación");
+  const text = await mailpitMessageText(messages[messages.length - 1]!.ID);
+  const link = /https?:\/\/[^\s"'<>]+\/auth\/v1\/verify\?[^\s"'<>]+/
+    .exec(text)?.[0]
+    ?.replace(/&amp;/g, "&");
+  if (!link) throw new Error("el correo no trae el enlace de verificación");
+  const verify = await fetch(link.replace(/^https?:\/\/[^/]+/, localEnv().url), {
+    redirect: "manual",
+  });
+  const hash = new URLSearchParams((verify.headers.get("location") ?? "").split("#")[1]);
+  return { access: hash.get("access_token")!, refresh: hash.get("refresh_token")! };
+}
+
+/** ¿Sirve todavía este refresh token? (GoTrue responde 200 con una sesión nueva o 4xx si fue revocado). */
+export const refreshSession = (refresh_token: string) =>
+  authApi("POST", "token?grant_type=refresh_token", { body: { refresh_token } });

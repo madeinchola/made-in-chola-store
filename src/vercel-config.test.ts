@@ -76,6 +76,12 @@ describe("vercel.json", () => {
     );
     expect(csp["img-src"]).toContain("https:");
   });
+  it("CSP: el selector de ubicación (S6) puede pedir teselas de OpenStreetMap (img-src https:) y buscar en Nominatim (connect-src), y nada más amplio", () => {
+    expect(csp["connect-src"]).toContain("https://nominatim.openstreetmap.org");
+    expect(csp["connect-src"]).not.toContain("https://*.openstreetmap.org");
+    expect(csp["connect-src"]).not.toContain("https:");
+    expect(csp["img-src"]).toContain("https:"); // las teselas son imágenes
+  });
   it("assets con hash se cachean como inmutables", () => {
     const rule = config.headers.find((h) => h.source === "/assets/(.*)");
     expect(rule?.headers[0]?.value).toMatch(/immutable/);

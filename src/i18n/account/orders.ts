@@ -1,0 +1,54 @@
+/** Textos de «Mi cuenta» · Mis pedidos (estructura: el contenido real llega en el Sprint 10). */
+export const acctOrders = {
+  title: "Mis pedidos",
+  intro: "Aquí verás el historial de tus compras y el estado de cada pedido.",
+  list: { label: "Lista de pedidos" },
+  empty: {
+    title: "Aún no tienes pedidos",
+    description: "Cuando compres algo, tu pedido aparecerá aquí.",
+    action: "Ir a la tienda",
+  },
+  loading: "Cargando tus pedidos…",
+  error: {
+    title: "No pudimos cargar tus pedidos",
+    description: "Revisa tu conexión e inténtalo de nuevo.",
+  },
+  item: {
+    order: "Pedido {number}",
+    placedOn: "Realizado el",
+    total: "Total",
+  },
+  status: {
+    pending_payment: "Pendiente de pago",
+    paid: "Pagado",
+    preparing: "En preparación",
+    shipped: "Enviado",
+    delivered: "Entregado",
+    completed: "Completado",
+    cancelled: "Cancelado",
+    refunded: "Reembolsado",
+    unknown: "Estado desconocido",
+  },
+  detail: {
+    title: "Detalle del pedido",
+    breadcrumbLabel: "Ruta de tu pedido",
+    account: "Mi cuenta",
+    orders: "Mis pedidos",
+    number: "Pedido {number}",
+    placedOn: "Realizado el",
+    items: "Artículos",
+    itemsEmpty: "Este pedido no tiene artículos.",
+    quantity: "Cantidad: {n}",
+    shipping: "Envío",
+    shippingEmpty: "Sin información de envío.",
+    payment: "Pago",
+    paymentEmpty: "Sin información de pago.",
+    total: "Total",
+    notFound: {
+      title: "Pedido no encontrado",
+      description:
+        "No encontramos ese pedido en tu cuenta. Puede que el enlace esté mal escrito o que todavía no exista.",
+      action: "Volver a mis pedidos",
+    },
+  },
+} as const;

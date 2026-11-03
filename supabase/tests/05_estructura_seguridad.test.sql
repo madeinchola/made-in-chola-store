@@ -28,8 +28,8 @@ select is(
 select is(
   (select coalesce(string_agg(c.relname, ', ' order by c.relname), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind in ('r', 'p') and has_any_column_privilege('authenticated', c.oid, 'insert')),
-  'categories, collections, exchange_rates, home_section_items, home_sections, news_banners, product_colors, product_images, product_prices, product_sizes, product_variants, products',
-  'lista blanca de tablas donde authenticated puede insertar columnas (el admin, bajo RLS is_admin)');
+  'addresses, categories, collections, exchange_rates, home_section_items, home_sections, news_banners, product_colors, product_images, product_prices, product_sizes, product_variants, products, tax_profiles',
+  'lista blanca de tablas donde authenticated puede insertar columnas (el admin bajo RLS is_admin; addresses y tax_profiles: el cliente SOLO sobre lo suyo, S6)');
 
 -- 4. NINGÚN rol de la aplicación puede borrar ni truncar tablas (BR-CAT-03, BR-DAT-01): se archiva.
 --    Excepciones heredadas de S1: perfiles/auditoría/rate_limits (los gestiona service_role o están blindados).
@@ -53,7 +53,7 @@ select is(
 select is(
   (select coalesce(string_agg(c.relname, ', ' order by c.relname), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind in ('r', 'p') and has_table_privilege('authenticated', c.oid, 'select')),
-  'audit_log, categories, collections, countries, currencies, exchange_rates, home_section_items, home_sections, news_banners, notification_outbox, product_categories, product_collections, product_colors, product_images, product_prices, product_related, product_sizes, product_slug_history, product_variants, products, profiles, stock_movements, stock_reservations, store_settings',
+  'addresses, audit_log, categories, collections, countries, currencies, exchange_rates, home_section_items, home_sections, news_banners, notification_outbox, product_categories, product_collections, product_colors, product_images, product_prices, product_related, product_sizes, product_slug_history, product_variants, products, profiles, stock_movements, stock_reservations, store_settings, tax_profiles',
   'lista blanca de tablas legibles por authenticated (ampliar a propósito en cada sprint)');
 
 -- 7. Columnas actualizables por authenticated: profiles = solo full_name; variantes = nunca el stock
@@ -61,7 +61,7 @@ select is(
   (select coalesce(string_agg(a.attname, ', '), '') from pg_attribute a
     where a.attrelid = 'public.profiles'::regclass and a.attnum > 0 and not a.attisdropped
       and has_column_privilege('authenticated', 'public.profiles', a.attname, 'update')),
-  'full_name', 'authenticated solo puede actualizar profiles.full_name');
+  'full_name, preferred_locale, preferred_currency', 'authenticated solo puede actualizar profiles.full_name y sus preferencias (idioma, moneda)');
 select is(
   (select coalesce(string_agg(a.attname || ':' || p.priv, ', ' order by a.attname, p.priv), '')
      from pg_attribute a cross join (values ('insert'), ('update')) p(priv)
@@ -106,13 +106,15 @@ select is(
 select is(
   (select coalesce(string_agg(c.relname, ', ' order by c.relname), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind in ('v', 'm') and has_table_privilege('anon', c.oid, 'select')),
-  'public_categories, public_collections, public_home_section_items, public_home_sections, public_news_banners, public_product_categories, public_product_collections, public_product_colors, public_product_detail, public_product_images, public_product_related, public_product_sizes, public_product_slug_redirects, public_product_variants, public_products, public_store_settings',
+  'public_categories, public_collections, public_countries, public_currencies, public_home_section_items, public_home_sections, public_news_banners, public_product_categories, public_product_collections, public_product_colors, public_product_detail, public_product_images, public_product_related, public_product_sizes, public_product_slug_redirects, public_product_variants, public_products, public_store_settings',
   'lista blanca de vistas legibles por anon');
 select is(
   (select coalesce(string_agg(c.relname || '.' || a.attname, ', ' order by c.relname, a.attname), '')
      from pg_class c join pg_namespace n on n.oid = c.relnamespace
      join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
     where n.nspname = 'public' and c.relkind in ('v', 'm') and has_table_privilege('anon', c.oid, 'select')
+      -- public_countries/public_currencies llevan `code` = código ISO del país/moneda (no el código interno de producto)
+      and c.relname not in ('public_countries', 'public_currencies')
       and a.attname in ('cost_base', 'stock_on_hand', 'reserved', 'available', 'low_threshold', 'critical_threshold',
                         'sku', 'code', 'status', 'archived_at', 'allow_converted_prices', 'owner_id', 'created_by',
                         'is_active', 'is_public')),

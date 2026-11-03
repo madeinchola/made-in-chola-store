@@ -23,7 +23,39 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "audit_log": {
+            "addresses": {
+                  Row: {
+                    "archived_at": string | null,"city": string,"country": string,"created_at": string,"department": string | null,"for_billing": boolean,"for_shipping": boolean,"id": string,"is_default": boolean,"label": string,"lat": number | null,"line1": string,"line2": string | null,"lng": number | null,"phone_e164": string | null,"profile_id": string,"recipient": string,"reference_text": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "archived_at"?: string | null,"city": string,"country"?: string,"created_at"?: string,"department"?: string | null,"for_billing"?: boolean,"for_shipping"?: boolean,"id"?: string,"is_default"?: boolean,"label": string,"lat"?: number | null,"line1": string,"line2"?: string | null,"lng"?: number | null,"phone_e164"?: string | null,"profile_id": string,"recipient": string,"reference_text"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "archived_at"?: string | null,"city"?: string,"country"?: string,"created_at"?: string,"department"?: string | null,"for_billing"?: boolean,"for_shipping"?: boolean,"id"?: string,"is_default"?: boolean,"label"?: string,"lat"?: number | null,"line1"?: string,"line2"?: string | null,"lng"?: number | null,"phone_e164"?: string | null,"profile_id"?: string,"recipient"?: string,"reference_text"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "addresses_country_fkey"
+      columns: ["country"]
+isOneToOne: false
+      referencedRelation: "countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "addresses_country_fkey"
+      columns: ["country"]
+isOneToOne: false
+      referencedRelation: "public_countries"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "addresses_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"audit_log": {
                   Row: {
                     "action": string,"actor_id": string | null,"actor_role": string,"diff": NonNullable<Json>,"id": number,"occurred_at": string,"record_id": string | null,"table_name": string
                   }
@@ -95,6 +127,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "currencies"
       referencedColumns: ["code"]
+    },{
+      foreignKeyName: "countries_currency_code_fkey"
+      columns: ["currency_code"]
+isOneToOne: false
+      referencedRelation: "public_currencies"
+      referencedColumns: ["code"]
     }
                   ]
                 },"currencies": {
@@ -130,10 +168,22 @@ isOneToOne: false
       referencedRelation: "currencies"
       referencedColumns: ["code"]
     },{
+      foreignKeyName: "exchange_rates_from_currency_fkey"
+      columns: ["from_currency"]
+isOneToOne: false
+      referencedRelation: "public_currencies"
+      referencedColumns: ["code"]
+    },{
       foreignKeyName: "exchange_rates_to_currency_fkey"
       columns: ["to_currency"]
 isOneToOne: false
       referencedRelation: "currencies"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "exchange_rates_to_currency_fkey"
+      columns: ["to_currency"]
+isOneToOne: false
+      referencedRelation: "public_currencies"
       referencedColumns: ["code"]
     }
                   ]
@@ -514,10 +564,22 @@ isOneToOne: false
       referencedRelation: "countries"
       referencedColumns: ["code"]
     },{
+      foreignKeyName: "product_prices_country_fkey"
+      columns: ["country"]
+isOneToOne: false
+      referencedRelation: "public_countries"
+      referencedColumns: ["code"]
+    },{
       foreignKeyName: "product_prices_currency_fkey"
       columns: ["currency"]
 isOneToOne: false
       referencedRelation: "currencies"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "product_prices_currency_fkey"
+      columns: ["currency"]
+isOneToOne: false
+      referencedRelation: "public_currencies"
       referencedColumns: ["code"]
     },{
       foreignKeyName: "product_prices_product_id_fkey"
@@ -797,17 +859,29 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "anonymized_at": string | null,"blacklisted": boolean,"created_at": string,"email": string | null,"full_name": string,"id": string,"is_active": boolean,"phone_e164": string | null,"role": string,"updated_at": string
+                    "anonymized_at": string | null,"blacklisted": boolean,"created_at": string,"email": string | null,"full_name": string,"id": string,"is_active": boolean,"phone_e164": string | null,"preferred_currency": string | null,"preferred_locale": string,"role": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "anonymized_at"?: string | null,"blacklisted"?: boolean,"created_at"?: string,"email"?: string | null,"full_name": string,"id": string,"is_active"?: boolean,"phone_e164"?: string | null,"role"?: string,"updated_at"?: string
+                    "anonymized_at"?: string | null,"blacklisted"?: boolean,"created_at"?: string,"email"?: string | null,"full_name": string,"id": string,"is_active"?: boolean,"phone_e164"?: string | null,"preferred_currency"?: string | null,"preferred_locale"?: string,"role"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "anonymized_at"?: string | null,"blacklisted"?: boolean,"created_at"?: string,"email"?: string | null,"full_name"?: string,"id"?: string,"is_active"?: boolean,"phone_e164"?: string | null,"role"?: string,"updated_at"?: string
+                    "anonymized_at"?: string | null,"blacklisted"?: boolean,"created_at"?: string,"email"?: string | null,"full_name"?: string,"id"?: string,"is_active"?: boolean,"phone_e164"?: string | null,"preferred_currency"?: string | null,"preferred_locale"?: string,"role"?: string,"updated_at"?: string
                   }
                   Relationships: [
-                    
+                    {
+      foreignKeyName: "profiles_preferred_currency_fkey"
+      columns: ["preferred_currency"]
+isOneToOne: false
+      referencedRelation: "currencies"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "profiles_preferred_currency_fkey"
+      columns: ["preferred_currency"]
+isOneToOne: false
+      referencedRelation: "public_currencies"
+      referencedColumns: ["code"]
+    }
                   ]
                 },"rate_limits": {
                   Row: {
@@ -913,6 +987,26 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"tax_profiles": {
+                  Row: {
+                    "archived_at": string | null,"created_at": string,"doc_number": string,"doc_type": string,"id": string,"is_default": boolean,"legal_name": string,"profile_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "archived_at"?: string | null,"created_at"?: string,"doc_number": string,"doc_type": string,"id"?: string,"is_default"?: boolean,"legal_name": string,"profile_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "archived_at"?: string | null,"created_at"?: string,"doc_number"?: string,"doc_type"?: string,"id"?: string,"is_default"?: boolean,"legal_name"?: string,"profile_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tax_profiles_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -1006,6 +1100,46 @@ isOneToOne: false
                          }
                         Update: {
                            "description"?: string | null,"ends_at"?: string | null,"id"?: string | null,"name"?: string | null,"slug"?: string | null,"sort_order"?: number | null,"starts_at"?: string | null
+                         }
+                        Relationships: [
+                    
+                  ]
+                },"public_countries": {
+                  Row: {
+                    "code": string | null,"currency_code": string | null,"name": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                           "code"?: string | null,"currency_code"?: string | null,"name"?: string | null
+                         }
+                        Update: {
+                           "code"?: string | null,"currency_code"?: string | null,"name"?: string | null
+                         }
+                        Relationships: [
+                    {
+      foreignKeyName: "countries_currency_code_fkey"
+      columns: ["currency_code"]
+isOneToOne: false
+      referencedRelation: "currencies"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "countries_currency_code_fkey"
+      columns: ["currency_code"]
+isOneToOne: false
+      referencedRelation: "public_currencies"
+      referencedColumns: ["code"]
+    }
+                  ]
+                },"public_currencies": {
+                  Row: {
+                    "code": string | null,"decimals": number | null,"name": string | null,"symbol": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                           "code"?: string | null,"decimals"?: number | null,"name"?: string | null,"symbol"?: string | null
+                         }
+                        Update: {
+                           "code"?: string | null,"decimals"?: number | null,"name"?: string | null,"symbol"?: string | null
                          }
                         Relationships: [
                     
@@ -1549,6 +1683,9 @@ isOneToOne: false
                            },
 "apply_stock_change":
 { Args: { "p_delta": number,"p_note"?: string,"p_reason": string,"p_ref"?: string,"p_user"?: string,"p_variant_id": string }; Returns: number
+                           },
+"change_profile_contact":
+{ Args: { "p_email": string,"p_id": string,"p_phone": string }; Returns: undefined
                            },
 "check_rate_limit":
 { Args: { "p_key": string,"p_max": number,"p_window_seconds": number }; Returns: {

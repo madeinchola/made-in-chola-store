@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordStrength } from "@/components/ui/password-strength";
 import { useAuth } from "@/features/auth/useAuth";
 import { authErrorMessage } from "@/features/auth/messages";
 import { safeRedirectPath } from "@/features/auth/redirect";
@@ -172,6 +173,7 @@ export function RegisterPage() {
             })}
           />
         </Field>
+        <PasswordStrength password={password} context={passwordContext()} />
         <Field label={t("auth.register.confirm")} error={errors.confirm?.message}>
           <PasswordInput
             autoComplete="new-password"

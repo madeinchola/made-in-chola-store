@@ -2,7 +2,7 @@ import { t } from "@/i18n";
 import { charLength, btrimSpaces, EMAIL_RE, HTTPS_URL_RE, INT_RE, PHONE_E164_RE } from "./pgText";
 
 export type SettingType = "text" | "int" | "bool" | "url" | "email" | "phone_e164";
-export type SettingSection = "business" | "social" | "pdp" | "inventory";
+export type SettingSection = "business" | "social" | "pdp" | "inventory" | "customers";
 export type SettingControl = "input" | "textarea" | "number" | "select";
 
 export interface SettingDef {
@@ -48,9 +48,22 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     control: "number",
     readOnly: true,
   },
+  {
+    key: "tax_id_validation",
+    type: "text",
+    section: "customers",
+    control: "select",
+    options: ["strict", "lenient"],
+  },
 ];
 
-export const SECTIONS: readonly SettingSection[] = ["business", "social", "pdp", "inventory"];
+export const SECTIONS: readonly SettingSection[] = [
+  "business",
+  "social",
+  "pdp",
+  "inventory",
+  "customers",
+];
 
 export const LOW_KEY = "stock_low_threshold";
 export const CRITICAL_KEY = "stock_critical_threshold";

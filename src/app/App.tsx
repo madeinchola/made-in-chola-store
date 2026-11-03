@@ -8,6 +8,7 @@ import { installGlobalErrorHandlers } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { t } from "@/i18n";
 import { AuthProvider } from "@/features/auth/AuthProvider";
+import { SessionCacheGuard } from "@/features/auth/SessionCacheGuard";
 import { createAppRouter } from "./router";
 
 const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ export function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <SessionCacheGuard />
           <RouterProvider router={router} />
         </AuthProvider>
         <Toaster />

@@ -2,7 +2,8 @@
 export const adminConfig = {
   settings: {
     title: "Ajustes",
-    description: "Datos del negocio, redes, textos de la ficha de producto y reglas de inventario.",
+    description:
+      "Datos del negocio, redes, textos de la ficha de producto, reglas de inventario y de cuentas de clientes.",
     save: "Guardar ajustes",
     saving: "Guardando…",
     saved: "Ajustes guardados.",
@@ -25,6 +26,10 @@ export const adminConfig = {
       inventory: {
         title: "Inventario",
         description: "Reglas globales del semáforo de stock y de los productos sin stock.",
+      },
+      customers: {
+        title: "Clientes y cuentas",
+        description: "Reglas de los datos que las clientas guardan en su cuenta.",
       },
     },
     fields: {
@@ -61,10 +66,16 @@ export const adminConfig = {
         label: "Minutos que se retiene un carrito",
         hint: "Tiempo que se reserva el stock de un carrito. Avanzado: no se edita desde aquí.",
       },
+      tax_id_validation: {
+        label: "Validación de NIT y CI en los datos fiscales",
+        hint: "Estricto exige el formato de cada documento; flexible acepta cualquier documento alfanumérico (para no frenar una compra por un formato que cambie).",
+      },
     },
     behavior: {
       sold_out: "Mostrar como agotado",
       hide: "Ocultar de la tienda",
+      strict: "Estricta: exige el formato de cada tipo de documento",
+      lenient: "Flexible: acepta cualquier documento alfanumérico",
     },
     thresholdsNote:
       "Son los umbrales GLOBALES del semáforo. Cada variante puede tener los suyos propios; si no los tiene, usa estos.",

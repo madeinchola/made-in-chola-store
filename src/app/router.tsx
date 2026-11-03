@@ -14,7 +14,13 @@ const login = () => import("./pages/LoginPage");
 const register = () => import("./pages/RegisterPage");
 const forgot = () => import("./pages/ForgotPasswordPage");
 const reset = () => import("./pages/ResetPasswordPage");
-const account = () => import("./pages/AccountPage");
+const accountLayout = () => import("@/features/account/AccountLayout");
+const profile = () => import("@/features/account/profile/ProfilePage");
+const addresses = () => import("@/features/account/addresses/AddressesPage");
+const taxProfiles = () => import("@/features/account/tax/TaxProfilesPage");
+const orders = () => import("@/features/account/orders/OrdersPage");
+const security = () => import("@/features/account/security/SecurityPage");
+const orderDetail = () => import("@/features/account/orders/OrderDetailPage");
 
 export const routes: RouteObject[] = [
   {
@@ -28,7 +34,20 @@ export const routes: RouteObject[] = [
       { path: "restablecer", element: lazyPage(reset, "ResetPasswordPage") },
       {
         element: <RequireAuth />,
-        children: [{ path: "cuenta", element: lazyPage(account, "AccountPage") }],
+        children: [
+          {
+            path: "cuenta",
+            element: lazyPage(accountLayout, "AccountLayout"),
+            children: [
+              { index: true, element: lazyPage(profile, "ProfilePage") },
+              { path: "direcciones", element: lazyPage(addresses, "AddressesPage") },
+              { path: "datos-fiscales", element: lazyPage(taxProfiles, "TaxProfilesPage") },
+              { path: "pedidos", element: lazyPage(orders, "OrdersPage") },
+              { path: "pedidos/:orderId", element: lazyPage(orderDetail, "OrderDetailPage") },
+              { path: "seguridad", element: lazyPage(security, "SecurityPage") },
+            ],
+          },
+        ],
       },
       // Tienda: cada pantalla va en su propio chunk (la portada, que es la entrada, no).
       { path: "tienda", element: lazyPage(listing, "ShopPage") },

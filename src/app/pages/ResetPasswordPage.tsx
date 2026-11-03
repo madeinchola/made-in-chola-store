@@ -5,9 +5,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordStrength } from "@/components/ui/password-strength";
+import { adoptSession, type IssuedSession } from "@/features/auth/adoptSession";
 import { useAuth } from "@/features/auth/useAuth";
 import { authErrorMessage } from "@/features/auth/messages";
 import { callFunction } from "@/lib/functions";
+import { getSupabase } from "@/lib/supabase";
 import { t, type MessageKey } from "@/i18n";
 import { validatePassword } from "@shared/password-policy";
 
@@ -57,7 +60,7 @@ export function ResetPasswordPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
-    const res = await callFunction(
+    const res = await callFunction<{ ok: true; session?: IssuedSession | null }>(
       "set-password",
       { password: values.password },
       { token: session.access_token },
@@ -68,8 +71,16 @@ export function ResetPasswordPage() {
       );
       return;
     }
-    toast.success(t("auth.reset.success"));
-    navigate("/", { replace: true });
+    // Restablecer cierra TODAS las sesiones, también la del enlace: se adopta la nueva que entrega el servidor (si no
+    // llegó, se cierra la sesión local y la persona entra con su contraseña nueva).
+    if (await adoptSession(res.data.session)) {
+      toast.success(t("auth.reset.success"));
+      navigate("/", { replace: true });
+      return;
+    }
+    await getSupabase().auth.signOut({ scope: "local" });
+    toast.success(t("auth.reset.successRelogin"));
+    navigate("/login", { replace: true });
   });
 
   return (
@@ -100,6 +111,10 @@ export function ResetPasswordPage() {
             })}
           />
         </Field>
+        <PasswordStrength
+          password={password}
+          context={{ email: profile?.email, phone: profile?.phone_e164 }}
+        />
         <Field label={t("auth.reset.confirm")} error={errors.confirm?.message}>
           <PasswordInput
             autoComplete="new-password"

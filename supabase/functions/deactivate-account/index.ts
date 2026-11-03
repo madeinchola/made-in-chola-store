@@ -1,5 +1,5 @@
 import { z } from "https://esm.sh/zod@3.25.76";
-import { INVALID_CREDENTIALS, statelessAnonClient } from "../_shared/auth.ts";
+import { INVALID_CREDENTIALS, verifyPassword } from "../_shared/auth.ts";
 import { corsHeaders, getAllowedOrigins, handlePreflight } from "../_shared/cors.ts";
 import { errorResponse, HttpError, jsonResponse } from "../_shared/errors.ts";
 import { createLogger } from "../_shared/logger.ts";
@@ -36,12 +36,8 @@ Deno.serve(async (req) => {
     const key = `deactivate:${user.id}`;
     await enforceRateLimit(key, 5, 15 * 60);
 
-    // Confirmación: la contraseña actual debe ser correcta.
-    const { error: pwError } = await statelessAnonClient().auth.signInWithPassword({
-      email: user.email ?? "",
-      password,
-    });
-    if (pwError)
+    // Confirmación: la contraseña actual debe ser correcta (y la sesión que crea la comprobación se cierra al instante).
+    if (!(await verifyPassword(user.email ?? "", password)))
       throw new HttpError(
         INVALID_CREDENTIALS.status,
         INVALID_CREDENTIALS.code,
@@ -62,7 +58,9 @@ Deno.serve(async (req) => {
     const authUpdate: Record<string, unknown> = { ban_duration: "876000h" }; // ~100 años
     if (anonymize) {
       authUpdate.email = `deleted-${user.id}@deleted.madeinchola.invalid`;
-      authUpdate.user_metadata = {};
+      // `updateUserById` FUSIONA user_metadata: `{}` no borraba nada y el nombre y el teléfono seguían en Auth. Poner una
+      // clave en null la elimina.
+      authUpdate.user_metadata = { full_name: null, phone_e164: null, name: null };
     }
     const { error: banError } = await admin.auth.admin.updateUserById(user.id, authUpdate);
     if (banError) throw banError;
