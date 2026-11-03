@@ -114,7 +114,7 @@ Cuenta completa, `addresses` con lat/lng, `tax_profiles`, contrato `merge_guest_
 5. *Un cliente nunca ve datos de otro:* **cumplido** (matriz de roles en pgTAP, IDOR en integración y E2E).
 
 **Pendiente (no hecho):**
-- **Nube:** la migración `20261102000100` solo está en la base local, y las Edge Functions nuevas y endurecidas no están desplegadas. Hay que subir **a la vez** migración, funciones y código de la tienda (`set-password` cambió de contrato). Necesita la confirmación del dueño y credenciales nuevas; ver `SPRINT_19`, sección K. **Sin verificar en la nube:** si el rol `postgres` del Supabase hospedado puede limpiar `auth.audit_log_entries` al anonimizar.
+- **Nube (2026-11-03):** la migración `20261102000100` **está aplicada** (13 en total, verificada) y la anonimización del esquema `auth` **se probó en la nube** con una transacción deshecha. **Faltan por desplegar las Edge Functions** `update-contact`, `change-password`, `set-password` y `deactivate-account`: el clasificador del modo automático denegó el despliegue aun con tu OK. Hasta desplegarlas no se debe empujar el código de la tienda (la pantalla de cuenta llamaría a funciones que no existen y `set-password` cambió de contrato); ver `SPRINT_19`, sección K.
 - **Decisiones del dueño:** reglas oficiales de NIT/CI, D-03 (recuperación solo-teléfono), política de reactivación de cuentas, proveedor de mapas en producción, texto legal de consentimiento (S15).
 - **Pruebas en dispositivos reales:** formularios y mapa en iPhone y Android (el arrastre táctil del mapa dentro del cajón es el punto a mirar).
 - **Código:** borrador del formulario si expira la sesión, paginar las archivadas, endurecer la política de contraseñas del servidor (S16).

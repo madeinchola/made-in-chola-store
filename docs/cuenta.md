@@ -52,7 +52,7 @@ Las tres piden la **contraseña actual** y tienen límite de intentos por client
 
 La lógica pura de `update-contact` (qué cambia, qué se escribe en Auth) vive en `supabase/functions/_shared/contact.ts`, y la de sesiones (`bearerToken`, `jwtClaims`, `isRecentRecoverySession`) en `_shared/auth.ts`; ambas se prueban con Deno. Las pruebas de integración recorren el flujo completo contra GoTrue real (entrar con el teléfono nuevo, el email viejo deja de servir, cuentas solo-teléfono, límites, auditoría, **sesiones realmente cerradas** —se comprueban los refresh tokens y `auth.sessions`—, **dos cambios simultáneos** sin errores 500 ni desalineación, y que tras anonimizar no queda ningún dato personal en el esquema `auth`).
 
-**Lo que no se pudo verificar en la nube**: la limpieza del esquema `auth` en `deactivate_profile` está protegida (si el rol no tuviera permiso solo avisa y la anonimización de nuestros datos sigue), pero **no sé si en el Supabase hospedado el rol `postgres` puede borrar en `auth.audit_log_entries`**. Tras subir la migración hay que probarlo con una cuenta de prueba (ver `SPRINT_19`).
+**Verificado en la nube (2026-11-03)**: la limpieza del esquema `auth` en `deactivate_profile` funciona en el Supabase hospedado. Una transacción con `ROLLBACK` creó un usuario de prueba con nombre y teléfono en los metadatos y un evento de GoTrue con su email, anonimizó y comprobó que perfil, metadatos y evento quedaron sin datos personales; no dejó filas. El rol `postgres` hospedado SÍ puede borrar en `auth.audit_log_entries`. Si en otro entorno no pudiera, la función solo avisa y la anonimización de nuestros datos sigue. Sin probar en la nube: el recorrido completo por la Edge Function `deactivate-account`.
 
 ## Mapa y geocodificación (S-08, D-04)
 
