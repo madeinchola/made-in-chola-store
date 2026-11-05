@@ -4,6 +4,7 @@ begin;
 select plan(165);
 
 -- HERMÉTICO: parte de una BD vacía dentro de su transacción (se revierte al final).
+delete from public.carts;
 delete from public.addresses;
 delete from public.tax_profiles;
 delete from public.profiles;

@@ -22,7 +22,7 @@ import { usePageMeta } from "../seo/usePageMeta";
 import { ColorBars } from "./ColorBars";
 import { ProductAccordions } from "./ProductAccordions";
 import { ProductMedia } from "./ProductMedia";
-import { PurchaseButton } from "./PurchaseButton";
+import { PurchaseButton, type PurchaseSelection } from "./PurchaseButton";
 import { SizePicker } from "./SizePicker";
 import { imagesForColor } from "./productImages";
 import { buildProductSeo } from "./productSeo";
@@ -118,6 +118,24 @@ export function ProductView({ detail, slug, settings }: ProductViewProps) {
         )
       : null;
 
+  // Lo que «Agregar a la bolsa» suma: la variante elegida (color + talla) con los datos del evento.
+  const purchase: PurchaseSelection | null =
+    selection.state === "ready" && selection.variant
+      ? {
+          variantId: selection.variant.id,
+          item: {
+            id: product.id,
+            name: product.name,
+            price: Number(toDecimalString(product.price)),
+            currency: product.price.currency,
+          },
+          variant: {
+            ...(color ? { color: color.name } : {}),
+            ...(size ? { size: size.label } : {}),
+          },
+        }
+      : null;
+
   return (
     <article className="px-[2vw] pb-20 lg:pr-[8.1vw]">
       <div className="grid gap-x-[7vw] gap-y-8 pt-4 lg:grid-cols-[minmax(0,1.17fr)_minmax(0,1fr)]">
@@ -174,7 +192,14 @@ export function ProductView({ detail, slug, settings }: ProductViewProps) {
           {hasSizes(detail) && <SizePicker options={sizes} value={sizeId} onChange={setRawSize} />}
 
           <div>
-            <PurchaseButton state={selection.state} whatsappHref={href} />
+            {purchase ? (
+              <PurchaseButton state="ready" selection={purchase} whatsappHref={href} />
+            ) : (
+              <PurchaseButton
+                state={selection.state === "ready" ? "choose_size" : selection.state}
+                whatsappHref={href}
+              />
+            )}
           </div>
 
           {product.description.trim() !== "" && (

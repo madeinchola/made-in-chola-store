@@ -39,7 +39,7 @@ export async function listSettings(): Promise<SettingRow[]> {
 export interface SettingChange {
   key: string;
   /** Con su tipo JSON correcto: número para `int`, texto para el resto. */
-  value: string | number;
+  value: string | number | boolean;
   /** `updated_at` leído al cargar (texto tal cual). */
   updatedAt: string;
 }

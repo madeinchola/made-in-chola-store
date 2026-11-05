@@ -2,7 +2,7 @@ import { t } from "@/i18n";
 import { charLength, btrimSpaces, EMAIL_RE, HTTPS_URL_RE, INT_RE, PHONE_E164_RE } from "./pgText";
 
 export type SettingType = "text" | "int" | "bool" | "url" | "email" | "phone_e164";
-export type SettingSection = "business" | "social" | "pdp" | "inventory" | "customers";
+export type SettingSection = "business" | "social" | "pdp" | "inventory" | "customers" | "cart";
 export type SettingControl = "input" | "textarea" | "number" | "select";
 
 export interface SettingDef {
@@ -55,6 +55,19 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     control: "select",
     options: ["strict", "lenient"],
   },
+  // Carrito (S7). `reserve_on_add_to_cart` es booleano: se muestra como «Sí / No» y se guarda como true/false.
+  {
+    key: "reserve_on_add_to_cart",
+    type: "bool",
+    section: "cart",
+    control: "select",
+    options: ["true", "false"],
+  },
+  { key: "cart_max_qty_per_variant", type: "int", section: "cart", control: "number" },
+  { key: "cart_max_lines", type: "int", section: "cart", control: "number" },
+  { key: "cart_max_reserved_units", type: "int", section: "cart", control: "number" },
+  { key: "price_guarantee_days", type: "int", section: "cart", control: "number" },
+  { key: "guest_cart_retention_days", type: "int", section: "cart", control: "number" },
 ];
 
 export const SECTIONS: readonly SettingSection[] = [
@@ -63,6 +76,7 @@ export const SECTIONS: readonly SettingSection[] = [
   "pdp",
   "inventory",
   "customers",
+  "cart",
 ];
 
 export const LOW_KEY = "stock_low_threshold";
@@ -133,8 +147,9 @@ export function settingMessage(problem: SettingProblem): string {
   }
 }
 
-/** Valor JSON con su tipo correcto (la base exige número para `int`, texto para el resto). */
-export function toJsonValue(def: SettingDef, value: string): string | number {
+/** Valor JSON con su tipo correcto (la base exige número para `int`, booleano para `bool`, texto para el resto). */
+export function toJsonValue(def: SettingDef, value: string): string | number | boolean {
+  if (def.type === "bool") return value === "true";
   return def.type === "int" ? Number(value) : value;
 }
 
@@ -151,7 +166,7 @@ export function thresholdProblem(low: string, critical: string): string | null {
 
 export interface ThresholdChange {
   key: string;
-  value: string | number;
+  value: string | number | boolean;
 }
 
 /**

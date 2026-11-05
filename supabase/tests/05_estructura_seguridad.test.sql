@@ -53,7 +53,7 @@ select is(
 select is(
   (select coalesce(string_agg(c.relname, ', ' order by c.relname), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind in ('r', 'p') and has_table_privilege('authenticated', c.oid, 'select')),
-  'addresses, audit_log, categories, collections, countries, currencies, exchange_rates, home_section_items, home_sections, news_banners, notification_outbox, product_categories, product_collections, product_colors, product_images, product_prices, product_related, product_sizes, product_slug_history, product_variants, products, profiles, stock_movements, stock_reservations, store_settings, tax_profiles',
+  'addresses, audit_log, cart_items, cart_removed_items, carts, categories, collections, countries, currencies, exchange_rates, home_section_items, home_sections, news_banners, notification_outbox, product_categories, product_collections, product_colors, product_images, product_prices, product_related, product_sizes, product_slug_history, product_variants, products, profiles, stock_movements, stock_reservations, store_settings, tax_profiles',
   'lista blanca de tablas legibles por authenticated (ampliar a propósito en cada sprint)');
 
 -- 7. Columnas actualizables por authenticated: profiles = solo full_name; variantes = nunca el stock

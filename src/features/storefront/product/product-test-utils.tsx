@@ -4,6 +4,11 @@ import type { ReactElement } from "react";
 import { render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { CartProvider } from "@/features/cart/CartProvider";
+import { CartSpy, FakeCartServer } from "@/features/cart/cart-test-utils";
+import type { CartContextValue } from "@/features/cart/cart-context";
+import { memoryCartStorage } from "@/features/cart/storage";
+import { fakeAuth, WithAuth } from "@/test/auth-test-utils";
 import type {
   ProductDetail,
   ProductImage,
@@ -136,7 +141,11 @@ export function LocationProbe() {
   return <p data-testid="location">{`${location.pathname}${location.search}`}</p>;
 }
 
-/** Renderiza una pantalla dentro de QueryClient + router en memoria (sin reintentos: los fallos se ven al instante). */
+/**
+ * Renderiza una pantalla dentro de QueryClient + sesión falsa + `CartProvider` REAL (con un servidor de mentira, sin red)
+ * + router en memoria (sin reintentos: los fallos se ven al instante). `server` y `cart()` dejan comprobar «Agregar a la
+ * bolsa».
+ */
 export function renderAt(
   ui: ReactElement,
   path: string | string[] = "/producto/chaqueta-japandi",
@@ -146,17 +155,26 @@ export function renderAt(
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
   });
+  const server = new FakeCartServer(null);
+  const cart: { current: CartContextValue | null } = { current: null };
   return {
     queryClient,
+    server,
+    cart: () => cart.current as CartContextValue,
     ...render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
-          <Routes>
-            <Route path={routePath} element={ui} />
-            <Route path="*" element={<p>otra ruta</p>} />
-          </Routes>
-          <LocationProbe />
-        </MemoryRouter>
+        <WithAuth value={fakeAuth()}>
+          <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
+            <CartProvider api={server.api} storage={memoryCartStorage()}>
+              <CartSpy into={cart} />
+              <Routes>
+                <Route path={routePath} element={ui} />
+                <Route path="*" element={<p>otra ruta</p>} />
+              </Routes>
+              <LocationProbe />
+            </CartProvider>
+          </MemoryRouter>
+        </WithAuth>
       </QueryClientProvider>,
     ),
   };

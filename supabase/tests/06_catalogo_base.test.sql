@@ -64,7 +64,7 @@ select throws_ok($$delete from public.exchange_rates where id = 1$$, '42501', nu
 select throws_ok($$truncate public.exchange_rates$$, '42501', null, 'el historial de tasas no se trunca');
 
 -- ── Ajustes de la tienda ───────────────────────────────────────────────────────────────────
-select is((select count(*)::int from public.store_settings), 16, 'los 16 ajustes iniciales existen (15 de S2 + tax_id_validation de S6)');
+select is((select count(*)::int from public.store_settings), 23, 'los 23 ajustes iniciales existen (15 de S2 + tax_id_validation de S6 + 7 del carrito de S7)');
 select is((select value #>> '{}' from public.store_settings where key = 'whatsapp_orders'), '+59167528677', 'WhatsApp de pedidos confirmado por el admin');
 select is((select value #>> '{}' from public.store_settings where key = 'social_youtube'), 'https://www.youtube.com/@madeinchola9876', 'YouTube cargado');
 select throws_ok($$update public.store_settings set value = '"71234567"' where key = 'whatsapp_orders'$$, '22023', null, 'teléfono sin código de país rechazado');

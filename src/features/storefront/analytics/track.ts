@@ -14,7 +14,15 @@ export interface TrackedItem {
 export type TrackEvent =
   | { name: "view_item_list"; listId: string; listName: string; items: TrackedItem[] }
   | { name: "view_item"; item: TrackedItem; variant?: { color?: string; size?: string } }
-  | { name: "search"; query: string; results: number };
+  | { name: "search"; query: string; results: number }
+  | {
+      name: "add_to_cart";
+      item: TrackedItem;
+      quantity: number;
+      variant?: { color?: string; size?: string };
+    }
+  | { name: "remove_from_cart"; item: TrackedItem; quantity: number }
+  | { name: "view_cart"; items: number; value: number; currency: string };
 
 export type TrackListener = (event: TrackEvent) => void;
 

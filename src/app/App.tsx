@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 import { t } from "@/i18n";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { SessionCacheGuard } from "@/features/auth/SessionCacheGuard";
+import { CartProvider } from "@/features/cart/CartProvider";
 import { createAppRouter } from "./router";
 
 const queryClient = new QueryClient({
@@ -33,7 +34,9 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <SessionCacheGuard />
-          <RouterProvider router={router} />
+          <CartProvider>
+            <RouterProvider router={router} />
+          </CartProvider>
         </AuthProvider>
         <Toaster />
       </QueryClientProvider>

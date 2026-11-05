@@ -4,5 +4,5 @@ import { storeRoutes } from "@/components/layout/storeRoutes";
 export const storeRoutesForProduct = {
   home: storeRoutes.home,
   shop: storeRoutes.shop,
-  product: (slug: string) => `/producto/${encodeURIComponent(slug)}`,
+  product: (slug: string) => storeRoutes.product(slug),
 } as const;

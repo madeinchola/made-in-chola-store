@@ -511,14 +511,57 @@ describe("ProductPage", () => {
       expect(screen.queryByRole("link", { name: /WhatsApp/ })).not.toBeInTheDocument();
     });
 
-    it("sin WhatsApp configurado: «Próximamente: agregar a la bolsa» deshabilitado", async () => {
+    it("con talla elegida el botón principal es «Agregar a la bolsa» y la consulta por WhatsApp queda como enlace debajo", async () => {
+      renderAt(<ProductPage />);
+      await loaded();
+      await userEvent.setup().click(screen.getByRole("radio", { name: "XS" }));
+      const add = screen.getByRole("button", { name: "Agregar a la bolsa" });
+      const link = screen.getByRole("link", { name: /Consultar por WhatsApp/ });
+      expect(add.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("«Agregar a la bolsa» agrega la variante ELEGIDA (color + talla), emite add_to_cart y abre el cajón", async () => {
+      const events: TrackEvent[] = [];
+      const off = subscribeToTracking((e) => events.push(e));
+      const { server, cart } = renderAt(<ProductPage />);
+      await loaded();
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("radio", { name: "Rojo" }));
+      await user.click(screen.getByRole("radio", { name: "M" }));
+      await user.click(screen.getByRole("button", { name: "Agregar a la bolsa" }));
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      off();
+      expect(server.callsOf("set_item")).toEqual([
+        { action: "set_item", variant_id: "v-rojo-m", qty: 1 },
+      ]);
+      expect(cart().open).toBe(true);
+      expect(events.filter((e) => e.name === "add_to_cart")).toEqual([
+        {
+          name: "add_to_cart",
+          item: { id: "p1", name: "Chaqueta Japandi", price: 560, currency: "BOB" },
+          quantity: 1,
+          variant: { color: "Rojo", size: "M" },
+        },
+      ]);
+    });
+
+    it("en estados no listos (elige talla, agotado) no se puede agregar nada", async () => {
+      const { server } = renderAt(<ProductPage />);
+      await loaded();
+      await userEvent.setup().click(screen.getByRole("button", { name: "Elige una talla" }));
+      expect(screen.queryByRole("button", { name: "Agregar a la bolsa" })).not.toBeInTheDocument();
+      expect(server.calls).toHaveLength(0);
+    });
+
+    it("sin WhatsApp configurado: «Agregar a la bolsa» sigue disponible y no hay enlace de consulta", async () => {
       serve({ settings: { business_name: "MIC" } });
       renderAt(<ProductPage />);
       await loaded();
       await userEvent.setup().click(screen.getByRole("radio", { name: "XS" }));
-      expect(
-        screen.getByRole("button", { name: "Próximamente: agregar a la bolsa" }),
-      ).toHaveAttribute("aria-disabled", "true");
+      const add = screen.getByRole("button", { name: "Agregar a la bolsa" });
+      expect(add).not.toHaveAttribute("aria-disabled");
       expect(screen.queryByRole("link", { name: /WhatsApp/ })).not.toBeInTheDocument();
     });
 
@@ -530,9 +573,7 @@ describe("ProductPage", () => {
         await loaded();
         await userEvent.setup().click(screen.getByRole("radio", { name: "XS" }));
         expect(screen.queryByRole("link", { name: /WhatsApp/ })).not.toBeInTheDocument();
-        expect(
-          screen.getByRole("button", { name: "Próximamente: agregar a la bolsa" }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Agregar a la bolsa" })).toBeInTheDocument();
       },
     );
 

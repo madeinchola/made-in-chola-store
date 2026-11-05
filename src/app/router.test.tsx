@@ -5,6 +5,9 @@ import { MemoryRouter, matchRoutes, useLocation, useRoutes } from "react-router-
 import { describe, expect, it, vi } from "vitest";
 import { asAdmin, asCustomer, fakeAuth, WithAuth } from "@/test/auth-test-utils";
 import type { AuthContextValue } from "@/features/auth/auth-context";
+import { CartProvider } from "@/features/cart/CartProvider";
+import { FakeCartServer } from "@/features/cart/cart-test-utils";
+import { memoryCartStorage } from "@/features/cart/storage";
 import { routes } from "./router";
 
 // Se prueban las rutas REALES con sus guards REALES. Se usa MemoryRouter + useRoutes (y no un data router)
@@ -94,6 +97,45 @@ describe("rutas públicas", () => {
       expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
       unmount();
     }
+  });
+});
+
+describe("bolsa y pago", () => {
+  it("/carrito ya no es una pantalla reservada: carga bajo demanda la página de la bolsa (con su único h1)", async () => {
+    const server = new FakeCartServer(null);
+    render(
+      <WithAuth value={fakeAuth()}>
+        <MemoryRouter initialEntries={["/carrito"]}>
+          <CartProvider api={server.api} storage={memoryCartStorage()}>
+            <QueryClientProvider client={queryClient}>
+              <Routes />
+            </QueryClientProvider>
+          </CartProvider>
+        </MemoryRouter>
+      </WithAuth>,
+    );
+    // es una pantalla diferida: antes de llegar el código se anuncia la carga
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando");
+    expect(await screen.findByRole("heading", { level: 1, name: "Tu bolsa" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.queryByText(/disponible pronto/i)).not.toBeInTheDocument();
+  });
+
+  it("/checkout exige sesión: el visitante va a /login recordando que volvía a pagar", () => {
+    const router = renderAt("/checkout");
+    expect(router.location.pathname).toBe("/login");
+    expect(router.location.state).toEqual({ from: "/checkout" });
+  });
+
+  it("/checkout con sesión es la pantalla provisional «Pago (próximamente)» con su h1 y sin indexar", () => {
+    renderAt("/checkout", asCustomer());
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Pago (próximamente)" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/disponible pronto/i)).toBeInTheDocument();
+    expect(document.head.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe(
+      "noindex,follow",
+    );
   });
 });
 

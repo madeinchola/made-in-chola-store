@@ -167,6 +167,21 @@ export function localSql(query: string): string {
   }).trim();
 }
 
+/**
+ * Sentencia SQL de ESCRITURA contra la base LOCAL desechable, para simular lo que la API no deja hacer (p. ej. el paso del
+ * tiempo: vencer una retención o la garantía de un precio). Solo para pruebas de integración locales; nunca contra la nube.
+ */
+export function localExec(statement: string): void {
+  execSync(
+    `docker exec -i supabase_db_made-in-chola psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q`,
+    {
+      input: statement,
+      encoding: "utf8",
+      stdio: ["pipe", "ignore", "pipe"],
+    },
+  );
+}
+
 /** Sesión temporal del ENLACE DE RECUPERACIÓN del correo de esa cuenta (access_token y refresh_token). */
 export async function recoverySession(email: string): Promise<{ access: string; refresh: string }> {
   await authApi(

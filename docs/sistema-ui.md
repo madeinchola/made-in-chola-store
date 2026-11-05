@@ -95,7 +95,7 @@ Cabecera y pie reconstruidos midiendo el PDF a 1366 px (el ancho del diseño); u
 | `PublicLayout` | | «Saltar al contenido» · barra de anuncios · cabecera + `main` · pie |
 | `storeRoutes` | | única fuente de rutas; `PENDING_ROUTES` vigila las que aún no existen |
 
-Pantallas provisionales (`PlaceholderPage`) para que el pie y la cabecera no den 404: `/nosotros`, `/contacto`, `/carrito`, `/legal/privacidad`, `/legal/reembolsos`, `/legal/envios`, `/legal/terminos`. Sus contenidos llegan con la diseñadora (nosotros, contacto) y en S15 (legales).
+Pantallas provisionales (`PlaceholderPage`) para que el pie y la cabecera no den 404: `/nosotros`, `/contacto`, `/legal/privacidad`, `/legal/reembolsos`, `/legal/envios`, `/legal/terminos`. Sus contenidos llegan con la diseñadora (nosotros, contacto) y en S15 (legales). `/carrito` ya es la bolsa real (S7: `src/features/cart`, carga diferida) y `/checkout` es provisional («Pago (próximamente)», detrás de la sesión) hasta S10.
 
 ## Peso (auditoría de dependencias de UI)
 

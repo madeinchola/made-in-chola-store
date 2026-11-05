@@ -31,6 +31,11 @@ export const adminConfig = {
         title: "Clientes y cuentas",
         description: "Reglas de los datos que las clientas guardan en su cuenta.",
       },
+      cart: {
+        title: "Carrito y reservas",
+        description:
+          "Cuánto stock puede retener cada bolsa y cuánto tiempo se respeta el precio. Protegen contra quien quiera acaparar productos.",
+      },
     },
     fields: {
       business_name: { label: "Nombre del negocio" },
@@ -70,8 +75,34 @@ export const adminConfig = {
         label: "Validación de NIT y CI en los datos fiscales",
         hint: "Estricto exige el formato de cada documento; flexible acepta cualquier documento alfanumérico (para no frenar una compra por un formato que cambie).",
       },
+      reserve_on_add_to_cart: {
+        label: "Reservar el stock al agregar a la bolsa",
+        hint: "Sí: el producto queda apartado unos minutos para quien lo agregó (más cómodo, pero alguien podría acapararlo). No: solo se aparta al empezar el pago.",
+      },
+      cart_max_qty_per_variant: {
+        label: "Máximo de unidades de una misma variante por bolsa",
+        hint: "Entre 1 y 1000. Protege contra quien quiera acaparar un producto.",
+      },
+      cart_max_lines: {
+        label: "Máximo de productos distintos por bolsa",
+        hint: "Entre 1 y 100.",
+      },
+      cart_max_reserved_units: {
+        label: "Máximo de unidades en total por bolsa",
+        hint: "Entre 1 y 1000. Es lo máximo que una bolsa puede apartar a la vez.",
+      },
+      price_guarantee_days: {
+        label: "Días que se respeta el precio de la bolsa",
+        hint: "Si el precio cambia, el cliente paga el menor durante estos días. 0 = sin garantía.",
+      },
+      guest_cart_retention_days: {
+        label: "Días que se guarda la bolsa de quien no inició sesión",
+        hint: "Entre 1 y 365. Pasado ese tiempo sin actividad se da por abandonada.",
+      },
     },
     behavior: {
+      true: "Sí: se reserva al agregar a la bolsa",
+      false: "No: se reserva al empezar el pago",
       sold_out: "Mostrar como agotado",
       hide: "Ocultar de la tienda",
       strict: "Estricta: exige el formato de cada tipo de documento",

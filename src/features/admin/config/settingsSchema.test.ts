@@ -23,17 +23,23 @@ const problem = (key: string, raw: string) => {
 };
 
 describe("definiciones", () => {
-  it("cubren exactamente las 16 claves sembradas en la base (15 de S2 + tax_id_validation de S6), sin repetir", () => {
+  it("cubren exactamente las 22 claves sembradas en la base (15 de S2 + tax_id_validation de S6 + 6 del carrito de S7), sin repetir", () => {
     expect(SETTING_DEFS.map((d) => d.key).sort()).toEqual(
       [
         "base_currency",
         "business_name",
+        "cart_max_lines",
+        "cart_max_qty_per_variant",
+        "cart_max_reserved_units",
         "contact_email",
         "contact_phone",
         "default_out_of_stock_behavior",
+        "guest_cart_retention_days",
         "pdp_assistance_text",
         "pdp_shipping_return_text",
+        "price_guarantee_days",
         "reservation_ttl_minutes",
+        "reserve_on_add_to_cart",
         "social_facebook",
         "social_instagram",
         "social_tiktok",
@@ -44,6 +50,30 @@ describe("definiciones", () => {
         "whatsapp_orders",
       ].sort(),
     );
+  });
+  it("el ajuste booleano del carrito se guarda como true/false REALES (la base exige un booleano JSON, no un texto)", () => {
+    const d = def("reserve_on_add_to_cart");
+    expect(toJsonValue(d, "true")).toBe(true);
+    expect(toJsonValue(d, "false")).toBe(false);
+    expect(settingProblem(d, "true")).toBeNull();
+    expect(settingProblem(d, "false")).toBeNull();
+    expect(settingProblem(d, "quizás")).toBe("option");
+    expect(settingProblem(d, "")).toBe("option");
+  });
+  it("los topes del carrito son enteros y se guardan como número", () => {
+    for (const key of [
+      "cart_max_qty_per_variant",
+      "cart_max_lines",
+      "cart_max_reserved_units",
+      "price_guarantee_days",
+      "guest_cart_retention_days",
+    ]) {
+      expect(toJsonValue(def(key), "7")).toBe(7);
+      expect(settingProblem(def(key), "7")).toBeNull();
+      expect(settingProblem(def(key), "7,5")).toBe("int");
+      expect(settingProblem(def(key), "-1")).toBe("int");
+      expect(def(key).section).toBe("cart");
+    }
   });
   it("la moneda base y el tiempo de reserva son de solo lectura", () => {
     expect(def("base_currency").readOnly).toBe(true);

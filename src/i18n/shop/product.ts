@@ -18,8 +18,6 @@ export const shopProduct = {
     soldOut: "Agotado",
     colorSoldOut: "Agotado en este color",
     colorSoldOutHint: "Este color está agotado: prueba con otro.",
-    soon: "Próximamente: agregar a la bolsa",
-    soonHint: "Muy pronto podrás agregar este producto a la bolsa.",
   },
   whatsappMessage: {
     intro: "Hola, quiero consultar por este producto:",

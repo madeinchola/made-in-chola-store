@@ -42,6 +42,14 @@ describe("storeRoutes", () => {
     expect(PENDING_ROUTES).not.toContain("search");
   });
 
+  it("la ruta de producto codifica el slug y existe; el pago (provisional) también", () => {
+    expect(storeRoutes.product("chaqueta-japandi")).toBe("/producto/chaqueta-japandi");
+    expect(storeRoutes.product("a b/c")).toBe("/producto/a%20b%2Fc");
+    expect(exists(storeRoutes.product("chaqueta-japandi"))).toBe(true);
+    expect(storeRoutes.checkout).toBe("/checkout");
+    expect(exists(storeRoutes.checkout)).toBe(true);
+  });
+
   it("la tienda y la búsqueda no caen en la 404", () => {
     for (const path of ["/tienda", "/buscar", "/categoria/x", "/coleccion/x"]) {
       expect(exists(path), path).toBe(true);

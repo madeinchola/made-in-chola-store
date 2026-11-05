@@ -5,8 +5,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ColorBars } from "./ColorBars";
 import { ProductAccordions } from "./ProductAccordions";
 import { ProductMedia } from "./ProductMedia";
-import { PurchaseButton } from "./PurchaseButton";
+import { PurchaseButton, type PurchaseSelection } from "./PurchaseButton";
 import { SizePicker } from "./SizePicker";
+import { subscribeToTracking, type TrackEvent } from "../analytics/track";
+import {
+  FakeCartServer,
+  flush,
+  makeLine,
+  makeSnapshot,
+  renderWithCart,
+  signedIn,
+} from "@/features/cart/cart-test-utils";
 import { COLORS, image, productFixture, setViewport } from "./product-test-utils";
 import { colorOptions, sizeOptions } from "./variantSelection";
 
@@ -176,21 +185,147 @@ describe("SizePicker", () => {
 
 describe("PurchaseButton", () => {
   const href = "https://wa.me/59167528677?text=Hola";
+  const selection: PurchaseSelection = {
+    variantId: "v-blanco-xs",
+    item: { id: "p1", name: "Chaqueta Japandi", price: 560, currency: "BOB" },
+    variant: { color: "Blanco", size: "XS" },
+  };
+  const addButton = () => screen.getByRole("button", { name: "Agregar a la bolsa" });
 
-  it("listo + WhatsApp: enlace «Consultar por WhatsApp» que abre pestaña nueva con noopener noreferrer", () => {
-    render(<PurchaseButton state="ready" whatsappHref={href} />);
-    const link = screen.getByRole("link", { name: /Consultar por WhatsApp/ });
-    expect(link).toHaveAttribute("href", href);
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
-    expect(link).toHaveAccessibleName("Consultar por WhatsApp (se abre en una pestaña nueva)");
-  });
+  describe("listo (Agregar a la bolsa)", () => {
+    it("el botón principal es «Agregar a la bolsa», habilitado, y «Consultar por WhatsApp» pasa a enlace secundario DEBAJO", () => {
+      renderWithCart(<PurchaseButton state="ready" whatsappHref={href} selection={selection} />);
+      const button = addButton();
+      expect(button).not.toHaveAttribute("aria-disabled");
+      const link = screen.getByRole("link", { name: /Consultar por WhatsApp/ });
+      expect(link).toHaveAttribute("href", href);
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      expect(link).toHaveAccessibleName("Consultar por WhatsApp (se abre en una pestaña nueva)");
+      // el enlace viene después del botón y no tiene su aspecto (es secundario)
+      expect(button.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(link).toHaveClass("underline");
+      expect(link).toHaveClass("min-h-11");
+    });
 
-  it("listo SIN WhatsApp: botón deshabilitado «Próximamente: agregar a la bolsa»", () => {
-    render(<PurchaseButton state="ready" whatsappHref={null} />);
-    const button = screen.getByRole("button", { name: "Próximamente: agregar a la bolsa" });
-    expect(button).toHaveAttribute("aria-disabled", "true");
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    it("con la bolsa SIN cargar espera a leerla: 3 + 1 = 4, nunca «1» (no deja en 1 una bolsa que tenía 3)", async () => {
+      // Quien tiene sesión entra directo a la ficha y el servidor aún no ha contestado la lectura de su bolsa.
+      const server = new FakeCartServer(makeSnapshot([makeLine("v-blanco-xs", 3)]));
+      const resume = server.pause();
+      renderWithCart(<PurchaseButton state="ready" whatsappHref={href} selection={selection} />, {
+        server,
+        auth: signedIn(),
+      });
+      await flush();
+      await userEvent.setup().click(addButton());
+      await flush();
+      expect(server.callsOf("set_item")).toEqual([]); // todavía no se envía nada: no se adivina la cantidad
+      await act(async () => {
+        resume();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      await flush();
+      expect(server.callsOf("set_item")).toEqual([
+        expect.objectContaining({ action: "set_item", variant_id: "v-blanco-xs", qty: 4 }),
+      ]);
+    });
+
+    it("si la bolsa no se puede leer (sin red) NO envía nada: ni siquiera «1»", async () => {
+      const server = new FakeCartServer(makeSnapshot([makeLine("v-blanco-xs", 3)]));
+      server.forced = { ok: false, status: 0, code: "network", message: "network" };
+      renderWithCart(<PurchaseButton state="ready" whatsappHref={href} selection={selection} />, {
+        server,
+        auth: signedIn(),
+      });
+      await flush();
+      await userEvent.setup().click(addButton());
+      await flush();
+      expect(server.callsOf("set_item")).toEqual([]);
+    });
+
+    it("sin WhatsApp: solo el botón, sin enlace y sin «Próximamente»", () => {
+      renderWithCart(<PurchaseButton state="ready" whatsappHref={null} selection={selection} />);
+      expect(addButton()).toBeInTheDocument();
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Próximamente/)).not.toBeInTheDocument();
+    });
+
+    it("al pulsarlo pide la cantidad ABSOLUTA «la de la bolsa + 1» de esa variante, emite add_to_cart y abre el cajón", async () => {
+      const events: TrackEvent[] = [];
+      const off = subscribeToTracking((e) => events.push(e));
+      const snapshot = makeSnapshot([makeLine("v-blanco-xs", 2), makeLine("otra", 5)]);
+      const { server, cart } = renderWithCart(
+        <PurchaseButton state="ready" whatsappHref={href} selection={selection} />,
+        { snapshot },
+      );
+      await flush();
+      expect(cart().open).toBe(false);
+      await userEvent.setup().click(addButton());
+      await flush();
+      off();
+      expect(server.callsOf("set_item")).toEqual([
+        expect.objectContaining({ action: "set_item", variant_id: "v-blanco-xs", qty: 3 }),
+      ]);
+      expect(events).toEqual([
+        {
+          name: "add_to_cart",
+          item: selection.item,
+          quantity: 1,
+          variant: { color: "Blanco", size: "XS" },
+        },
+      ]);
+      expect(cart().open).toBe(true);
+    });
+
+    it("si esa variante no está en la bolsa, pide cantidad 1", async () => {
+      const { server } = renderWithCart(
+        <PurchaseButton state="ready" whatsappHref={null} selection={selection} />,
+      );
+      await flush();
+      await userEvent.setup().click(addButton());
+      await flush();
+      expect(server.callsOf("set_item")).toEqual([
+        expect.objectContaining({ variant_id: "v-blanco-xs", qty: 1 }),
+      ]);
+    });
+
+    it("dos clics antes de que el servidor responda suman 2 (cuenta lo pendiente, no vuelve a pedir 1)", async () => {
+      const user = userEvent.setup();
+      const { server, cart } = renderWithCart(
+        <PurchaseButton state="ready" whatsappHref={null} selection={selection} />,
+      );
+      await flush();
+      const resume = server.pause();
+      await user.click(addButton());
+      await user.click(addButton());
+      expect(cart().state.pending["v-blanco-xs"]).toBe(2);
+      await act(async () => {
+        resume();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(server.callsOf("set_item").at(-1)).toMatchObject({ qty: 2 });
+    });
+
+    it("sin variante.color/size el evento no los lleva", async () => {
+      const events: TrackEvent[] = [];
+      const off = subscribeToTracking((e) => events.push(e));
+      const { item, variantId } = selection;
+      renderWithCart(
+        <PurchaseButton state="ready" whatsappHref={null} selection={{ variantId, item }} />,
+      );
+      await flush();
+      await userEvent.setup().click(addButton());
+      off();
+      expect(events).toEqual([{ name: "add_to_cart", item, quantity: 1 }]);
+    });
+
+    it("el botón recibe el foco al pulsarlo (Safari no lo hace solo) para que el cajón le devuelva el foco al cerrarse", async () => {
+      renderWithCart(<PurchaseButton state="ready" whatsappHref={null} selection={selection} />);
+      await flush();
+      fireEvent.click(addButton());
+      expect(addButton()).toHaveFocus();
+      await flush();
+    });
   });
 
   it.each([

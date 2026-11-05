@@ -120,6 +120,23 @@ describe("QuantityStepper", () => {
     expect(plus()).toBeEnabled();
   });
 
+  it("enlaza la explicación del tope al «+» SOLO mientras está en el límite", () => {
+    const { rerender } = render(
+      <>
+        <p id="por-que">Máximo 3 por producto.</p>
+        <QuantityStepper value={2} onChange={() => {}} max={3} increaseDescribedBy="por-que" />
+      </>,
+    );
+    expect(plus()).not.toHaveAttribute("aria-describedby");
+    rerender(
+      <>
+        <p id="por-que">Máximo 3 por producto.</p>
+        <QuantityStepper value={3} onChange={() => {}} max={3} increaseDescribedBy="por-que" />
+      </>,
+    );
+    expect(plus()).toHaveAccessibleDescription("Máximo 3 por producto.");
+  });
+
   it("un botón en su límite no emite cambios aunque se active con el teclado y conserva el foco", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -275,5 +292,58 @@ describe("QuantityStepper", () => {
     render(<QuantityStepper value={9999} onChange={() => {}} />);
     expect(field().value).toBe("9999");
     expect(field()).toHaveClass("w-12", "tabular-nums");
+  });
+
+  it("con etiquetas propias (la bolsa) el grupo, el campo, los dos botones y el anuncio dicen de qué producto son", () => {
+    render(
+      <QuantityStepper
+        value={2}
+        max={10}
+        onChange={() => {}}
+        labels={{
+          group: "Cantidad de Falda",
+          input: "Cantidad de Falda",
+          decrease: "Disminuir la cantidad de Falda",
+          increase: "Aumentar la cantidad de Falda",
+          live: (n) => `Cantidad de Falda: ${n}`,
+        }}
+      />,
+    );
+    expect(screen.getByRole("group", { name: "Cantidad de Falda" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Cantidad de Falda" })).toHaveValue("2");
+    expect(
+      screen.getByRole("button", { name: "Disminuir la cantidad de Falda" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Aumentar la cantidad de Falda" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Cantidad de Falda: 2")).toHaveAttribute("aria-live", "polite");
+    // y los nombres genéricos NO están: dos filas no repetirían «Disminuir cantidad»
+    expect(screen.queryByRole("button", { name: "Disminuir cantidad" })).not.toBeInTheDocument();
+  });
+
+  it("dos filas se distinguen entre sí por el nombre del producto", () => {
+    render(
+      <>
+        {["Falda", "Blusa"].map((name) => (
+          <QuantityStepper
+            key={name}
+            value={1}
+            onChange={() => {}}
+            labels={{
+              group: `Cantidad de ${name}`,
+              input: `Cantidad de ${name}`,
+              decrease: `Disminuir la cantidad de ${name}`,
+              increase: `Aumentar la cantidad de ${name}`,
+              live: (n) => `Cantidad de ${name}: ${n}`,
+            }}
+          />
+        ))}
+      </>,
+    );
+    expect(screen.getAllByRole("button", { name: /^Aumentar la cantidad de / })).toHaveLength(2);
+    expect(
+      screen.getByRole("button", { name: "Aumentar la cantidad de Blusa" }),
+    ).toBeInTheDocument();
   });
 });

@@ -34,7 +34,11 @@ interface Baseline {
 }
 
 const toText = (value: unknown): string =>
-  typeof value === "string" ? value : typeof value === "number" ? String(value) : "";
+  typeof value === "string"
+    ? value
+    : typeof value === "number" || typeof value === "boolean"
+      ? String(value)
+      : "";
 
 interface SettingsFormProps {
   rows: readonly SettingRow[];

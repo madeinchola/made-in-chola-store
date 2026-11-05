@@ -5,6 +5,8 @@ import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import { CartEffects } from "@/features/cart/CartEffects";
+import { MiniCartDrawer } from "@/features/cart/MiniCartDrawer";
 
 /** Estructura de las páginas públicas: aviso · cabecera · contenido · pie, con enlace para saltar al contenido. */
 export function PublicLayout() {
@@ -21,6 +23,9 @@ export function PublicLayout() {
   return (
     <div className="flex min-h-screen flex-col">
       <ScrollToTop />
+      {/* Bolsa: avisos globales (fusión, deshacer) y cajón lateral; sin CartProvider no pintan nada. */}
+      <CartEffects />
+      <MiniCartDrawer />
       <a
         href="#contenido"
         onClick={skip}

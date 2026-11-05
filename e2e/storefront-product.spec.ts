@@ -91,7 +91,7 @@ test.describe("ficha de producto", () => {
     expect(new URL(page.url()).pathname).toBe(`/producto/${product.slug}`);
   });
 
-  test("sin elegir talla el botón principal está bloqueado y lo explica; al elegirla es un enlace de WhatsApp con el producto", async ({
+  test("sin elegir talla el botón principal está bloqueado y lo explica; al elegirla es «Agregar a la bolsa» y la consulta por WhatsApp queda debajo como enlace con el producto", async ({
     page,
   }) => {
     const product = await pickWithColorsAndSizes();
@@ -100,6 +100,7 @@ test.describe("ficha de producto", () => {
     await expect(blocked).toHaveAttribute("aria-disabled", "true");
     await expect(page.getByText("Elige una talla para continuar.")).toBeVisible();
     await page.getByRole("radio", { name: product.sizes[0]!.label, exact: true }).first().click();
+    await expect(page.getByRole("button", { name: "Agregar a la bolsa" })).toBeVisible();
     const link = page.getByRole("link", { name: /Consultar por WhatsApp/ });
     await expect(link).toBeVisible();
     const href = (await link.getAttribute("href"))!;

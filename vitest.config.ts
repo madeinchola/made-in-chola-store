@@ -10,6 +10,10 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/**/*.test.mjs"],
     exclude: ["**/node_modules/**", "src/**/*.integration.test.ts"],
+    // El primer test de cada archivo paga la carga de módulos; con la máquina ocupada (CI compartido, Colima, varios
+    // procesos) 5 s no alcanzaban y las pruebas fallaban por tiempo sin tener un defecto. Subir el tope no ralentiza a
+    // nadie: solo deja de fallar a quien tarda un poco más.
+    testTimeout: 15_000,
   },
   resolve: {
     alias: {

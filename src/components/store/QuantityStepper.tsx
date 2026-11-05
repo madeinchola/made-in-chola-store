@@ -12,6 +12,24 @@ interface QuantityStepperProps {
   /** Sin valor = sin tope (hasta 9999). */
   max?: number | undefined;
   disabled?: boolean;
+  /**
+   * Id de un texto que explica el tope (p. ej. «Máximo 10 por producto»). Se enlaza al botón «+» SOLO mientras está en el
+   * límite, para que quien lo enfoque con un lector de pantalla oiga por qué no sube.
+   */
+  increaseDescribedBy?: string | undefined;
+  /**
+   * Nombres accesibles propios. Con VARIAS filas (la bolsa) «Disminuir cantidad» a secas se repite en cada una y no dice de
+   * qué producto es: quien pasa un nombre lo incluye en el grupo, el campo, los dos botones y el anuncio en vivo.
+   */
+  labels?:
+    | {
+        group: string;
+        input: string;
+        decrease: string;
+        increase: string;
+        live: (n: number) => string;
+      }
+    | undefined;
   className?: string;
 }
 
@@ -27,6 +45,8 @@ export function QuantityStepper({
   min = 1,
   max,
   disabled = false,
+  increaseDescribedBy,
+  labels,
   className,
 }: QuantityStepperProps) {
   const [draft, setDraft] = useState<string | null>(null);
@@ -49,7 +69,7 @@ export function QuantityStepper({
   return (
     <div
       role="group"
-      aria-label={t("store.quantity.group")}
+      aria-label={labels?.group ?? t("store.quantity.group")}
       className={cn(
         "inline-flex h-11 items-center rounded-pill border border-input bg-background",
         disabled && "opacity-50",
@@ -58,7 +78,7 @@ export function QuantityStepper({
     >
       <button
         type="button"
-        aria-label={t("store.quantity.decrease")}
+        aria-label={labels?.decrease ?? t("store.quantity.decrease")}
         disabled={disabled}
         aria-disabled={atMin || undefined}
         onClick={() => !atMin && commit(current - 1)}
@@ -71,7 +91,7 @@ export function QuantityStepper({
         inputMode="numeric"
         pattern="[0-9]*"
         autoComplete="off"
-        aria-label={t("store.quantity.input")}
+        aria-label={labels?.input ?? t("store.quantity.input")}
         disabled={disabled}
         value={draft ?? String(current)}
         onChange={(event) => {
@@ -95,16 +115,17 @@ export function QuantityStepper({
       />
       <button
         type="button"
-        aria-label={t("store.quantity.increase")}
+        aria-label={labels?.increase ?? t("store.quantity.increase")}
         disabled={disabled}
         aria-disabled={atMax || undefined}
+        aria-describedby={atMax ? increaseDescribedBy : undefined}
         onClick={() => !atMax && commit(current + 1)}
         className="inline-flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-fast ease-standard hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-transparent"
       >
         <Plus aria-hidden="true" className="h-4 w-4" />
       </button>
       <span aria-live="polite" className="sr-only">
-        {t("store.quantity.live", { n: current })}
+        {labels ? labels.live(current) : t("store.quantity.live", { n: current })}
       </span>
     </div>
   );

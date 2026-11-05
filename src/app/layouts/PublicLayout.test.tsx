@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,7 @@ import {
 } from "@/features/catalog/catalogService";
 import { renderWithApp } from "@/components/layout/layout-test-utils";
 import { fakeAuth } from "@/test/auth-test-utils";
+import { flush, makeLine, makeSnapshot, renderWithCart } from "@/features/cart/cart-test-utils";
 import { PublicLayout } from "./PublicLayout";
 
 vi.mock("@/features/catalog/catalogService", async (importOriginal) => ({
@@ -98,5 +99,24 @@ describe("PublicLayout", () => {
     renderLayout();
     await waitFor(() => expect(getNewsBanner).toHaveBeenCalled());
     expect(screen.queryByRole("region", { name: "Aviso de la tienda" })).not.toBeInTheDocument();
+  });
+
+  it("aloja el cajón de la bolsa UNA vez: cerrado no pinta nada y, al abrirse desde el carrito, aparece como diálogo", async () => {
+    const { cart } = renderWithCart(
+      <Routes>
+        <Route element={<PublicLayout />}>
+          <Route index element={<h1>Contenido de prueba</h1>} />
+        </Route>
+      </Routes>,
+      { snapshot: makeSnapshot([makeLine("a", 2, { name: "Falda" })]), path: "/" },
+    );
+    await flush();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // la cabecera ya lee el número de la bolsa
+    expect(screen.getByRole("link", { name: "Bolsa, 2 productos" })).toBeInTheDocument();
+    act(() => cart().setOpen(true));
+    const dialog = await screen.findByRole("dialog", { name: "Tu bolsa" });
+    expect(await within(dialog).findByRole("link", { name: "Falda" })).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
 });

@@ -4,6 +4,7 @@ import { HomePage } from "@/features/storefront/home/HomePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { RouteError } from "@/components/RouteError";
+import { t } from "@/i18n";
 import { RequireAdmin, RequireAuth } from "@/features/auth/guards";
 import { lazyPage } from "./lazyPage";
 import { UI_GUIDE_ENABLED } from "./uiGuide";
@@ -21,6 +22,8 @@ const taxProfiles = () => import("@/features/account/tax/TaxProfilesPage");
 const orders = () => import("@/features/account/orders/OrdersPage");
 const security = () => import("@/features/account/security/SecurityPage");
 const orderDetail = () => import("@/features/account/orders/OrderDetailPage");
+// Bolsa: la página (y con ella sus líneas, el resumen y las sugerencias) no entra en la carga inicial.
+const cartPage = () => import("@/features/cart/CartPage");
 
 export const routes: RouteObject[] = [
   {
@@ -58,8 +61,15 @@ export const routes: RouteObject[] = [
         path: "producto/:slug",
         element: lazyPage(() => import("@/features/storefront/product/ProductPage"), "ProductPage"),
       },
-      // La bolsa de la cabecera enlaza aquí; el carrito real llega en S7.
-      { path: "carrito", element: <PlaceholderPage /> },
+      // La bolsa de la cabecera enlaza aquí.
+      { path: "carrito", element: lazyPage(cartPage, "CartPage") },
+      // Pago (S10): pantalla provisional detrás de la sesión. «Pagar» manda aquí con sesión y a /login sin ella.
+      {
+        element: <RequireAuth />,
+        children: [
+          { path: "checkout", element: <PlaceholderPage title={t("cart.checkout.soonTitle")} /> },
+        ],
+      },
       // Enlaces del pie del diseño: pantallas provisionales hasta que lleguen sus contenidos (nosotros/contacto con la
       // diseñadora; legales en S15).
       { path: "nosotros", element: <PlaceholderPage /> },

@@ -432,3 +432,8 @@ verify_jwt = true
 
 [functions.change-password]
 verify_jwt = true
+
+# Carrito (S7): lo usan también los INVITADOS (sin sesión). La función identifica por sí misma al usuario
+# (verifica su JWT con Auth) o al invitado (token opaco) y aplica los topes de tasa de D-02.
+[functions.cart]
+verify_jwt = false
