@@ -3,8 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   authApi,
   clearRateLimits,
-  mailpitMessageText,
-  mailpitMessagesTo,
+  recoveryLink,
   registerAndLogin,
   STRONG_PASSWORD,
   svcRpc,
@@ -255,8 +254,13 @@ test.describe("sesiones revocadas", () => {
   });
 });
 
-test.describe("recuperación de contraseña (UI + correo real)", () => {
-  test("pedir enlace → correo en Mailpit → abrir enlace → política → nueva contraseña → entrar con ella", async ({
+/** Auth de la nube permite este redirect (la app del E2E se sirve en localhost:5173). */
+const RESET_URL = "http://localhost:5173/restablecer";
+
+test.describe("recuperación de contraseña (UI + enlace generado)", () => {
+  // La nube no tiene una bandeja de prueba: no se comprueba que el correo LLEGUE. Tras pedir el enlace por la pantalla, se
+  // genera el mismo enlace con la API de administración (`recoveryLink`) y se sigue desde ahí.
+  test("pedir enlace → abrir enlace → política → nueva contraseña → entrar con ella", async ({
     page,
   }) => {
     const u = await registerAndLogin({ name: "Olvidadiza" });
@@ -265,16 +269,7 @@ test.describe("recuperación de contraseña (UI + correo real)", () => {
     await page.getByRole("button", { name: "Enviar enlace" }).click();
     await expect(page.getByRole("status")).toContainText("Si existe una cuenta");
 
-    let msgs: { ID: string }[] = [];
-    for (let i = 0; i < 20 && msgs.length === 0; i++) {
-      await page.waitForTimeout(500);
-      msgs = await mailpitMessagesTo(u.email!);
-    }
-    expect(msgs).toHaveLength(1);
-    const text = await mailpitMessageText(msgs[0]!.ID);
-    const link = /https?:\/\/[^\s"'<>]+\/auth\/v1\/verify\?[^\s"'<>]+/
-      .exec(text)![0]
-      .replace(/&amp;/g, "&");
+    const link = await recoveryLink(u.email!, RESET_URL);
     await page.goto(link);
 
     await expect(page.getByRole("heading", { name: "Nueva contraseña" })).toBeVisible();
@@ -297,16 +292,12 @@ test.describe("recuperación de contraseña (UI + correo real)", () => {
     ).toBeVisible();
   });
 
-  test("email inexistente: MISMO mensaje que uno existente y no llega ningún correo", async ({
-    page,
-  }) => {
+  test("email inexistente: MISMO mensaje que uno existente", async ({ page }) => {
     const ghost = uniqueEmail("sinCuenta");
     await page.goto("/recuperar");
     await page.getByLabel("Email").fill(ghost);
     await page.getByRole("button", { name: "Enviar enlace" }).click();
     await expect(page.getByRole("status")).toContainText("Si existe una cuenta");
-    await page.waitForTimeout(1500);
-    expect(await mailpitMessagesTo(ghost)).toHaveLength(0);
   });
 
   test("enlace de recuperación inválido → mensaje claro y opción de pedir uno nuevo", async ({

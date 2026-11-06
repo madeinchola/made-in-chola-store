@@ -1,4 +1,4 @@
-// Imágenes de EJEMPLO para el catálogo de desarrollo (Supabase LOCAL). Son PNG lisos generados aquí mismo:
+// Imágenes de EJEMPLO para el catálogo de ejemplo (`supabase/seed.sql`) del Supabase de la nube. Son PNG lisos generados aquí mismo:
 // se ven claramente provisionales y no dependen de ningún archivo real. Las oficiales las sube el admin desde el panel.
 import { randomUUID } from "node:crypto";
 import { deflateSync } from "node:zlib";

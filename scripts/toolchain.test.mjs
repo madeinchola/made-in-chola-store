@@ -1,6 +1,7 @@
 // Guarda contra la mezcla de versiones del CLI de Supabase (causó 500 `42P10` en todas las subidas
 // a Storage: el CLI global y el del repo fijan imágenes distintas y `db reset` deja el esquema de
-// Storage más nuevo que el servidor que corre). Ver README → "Backend local".
+// Storage más nuevo que el servidor que corre). Hoy el CLI solo se usa contra la nube (`db push`, despliegue de
+// funciones, tipos), pero una sola versión sigue siendo la regla.
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -77,19 +78,6 @@ describe("CLI de Supabase: una sola versión en todo el repo", () => {
       for (const v of setupCliVersions(readFileSync(join(dir, file), "utf8"))) {
         expect(v, `${file} usa supabase/setup-cli ${v}, pero el repo fija ${pinned}`).toBe(pinned);
       }
-    }
-  });
-
-  it("`npm run dev` arranca Supabase con el script db:start (una sola definición, con sus exclusiones)", () => {
-    const dev = read("scripts/dev.mjs");
-    expect(dev).toMatch(/\[\s*"run"\s*,\s*"--silent"\s*,\s*"db:start"\s*\]/);
-    expect(dev).not.toMatch(/\[\s*"supabase"\s*,\s*"start"\s*\]/);
-    expect(pkg.scripts["db:start"]).toContain("-x logflare,vector");
-  });
-
-  it("los scripts de npm para el stack local existen (el README los usa en vez del CLI global)", () => {
-    for (const s of ["db:start", "db:stop", "db:reset", "db:test", "functions:serve"]) {
-      expect(pkg.scripts[s], s).toMatch(/^supabase /);
     }
   });
 });

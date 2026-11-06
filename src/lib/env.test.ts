@@ -7,14 +7,14 @@ const jwt = (role: string) =>
   `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ role })}.firma-de-prueba-123`;
 
 const valid = {
-  VITE_SUPABASE_URL: "http://127.0.0.1:54321",
+  VITE_SUPABASE_URL: "https://abcdefgh.supabase.co",
   VITE_SUPABASE_ANON_KEY: jwt("anon"),
 };
 
 describe("parseEnv", () => {
   it("acepta una configuración válida y aplica defaults", () => {
     const env = parseEnv(valid);
-    expect(env.VITE_SUPABASE_URL).toBe("http://127.0.0.1:54321");
+    expect(env.VITE_SUPABASE_URL).toBe("https://abcdefgh.supabase.co");
     expect(env.VITE_APP_ENV).toBe("local");
     expect(env.VITE_SITE_URL).toBe("http://localhost:5173");
   });

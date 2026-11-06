@@ -7,8 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "dev:web": "vite",
+    "dev": "vite",
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -17,19 +16,13 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "node scripts/with-clean-db.mjs playwright test",
-    "types": "supabase gen types typescript --local > src/lib/database.types.ts.tmp && mv src/lib/database.types.ts.tmp src/lib/database.types.ts",
-    "db:start": "supabase start -x logflare,vector",
-    "db:stop": "supabase stop",
-    "db:reset": "supabase db reset",
-    "db:test": "supabase test db",
-    "functions:serve": "supabase functions serve",
+    "e2e": "node scripts/cloud-env.mjs playwright test",
+    "types": "supabase gen types typescript --project-id kymleecfbmugdwfzrxee > src/lib/database.types.ts.tmp && mv src/lib/database.types.ts.tmp src/lib/database.types.ts",
     "prepare": "husky",
-    "test:integration": "node scripts/with-clean-db.mjs vitest run --config vitest.integration.config.ts",
+    "test:integration": "node scripts/cloud-env.mjs vitest run --config vitest.integration.config.ts",
     "test:edge": "deno test --allow-net --allow-env supabase/functions/_shared",
     "admin:promote": "node scripts/promote-admin.mjs",
-    "dev:seed": "node scripts/dev-seed.mjs",
-    "verify": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run test:edge && npm run db:test && npm run test:integration && npm run e2e"
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run test:edge"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

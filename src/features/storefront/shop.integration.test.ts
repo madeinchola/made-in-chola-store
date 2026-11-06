@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/lib/database.types";
 import { handleRobots, handleSeo, handleSitemap } from "../../server/seo/handlers";
-import { localEnv, rest, rpc, svcRest } from "../../../test-support/api";
+import { testEnv, rest, rpc, svcRest } from "../../../test-support/api";
 import { DEFAULT_QUERY, type ListingQuery } from "./listing/listParams";
 
 // Los servicios usan getSupabase(): aquí apunta a un cliente REAL con la clave anónima contra Supabase local.
@@ -39,7 +39,7 @@ let categories: { id: string; parent_id: string | null; slug: string }[] = [];
 let productCategories: { product_id: string; category_id: string }[] = [];
 
 beforeAll(async () => {
-  const env = localEnv();
+  const env = testEnv();
   anon = createClient<Database>(env.url, env.anon, { auth: { persistSession: false } });
   holder.client = anon;
   const all = async <T>(table: string, select: string): Promise<T[]> => {
@@ -214,7 +214,8 @@ describe("listado filtrado en el servidor (contra la base local con las semillas
         for (const id of together) expect(apart.has(id)).toBe(true);
       }
     }
-  });
+    // Una consulta por combinación color × talla: contra la nube (≈1 s cada una) tarda minutos.
+  }, 600_000);
 
   it.each([
     ["price_asc", (a: Visible, b: Visible) => a.price_bob - b.price_bob],
@@ -344,7 +345,7 @@ describe("búsqueda tolerante (contra las semillas)", () => {
 
 describe("redirección de slugs y funciones de borde (contra la base real)", () => {
   const env = () => {
-    const e = localEnv();
+    const e = testEnv();
     return { SUPABASE_URL: e.url, SUPABASE_ANON_KEY: e.anon, SITE_URL: "https://madeinchola.com" };
   };
   const deps = () => ({ env: env(), fetch });

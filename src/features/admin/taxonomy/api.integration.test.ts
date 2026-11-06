@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/lib/database.types";
 import {
   clearRateLimits,
-  localEnv,
+  testEnv,
   randomTag,
   registerAndLogin,
   svcRpc,
@@ -30,7 +30,7 @@ import {
 } from "./api";
 
 function clientWith(token?: string): SupabaseClient<Database> {
-  const env = localEnv();
+  const env = testEnv();
   return createClient<Database>(env.url, env.anon, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     ...(token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}),

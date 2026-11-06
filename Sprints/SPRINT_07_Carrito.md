@@ -69,7 +69,7 @@ BR-ACC-01, BR-ACC-05, BR-INV-02, BR-INV-03, BR-INV-04, BR-PRC-05, BR-CHK-03, BR-
 ## Revisión
 - [x] Checklist universal.
 - [x] Revisión de abuso: simular bot que reserva todo el catálogo; validar topes. *(Hecha: ver «Estado real de entrega». El acaparamiento queda acotado por red, no contra una botnet.)*
-- [ ] Revisión de privacidad en localStorage/cookies (consentimiento si aplica).
+- [x] Revisión de privacidad en localStorage/cookies. *(Revisión **técnica** hecha el 2026-11-05: solo se guardan dos claves de `localStorage` sin datos personales y el carrito no pone cookies; detalle en `docs/carrito.md`, «Privacidad en el navegador». Si hace falta un aviso o consentimiento, y con qué texto, es una decisión legal de S15.)*
 - [x] Revisión de consistencia de dinero (sin floats, redondeo único).
 - [ ] Validar con el dueño D-02 (reservar al agregar vs. al iniciar checkout) con datos de las pruebas.
 
@@ -99,7 +99,7 @@ Carrito completo, `merge_guest_cart`, estados de línea y avisos, retención de 
 - **Tope de unidades retenidas por red** (`cart_max_units_per_ip`, 150) y huella de red HMAC: no estaba en el plan; es lo único que acota el acaparamiento cuando se renueva sin fin.
 - **`cart_removed_items`** (15 min) para que «Deshacer» conserve el precio y la garantía.
 - **«Deshacer» en línea** en vez de un toast (alcanzable con teclado y dentro del cajón).
-- **No se hizo** la política de «moneda cambia con la bolsa llena» (hoy solo hay BOB) ni E2E de la expiración de la reserva con reloj acelerado, del cambio de precio desde el panel ni del producto agotado por otro cliente (cubiertos con pgTAP, integración HTTP real y componentes con temporizadores falsos).
+- **No se hizo** la política de «moneda cambia con la bolsa llena» (hoy solo hay BOB). Los E2E de la expiración de la reserva, del cambio de precio desde la administración y del producto agotado **se escribieron y se ejecutaron en el cierre contra la base real de la nube (ver abajo): 4 de 4 pasan**; además siguen cubiertos con pgTAP, integración HTTP real y componentes con temporizadores falsos.
 
 **Bugs reales encontrados por las pruebas y las revisiones, y corregidos:**
 - *Mi migración:* `blocking` y `can_checkout` salían `null` (`false OR NULL`); un invitado podía **inventar tokens** y saltarse el tope de carritos nuevos; `cart_abandon_stale` podía cruzarse con otras operaciones (orden de bloqueo); la retención **parcial** se informaba como completa y `refresh` no la completaba; una cuenta desactivada podía reabrir carrito y retener stock; las funciones internas eran ejecutables por `service_role` (`pg_default_acl`); la fusión **recortaba cantidades en silencio**.
@@ -125,8 +125,28 @@ Carrito completo, `merge_guest_cart`, estados de línea y avisos, retención de 
 6. *Los totales coinciden entre cliente y servidor:* **cumplido por diseño**: el cliente no calcula ningún importe, solo les da formato.
 
 **Pendiente (no hecho):**
-- **Nube (2026-11-05):** la migración (14 en total) y las 7 Edge Functions están en la nube (se re-desplegaron todas porque `rate-limit.ts` y `validate.ts` son compartidos); `pg_cron` activo con sus 5 tareas; el carrito de invitado se probó de extremo a extremo contra el catálogo de ejemplo (token, reserva de 10 min, garantía de precio, token inventado → 400) y se limpió. **No se ejecutó en la nube** la prueba de 31 carritos nuevos desde una misma red (429 en el 31.º): solo está probada en local (`cart.integration`); la clave `cart:new:<ip>` sí se comprobó con la IP real.
+- **Cuentas de prueba sobrantes en la nube:** la primera corrida (fallida) creó 4 administradores temporales `user.<hex>@prueba.test` que no se pudieron borrar (ver abajo). Son inertes (contraseña aleatoria perdida, dominio inexistente) pero conviene neutralizarlos cuando exista el administrador real (hoy el último administrador no se puede degradar).
 - **Decisiones del dueño:** S-04 (7 días), D-02 (reservar al agregar o al pagar), topes por bolsa frente a BR-INV-06, cupo por red, moneda con la bolsa llena. Todo en `SPRINT_19`, sección L.
-- **Pruebas en teléfonos reales** (agregar, cajón, cuenta regresiva, iniciar sesión con la bolsa llena, modo avión) y con VoiceOver/TalkBack (los 3 puntos de accesibilidad menor sin cerrar).
-- **Código:** E2E de expiración/cambio de precio/agotado por otro cliente; persistir lo pendiente sin conexión entre recargas; mensaje propio para la cuenta desactivada; `CartProvider` solo donde se necesita; Lighthouse; la prueba de abuso con datos reales (D-02).
+- **Pruebas en teléfonos reales** (agregar, cajón, cuenta regresiva, iniciar sesión con la bolsa llena, modo avión) y con VoiceOver/TalkBack: la accesibilidad se corrigió en la estructura del DOM, no se ha oído con un lector real.
+- **Código menor:** `add_to_cart` se emite al pulsar y no al confirmar el servidor (S15); la prueba de abuso con datos reales (D-02) necesita clientas reales.
 
+---
+
+## Cierre del sprint (2026-11-05, segunda sesión)
+
+**Hecho:**
+- **Lo pendiente sobrevive a recargar** (clave `mic.cart.pending.v1`, dueño + hora, 24 h; se borra al cambiar de identidad). Almacén, validador y pruebas en `cartStore.ts` / `storage.ts`.
+- **Parpadeo de «Ya no reservamos…» corregido** (`reserving` en el almacén y `reservationView` en la pantalla).
+- **Accesibilidad menor corregida en la estructura del DOM** (regiones vivas persistentes, sin `aria-busy` sobre regiones habladas, rescate del foco). No se oyó con un lector de pantalla.
+- **Textos:** precio garantizado con fecha (hora de La Paz), «Subtotal (n productos)» cuenta lo que se cobra, aviso de «sin conexión» sin pedir mantener la pestaña. `remove_from_cart` con la moneda real.
+- **El carrito ya no se monta en `/admin`** (`CartScope` en `PublicLayout`).
+- **CLS de `/carrito`:** Lighthouse sobre el sitio publicado dio **0,247**; con `min-h-[100svh]` baja a **0,044** (medido antes y después, 2 corridas cada uno, en un build local con la misma configuración).
+- **Nube:** los 31 carritos nuevos desde una red dan 429 en el 31.º (`Retry-After` ≈ 59 min); una cuenta desactivada recibe 401 `invalid_session` en la bolsa (verificado con una cuenta desechable).
+
+**Verificación:** 3830 pruebas unitarias en 184 archivos (S7 al subir: 3751 / 183), tipos, lint y formato limpios, sin avisos de `act` nuevos. **Mutación:** 19 mutantes del almacén y 3 de la reubicación del proveedor, todos detectados (la primera vuelta dejó 7 vivos por falta de pruebas del validador; se escribieron y se corrigió un defecto real: la clave `__proto__` pasaba el patrón); 43 mutantes de la interfaz, 42 detectados y 1 equivalente. **Revisión independiente** (agente sin contexto, solo lectura): sin defectos de corrección en el código de producción; **sí** halló un error en una prueba E2E nueva (esperaba «Ya no reservamos» con el stock en 0, pero el servidor no habla de reserva en una línea agotada), el riesgo de dejar un admin de prueba con contraseña fija en una base remota, una espera sin margen y un precio sin redondear: se corrigieron (el del admin, quitando el administrador de las pruebas, ver abajo). Peso de la entrada pública: **≈ 264,5 kB gzip** (presupuesto 270).
+
+**E2E contra la nube (ejecutados el 2026-11-05):** las 4 pruebas de «cambios mientras se mira la bolsa» **pasan** (3,0 min): precio desde la administración (sube → se respeta el de entrada; baja → se cobra el menor), producto que se agota (avisa, bloquea «Pagar» explicando por qué y se recupera), vencimiento REAL de la reserva con stock (se renueva sola; 1,2 min) y sin stock + «Reintentar reserva» (1,3 min). Cómo se lanzan: `npm run e2e -- e2e/cart.spec.ts --grep "cambios mientras" --project=desktop` (el lanzador `scripts/cloud-env.mjs` carga las claves y fija `E2E_HOST=localhost` y `E2E_PORT=5173`). **Lecciones de las dos corridas:** (1) la primera falló en las 4 porque la función `cart` de la nube solo acepta el origen `http://localhost:5173` (y el de Vercel) por CORS, y el E2E servía desde `127.0.0.1:4173`: el navegador veía «Sin conexión». Playwright ahora acepta `E2E_HOST` y `E2E_PORT`. (2) Mi idea de crear un administrador temporal y borrarlo al final era inviable: `profiles.id` referencia a `auth.users` con `on delete restrict` (las cuentas se desactivan, nunca se borran). Las pruebas ya **no crean ningún administrador**: el tiempo de reserva y el precio los cambia la clave de servicio. (3) La revisión independiente sugería borrar el admin; el diseño de la base lo impide a propósito.
+
+**Integración y pgTAP contra la nube (2026-11-05, noche):** pgTAP 16/16 (incluido `14_s7_carrito`, 473 aserciones, ~3 min) y `cart.integration` 30 verdes + 4 saltadas (las de redes distintas, que la nube no permite falsear: las cubre pgTAP). Un fallo de pgTAP en `03_rate_limit` era de la prueba (`now()` fijo de la transacción frente al reloj real de la función, con la latencia de la nube) y se corrigió.
+
+**Sin tocar el servidor:** ninguna migración ni función cambió en este cierre; lo publicado en la nube sigue siendo válido. Solo hay cambios de interfaz (se despliegan al subir el código).

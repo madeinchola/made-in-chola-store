@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { callFunction } from "./functions";
 
 beforeEach(() => {
-  vi.stubEnv("VITE_SUPABASE_URL", "http://127.0.0.1:54321");
+  vi.stubEnv("VITE_SUPABASE_URL", "https://abcdefgh.supabase.co");
   vi.stubEnv("VITE_SUPABASE_ANON_KEY", "anon-key-de-prueba-suficientemente-larga");
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -20,7 +20,7 @@ describe("callFunction", () => {
       string,
       RequestInit,
     ];
-    expect(url).toBe("http://127.0.0.1:54321/functions/v1/login");
+    expect(url).toBe("https://abcdefgh.supabase.co/functions/v1/login");
     expect(init.method).toBe("POST");
     expect(init.headers).toMatchObject({
       apikey: "anon-key-de-prueba-suficientemente-larga",

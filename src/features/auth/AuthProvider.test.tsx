@@ -106,7 +106,7 @@ beforeEach(() => {
   fake.signOut = vi.fn(async () => ({ error: null }));
   fake.setSession = vi.fn(async () => ({ error: null }));
   fake.unsubscribe = vi.fn();
-  vi.stubEnv("VITE_SUPABASE_URL", "http://127.0.0.1:54321");
+  vi.stubEnv("VITE_SUPABASE_URL", "https://abcdefgh.supabase.co");
   vi.stubEnv("VITE_SUPABASE_ANON_KEY", "anon-key-de-prueba-suficientemente-larga");
 });
 afterEach(() => {

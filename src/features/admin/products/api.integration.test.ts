@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/lib/database.types";
 import {
   clearRateLimits,
-  localEnv,
+  testEnv,
   randomTag,
   registerAndLogin,
   rest,
@@ -56,7 +56,7 @@ const PNG_1X1 = Buffer.from(
 );
 
 function clientWith(token?: string): SupabaseClient<Database> {
-  const env = localEnv();
+  const env = testEnv();
   return createClient<Database>(env.url, env.anon, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     ...(token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}),
@@ -816,7 +816,7 @@ describe("imágenes (Storage real)", () => {
     const img = await uploadProductImage(id, png, []);
     expect(img.sortOrder).toBe(1);
     expect(img.path).toMatch(new RegExp(`^products/${id}/[0-9a-f-]{36}\\.png$`));
-    const url = `${localEnv().url}/storage/v1/object/public/product-images/${img.path}`;
+    const url = `${testEnv().url}/storage/v1/object/public/product-images/${img.path}`;
     const res = await fetch(url);
     expect(res.status).toBe(200);
     expect(Buffer.from(await res.arrayBuffer()).equals(PNG_1X1)).toBe(true);
@@ -863,9 +863,7 @@ describe("imágenes (Storage real)", () => {
     if (!first) throw new Error("fixture");
     await archiveImage(first);
     expect((await detailOf(id)).images).toEqual([]);
-    const res = await fetch(
-      `${localEnv().url}/storage/v1/object/public/product-images/${img.path}`,
-    );
+    const res = await fetch(`${testEnv().url}/storage/v1/object/public/product-images/${img.path}`);
     expect(res.status).toBe(200);
   });
 
@@ -883,10 +881,10 @@ describe("imágenes (Storage real)", () => {
     // un producto inexistente hace fallar el insert (FK) DESPUÉS de subir el archivo
     const ghost = randomUUID();
     await expect(uploadProductImage(ghost, png, [])).rejects.toThrow();
-    const response = await fetch(`${localEnv().url}/storage/v1/object/list/product-images`, {
+    const response = await fetch(`${testEnv().url}/storage/v1/object/list/product-images`, {
       method: "POST",
       headers: {
-        apikey: localEnv().anon,
+        apikey: testEnv().anon,
         Authorization: `Bearer ${adminToken}`,
         "Content-Type": "application/json",
       },

@@ -30,8 +30,10 @@ select is((select allowed from public.check_rate_limit('k2', 3, 60)), true, 'otr
 update public.rate_limits set window_start = now() - interval '61 seconds' where key = 'k1';
 select is((select allowed from public.check_rate_limit('k1', 3, 60)), true, 'pasada la ventana se permite de nuevo');
 select is((select hit_count from public.check_rate_limit('k1', 3, 60)), 2, '…y el contador reinició (1 → 2)');
-update public.rate_limits set window_start = now() - interval '59 seconds' where key = 'k1';
-select is((select hit_count from public.check_rate_limit('k1', 3, 60)), 3, 'a 59 s de 60 la ventana sigue vigente (no reinicia antes de tiempo)');
+-- `clock_timestamp()` y no `now()`: la función mide con el reloj REAL, y `now()` queda fijo al inicio de la transacción (con la
+-- latencia de una base remota, «hace 59 s» según now() eran ya más de 60 s reales). 55 s deja margen para esa latencia.
+update public.rate_limits set window_start = clock_timestamp() - interval '55 seconds' where key = 'k1';
+select is((select hit_count from public.check_rate_limit('k1', 3, 60)), 3, 'a 55 s de 60 la ventana sigue vigente (no reinicia antes de tiempo)');
 
 -- Reset (login exitoso)
 select public.reset_rate_limit('k1');

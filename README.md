@@ -4,46 +4,35 @@ Ecommerce B2C de ropa (Bolivia primero; multi-país/moneda después). Plan compl
 
 ## Requisitos
 - Node ≥ 20 (`.nvmrc` fija 24) y **npm** (único gestor; lockfile: `package-lock.json`).
-- Para Supabase local: **Docker**. El CLI de Supabase **no se instala aparte**: viene fijado en `package.json` (2.121.0, versión exacta) y se usa con `npm run db:*` o `npx supabase …`; no uses uno global (ver «Backend local»). En macOS sin Docker Desktop: `brew install colima docker && colima start --cpu 4 --memory 6`. Para tests de Edge Functions: **Deno** (`brew install deno`).
+- **No hay base de datos local ni Docker.** Solo existe el Supabase de la nube de Made In Chola. El CLI de Supabase **no se instala aparte**: viene fijado en `package.json` (2.121.0, versión exacta) y se usa con `npx supabase …`; no uses uno global.
+- Para las pruebas de las Edge Functions: **Deno** (`brew install deno`). Para el SQL directo de las pruebas (pgTAP): `psql` (`brew install libpq`).
 
 ## Primeros pasos
 ```bash
 npm install
-cp .env.example .env.local   # completa VITE_SUPABASE_ANON_KEY con la que imprime `npm run db:start`
-npm run dev                  # Supabase local (si hay Docker) + Vite en http://localhost:5173
+cp .env.example .env.local   # completa VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY (la clave pública) del Supabase de la nube
+npm run dev                  # Vite en http://localhost:5173, hablando con el Supabase de la nube
 ```
-`npm run dev` avisa claramente y arranca solo el front si Docker no está disponible. `npm run dev:web` arranca solo Vite.
 
 ## Scripts
 | Script | Qué hace |
 |---|---|
-| `npm run dev` / `dev:web` | Desarrollo (con / sin Supabase local) |
+| `npm run dev` | Desarrollo (Vite) contra el Supabase de la nube |
 | `npm run build` / `preview` | Typecheck + build de producción / servirlo |
 | `npm run lint` · `format:check` · `typecheck` | Calidad estática |
 | `npm test` | Unit + componentes (Vitest) |
-| `npm run e2e` | Playwright contra el **build** de producción (móvil y escritorio) |
-| `npm run test:integration` | Tests contra Supabase local real (requiere `npm run db:start` y `functions:serve`) |
 | `npm run test:edge` | Tests Deno de `supabase/functions/_shared` |
-| `npm run db:start` · `db:stop` · `functions:serve` | Arranca / detiene el Supabase local · sirve las Edge Functions |
-| `npm run db:reset` · `db:test` | Reinicia la BD local desde cero · tests SQL (pgTAP) — requieren Docker |
-| `npm run types` | Regenera `src/lib/database.types.ts` desde la BD local |
+| `npm run e2e` | Playwright contra el **build** de producción, **contra la nube** (necesita `.env.e2e`; ver «Pruebas») |
+| `npm run test:integration` | Tests HTTP contra la nube (necesita `.env.e2e`; ver «Pruebas») |
+| `npm run admin:promote -- correo@dominio.com` | Convierte una cuenta existente en admin (clave de servicio en `.env.e2e`) |
+| `npm run types` | Regenera `src/lib/database.types.ts` desde la nube (necesita `SUPABASE_ACCESS_TOKEN`) |
+| `npm run verify` | Lint, formato, tipos, unitarias y Deno (todo lo que no toca la base) |
 
-## Backend local (Supabase)
-```bash
-colima start --cpu 4 --memory 6                 # (macOS sin Docker Desktop)
-npm run db:start                                # BD, Auth, Studio (http://127.0.0.1:54323), Mailpit (http://127.0.0.1:54324)
-npm run functions:serve                         # Edge Functions: login, register, set-password, deactivate-account
-npm run dev:seed                                # usuarios de desarrollo + imágenes de ejemplo (solo funciona contra Supabase LOCAL)
-```
-> **Los cambios en `supabase/config.toml` solo se aplican tras `npm run db:stop && npm run db:start`** (y reiniciar `functions:serve`).
-
-> **Una sola versión del CLI.** Usa siempre `npm run db:*` / `npx supabase`, nunca un `supabase` global (otra versión): cada CLI fija una imagen distinta de Storage y, si se mezclan, `db reset` deja el esquema interno de Storage más nuevo que el servidor que corre. Síntoma: **toda subida de imagen responde 500 `42P10`** y fallan los tests de Storage y «imágenes de ejemplo». Diagnóstico: `docker ps` (imagen de `storage-api`) y `select max(id) from storage.migrations` (74 con `storage-api:v1.72.1` = roto; con `v1.82.1` = correcto). Cura: `npm run db:stop && npm run db:start`. `scripts/toolchain.test.mjs` vigila la versión fijada y este README.
-
-**Usuarios de desarrollo** (contraseña `Chola-Dev-2026!`): `admin@madeinchola.test` (admin) · `cliente@madeinchola.test` · teléfono `71111111`.
-Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run admin:promote -- correo@dominio.com` (solo con la service key; el rol admin jamás se asigna desde el navegador).
+## Backend (Supabase de la nube)
+Solo hay **un** Supabase: el de la nube. El proyecto aún no se ha entregado, así que es también el entorno de pruebas: se puede ensuciar con datos de ejemplo y de prueba, y **antes de la entrega se vacía** (ver «Entrega» más abajo).
 
 ### Backend en la nube (Supabase de Made In Chola)
-- **Un solo Supabase para la app; Docker solo para las pruebas.** `npm run dev` y los despliegues apuntan al proyecto de la nube (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`, la clave _publicable_, en `.env.local` o en las variables de Vercel). Las pruebas destructivas (`db reset`, pgTAP, mutaciones, concurrencia, integración, E2E) **solo** corren en el contenedor local desechable, nunca contra la nube.
+- **Un solo Supabase, sin Docker ni base local.** `npm run dev`, las pruebas y los despliegues apuntan al proyecto de la nube (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`, la clave _publicable_, en `.env.local` o en las variables de Vercel). Las claves secretas (`SUPABASE_SERVICE_ROLE_KEY`) y la contraseña de la base (`SUPABASE_DB_PASSWORD`) van en `.env.e2e`, un archivo que git ignora: nunca en el chat ni en el repo (es público).
 - **Subir migraciones**: `npx supabase db push --db-url "postgresql://postgres:$SUPABASE_DB_PASSWORD@db.<ref>.supabase.co:5432/postgres" --dry-run` (primero el ensayo) y luego sin `--dry-run`. La contraseña va SOLO en una variable de entorno: nunca en un archivo ni en el repo (es público). `db push` no ejecuta `seed.sql`; el catálogo de ejemplo se cargó en la nube a mano el 2026-11-05 (sin usuarios) y hay que borrarlo antes del lanzamiento (ver `SPRINT_19`, sección L).
 - **No empujar `supabase/config.toml` completo** (`supabase config push`): trae valores de desarrollo (límite de inicios de sesión subido a 1000, `site_url` local). Los ajustes de Auth de la nube se hacen en el panel o con la API de gestión, campo por campo.
 - **Edge Functions**: `SUPABASE_ACCESS_TOKEN=… npx supabase functions deploy --project-ref <ref>` y `npx supabase secrets set ALLOWED_ORIGINS=…` (obligatoria: el dominio de Vercel y, si se desarrolla en local contra la nube, `http://localhost:5173`).
@@ -69,7 +58,7 @@ Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run 
 - **Storage**: buckets de lectura pública `product-images` (5 MiB), `site-media` (8 MiB) y `site-videos` (50 MiB). Escritura solo del admin y solo en rutas `products/{id}/{uuid}.ext` y `home/{uuid}.ext`; sin SVG. El borrado directo por SQL sobre `storage.objects` lo bloquea Supabase (se borra con su API).
 - **Ajustes de la tienda** (`store_settings`): contacto, WhatsApp de pedidos, redes sociales, umbrales del semáforo y TTL. Las claves las define el código; el admin solo cambia el valor, que se valida según su tipo.
 - **Front**: `src/features/catalog` → `catalogService` (lectura pública), `priceService`, `stockService` y hooks de TanStack Query con claves `catalogKeys`. `slugify` existe en SQL y en TypeScript y un test de integración verifica que dan lo mismo.
-- **Datos de ejemplo**: `supabase/seed.sql` carga 30 productos con casos límite (agotados, ocultos, borrador, archivado) en cada `db reset`; `npm run dev:seed` sube además imágenes de ejemplo **provisionales** a 8 productos. Las imágenes oficiales las sube el admin desde el panel.
+- **Datos de ejemplo**: `supabase/seed.sql` carga 30 productos con casos límite (agotados, ocultos, borrador, archivado) y se cargó en la nube a mano (`psql -f`); `scripts/dev-seed-images.mjs` sube imágenes de ejemplo **provisionales**. Las imágenes oficiales las sube el admin desde el panel. Antes de la entrega se vacía todo.
 
 ### Panel de administración (Sprint 3)
 - **Rutas** (`/admin/*`, todas tras `RequireAdmin`; la autorización real es la RLS de la base): resumen, productos (listado, nuevo, edición), categorías, colecciones, monedas, ajustes (con banner de noticias) y auditoría. Cada pantalla se carga bajo demanda (`React.lazy`): la tienda pública no descarga código del panel.
@@ -116,22 +105,34 @@ Promover un admin real: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run 
 - **Qué hace:** un invitado llena su bolsa sin cuenta; al iniciar sesión se **fusiona** con la de su cuenta (sin duplicar, con el precio más favorable); el stock se **retiene 10 minutos** al agregar; el precio con el que entró se respeta **7 días** (S-04); y **el servidor decide** precios, estados de cada línea (`ok`, `price_changed`, `low_stock`, `out_of_stock`, `unavailable`) y totales. Detalle, reglas y decisiones en `docs/carrito.md`.
 - **Una sola puerta:** la Edge Function `cart` (acciones `get`, `set_item`, `remove_item`, `clear`, `refresh`, `accept_prices`, `merge`). Las funciones SQL del carrito solo las ejecuta `service_role` (como `reserve_stock`) y las tablas `carts`/`cart_items` solo las lee el admin. El invitado se identifica con un **token opaco** que emite el servidor; la base guarda solo su sha256.
 - **Antiacaparamiento (D-02):** topes por bolsa (10 por variante, 30 líneas, 30 unidades), **tope de unidades retenidas por red** (150; las IPv6 se agrupan por /64 y la base guarda solo una huella HMAC, nunca la IP), 30 carritos nuevos por red y hora, límites de tasa, cuerpo ≤ 2 kB y **ninguna lista** en la validación (el aviso de `zod` no aplica). Repetir peticiones renueva la retención; lo que lo acota es el tope por red. No acota a quien use muchas redes (ver `docs/carrito.md`). Todo se ajusta en Ajustes → «Carrito y reservas»; un interruptor mueve la reserva de «al agregar» a «al pagar».
-- **Cliente:** `src/features/cart/` — un almacén sin React (`cartStore.ts`, una petición a la vez, cantidades absolutas, reintento sin conexión, otras pestañas) y el proveedor que lo ata a la sesión. Solo los invitados guardan algo en el navegador (su token y la última foto del carrito); un usuario con sesión no guarda nada.
+- **Cliente:** `src/features/cart/` — un almacén sin React (`cartStore.ts`, una petición a la vez, cantidades absolutas, reintento sin conexión, otras pestañas) y el proveedor que lo ata a la sesión. En el navegador solo se guardan, sin datos personales, el token y la última foto del carrito (solo invitados) y los cambios pendientes de confirmar (con su dueño, 24 h); ver `docs/carrito.md`.
 - **Migración** `20261103000100_s7_carrito.sql`; pgTAP `14_s7_carrito`; integración con peticiones HTTP reales y **concurrencia real** (8 invitados contra las últimas 3 unidades, fusiones simultáneas, 10 cambios a la vez de una misma bolsa). «Deshacer» conserva el precio y la garantía (S-04) porque el servidor recuerda 15 minutos lo que se quitó.
 
 ## Pruebas
+Todo lo que toca la base corre **contra el proyecto de Supabase de la nube** (aún no entregado). Las claves salen de `.env.local` (públicas) y `.env.e2e` (secretas; git lo ignora) mediante `scripts/cloud-env.mjs`, que se niega a seguir si la URL es local y no imprime ningún valor.
+
 | Comando | Qué prueba | Requiere |
 |---|---|---|
 | `npm test` | Unit y componentes (reglas de identidad, contraseñas, guards, AuthProvider, pantallas) | — |
 | `npm run test:edge` | Código compartido de Edge Functions (Deno) | Deno |
-| `npm run db:test` | pgTAP: RLS por rol, escalada de privilegios, auditoría, rate limit, estructura | Supabase local |
-| `npm run test:integration` | HTTP real contra Edge Functions + Auth + BD (registro, login, bloqueo, recuperación con correo real, desactivación) | Supabase + `functions serve` |
-| `npm run e2e` | Navegador real (móvil y escritorio), axe WCAG, flujos completos | Supabase + `functions serve` |
-| `npm run verify` | Todo lo anterior en orden | todo |
+| `npm run e2e -- --grep "cambios mientras" --project=desktop` | Navegador real contra la nube (flujos completos, axe WCAG). Con `--grep` se elige qué correr | `.env.e2e` |
+| `npm run test:integration` | HTTP real contra Edge Functions + Auth + BD, **y pgTAP** (`supabase/tests/*.sql` con `psql`, sin Docker; crea la extensión `pgtap`) | `.env.e2e` con `SUPABASE_DB_PASSWORD` |
+| `npm run verify` | Todo lo que no toca la base | Deno |
 
-`test:integration` y `e2e` **restauran la BD** (`db reset` + `dev:seed`) al terminar, pase o falle: nada de datos de prueba en tu base de desarrollo.
+**Reglas de las pruebas contra la nube:**
+- **Ensucian de verdad.** Las cuentas no se pueden borrar (`profiles.id → auth.users` con `on delete restrict`, BR-DAT-01) y la auditoría y el libro de stock son inmutables (triggers). Lo que una prueba deja, se queda hasta la entrega, cuando se vacía la base.
+- **La función `cart` de la nube solo acepta el origen `http://localhost:5173`** (y el de Vercel) por CORS: el lanzador sirve el E2E desde ahí (`E2E_HOST=localhost`, `E2E_PORT=5173`).
+- **Lentas:** cada llamada viaja por internet (la integración de Auth tardó 20 min); los tiempos máximos son de 120 s por prueba.
+- **Sin bandeja de correo:** la nube no tiene dónde leer los correos de prueba; el enlace de recuperación se genera con `auth.admin.generateLink` (`recoveryLink`) y no se comprueba que el correo llegue.
+- **No se puede inventar la IP del cliente** (el proxy rechaza una `cf-connecting-ip` falsa): las pruebas de redes distintas están saltadas (`it.skip`) y las cubre pgTAP.
+- **Una tanda completa de integración deja ~100 productos de prueba (casi la mitad *activos*, visibles en la tienda) y ~110 cuentas**; los 30 productos de ejemplo no se tocan. Archiva los de prueba cuando quieras (reversible); todo se vacía al entregar.
+- **Contraseñas aleatorias** en las cuentas de prueba (las constantes del repo son públicas).
+- Las tablas de reservas y carritos no admiten escritura ni con la clave de servicio: el vencimiento de una reserva se prueba bajando `reservation_ttl_minutes` a 1 y esperando.
 
-**CI de GitHub** (`.github/workflows/ci.yml`): en cada push y PR corre solo `quality` (lint, formato, tipos, `npm test` y build). Todo lo que necesita Supabase local (pgTAP, Edge Functions, integración y E2E) se ejecuta en local con `npm run verify`, por ejemplo antes de cada release. El job `backend` se quitó el 2026-10-30; la versión anterior está en el commit `9d886df`.
+### Entrega (vaciar la base)
+Cuando todo esté verificado y antes de entregar al cliente: (1) **ensayar** el vaciado con `npx supabase db reset --linked --no-seed` (borra todo, incluidas auditoría y stock, y vuelve a aplicar las migraciones; sin datos de ejemplo); (2) crear el administrador real con `npm run admin:promote`; (3) cargar el catálogo real desde el panel; (4) **cambiar** la contraseña de la base, rotar las claves secretas y revocar el token personal de Supabase; (5) borrar `.env.e2e`. Ver `Sprints/SPRINT_19_Acciones_Manuales.md`.
+
+**CI de GitHub** (`.github/workflows/ci.yml`): en cada push y PR corre solo `quality` (lint, formato, tipos, `npm test` y build). Nada que toque la base corre en CI: se ejecuta a mano contra la nube.
 
 ## Estructura
 ```
@@ -155,4 +156,4 @@ e2e/             Playwright                       scripts/      dev.mjs
 TypeScript `strict` + `noUncheckedIndexedAccess` (Acrosoft: `strict: false`); `no-console` e `unused-vars` como error; CSP sin `'unsafe-inline'` en scripts y con `frame-ancestors 'none'` global; E2E contra el build; imports de i18n tipados.
 
 ## Línea base del bundle
-S0: JS 365 kB (gzip ≈ 111 kB) · CSS 10.6 kB. S1: gzip ≈ 202 kB. **S3: entrada pública gzip ≈ 214 kB** (`index` 71 + `App` 143) · CSS 5.3 kB gzip; el panel son ~38 chunks de carga diferida (≈ 100 kB gzip en total) que solo descarga un admin. **S4: entrada pública gzip ≈ 244 kB** (`index` 73 + `App` 171; +30 kB por Radix Dialog/Accordion, lucide y los layouts de la tienda) · CSS ≈ 9 kB gzip · fuentes 57 kB (4 `.woff2` latinos, se descargan según se usan). Mejora posible, no hecha: cargar bajo demanda `MobileMenu` y `SearchSheet` (≈ −20 kB gzip), junto con la partición por rutas de S5. Se mide de nuevo al cerrar cada sprint. **S5: entrada pública gzip ≈ 243,5 kB** (`index` 72 + `App` 171; la portada, la ficha, el listado, la búsqueda y el SEO suman ≈ +16 kB que se compensan sacando las pantallas de cuenta a carga diferida; presupuesto: ≤ 270 kB) · listado y ficha en chunks propios (≈ 9 y 11 kB). Lighthouse móvil local: portada 89 / ficha 88 de rendimiento, accesibilidad 100 en ambas, CLS 0,045. **S6: entrada pública gzip ≈ 256,2 kB** (`index` 79,8 + `App` 176,4; presupuesto ≤ 270) · CSS 11,4 kB; las pantallas de cuenta van en chunks propios (direcciones ≈ 13 kB, perfil ≈ 4,5, fiscales ≈ 4,6, seguridad ≈ 2,6) y Leaflet (≈ 50 kB + 6 kB de CSS) solo se descarga al abrir el selector de ubicación. Lighthouse no se repitió en S6. **S7: entrada pública gzip ≈ 263,1 kB** (`index` 81,6 + `App` 181,5; presupuesto ≤ 270) · CSS 11,5 kB; la página de la bolsa (≈ 1,8 kB) y el contenido del cajón (≈ 1,0 kB) cargan bajo demanda. Lighthouse no se repitió en S7.
+S0: JS 365 kB (gzip ≈ 111 kB) · CSS 10.6 kB. S1: gzip ≈ 202 kB. **S3: entrada pública gzip ≈ 214 kB** (`index` 71 + `App` 143) · CSS 5.3 kB gzip; el panel son ~38 chunks de carga diferida (≈ 100 kB gzip en total) que solo descarga un admin. **S4: entrada pública gzip ≈ 244 kB** (`index` 73 + `App` 171; +30 kB por Radix Dialog/Accordion, lucide y los layouts de la tienda) · CSS ≈ 9 kB gzip · fuentes 57 kB (4 `.woff2` latinos, se descargan según se usan). Mejora posible, no hecha: cargar bajo demanda `MobileMenu` y `SearchSheet` (≈ −20 kB gzip), junto con la partición por rutas de S5. Se mide de nuevo al cerrar cada sprint. **S5: entrada pública gzip ≈ 243,5 kB** (`index` 72 + `App` 171; la portada, la ficha, el listado, la búsqueda y el SEO suman ≈ +16 kB que se compensan sacando las pantallas de cuenta a carga diferida; presupuesto: ≤ 270 kB) · listado y ficha en chunks propios (≈ 9 y 11 kB). Lighthouse móvil local: portada 89 / ficha 88 de rendimiento, accesibilidad 100 en ambas, CLS 0,045. **S6: entrada pública gzip ≈ 256,2 kB** (`index` 79,8 + `App` 176,4; presupuesto ≤ 270) · CSS 11,4 kB; las pantallas de cuenta van en chunks propios (direcciones ≈ 13 kB, perfil ≈ 4,5, fiscales ≈ 4,6, seguridad ≈ 2,6) y Leaflet (≈ 50 kB + 6 kB de CSS) solo se descarga al abrir el selector de ubicación. Lighthouse no se repitió en S6. **S7: entrada pública gzip ≈ 263,1 kB** (`index` 81,6 + `App` 181,5; presupuesto ≤ 270) · CSS 11,5 kB; la página de la bolsa (≈ 1,8 kB) y el contenido del cajón (≈ 1,0 kB) cargan bajo demanda. Al cerrar S7: **≈ 264,5 kB** (`index` 81,8 + `App` 182,7; +1,4 kB por la persistencia y las regiones vivas). **Lighthouse móvil sobre el sitio publicado (2026-11-05, Chrome headless, red 4G lenta simulada):** portada 81 / tienda 83 / ficha 85 / bolsa 81 de rendimiento, accesibilidad 100 y buenas prácticas 100 en las cuatro, SEO 100 (63 en `/carrito` porque es `noindex` a propósito); LCP 2,8–3,8 s. Encontró un CLS de **0,247 en `/carrito`** (el pie saltaba al sustituir el marcador de carga por una bolsa vacía): con `min-h-[100svh]` en la página baja a **0,044** (medido antes y después, dos corridas cada uno). La portada (81) y la tienda (83) quedan bajo el 85 del criterio de S5, que en local daba 89 y 88: con CDN y fotos reales el número cambia, y está por revisar con el contenido real.

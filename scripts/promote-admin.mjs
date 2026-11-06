@@ -1,8 +1,8 @@
-// Promueve una cuenta EXISTENTE a admin. Solo con la service key (nunca desde el navegador).
-//   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npm run admin:promote -- correo@dominio.com
-// Local: omite las variables y se leen de `supabase status`.
-import { execSync } from "node:child_process";
+// Promueve una cuenta EXISTENTE a admin en el Supabase de la nube. Solo con la service key (nunca desde el navegador).
+//   npm run admin:promote -- correo@dominio.com
+// La URL sale de .env.local (VITE_SUPABASE_URL) y la clave de .env.e2e (SUPABASE_SERVICE_ROLE_KEY); ambos los ignora git.
 import { pathToFileURL } from "node:url";
+import { buildCloudEnv } from "./cloud-env.mjs";
 
 export function parseArgs(argv) {
   const email = argv.find((a) => !a.startsWith("--"))?.trim();
@@ -13,18 +13,12 @@ export function parseArgs(argv) {
 }
 
 function credentials() {
-  let url = process.env.SUPABASE_URL;
-  let key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const env = buildCloudEnv();
+  const url = env.SUPABASE_URL ?? env.VITE_SUPABASE_URL;
+  const key = env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
-    const out = execSync("npx supabase status -o env", {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    const get = (k) => new RegExp(`^${k}="?([^"\\n]+)"?$`, "m").exec(out)?.[1];
-    url ??= get("API_URL");
-    key ??= get("SERVICE_ROLE_KEY");
+    throw new Error("Faltan VITE_SUPABASE_URL (.env.local) y SUPABASE_SERVICE_ROLE_KEY (.env.e2e)");
   }
-  if (!url || !key) throw new Error("Faltan SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
   return { url, key };
 }
 

@@ -5,7 +5,8 @@ on:
     branches: [main]
 
 env:
-  VITE_SUPABASE_URL: http://127.0.0.1:54321
+  # Valores de relleno: las pruebas unitarias y el build no hablan con ninguna base de datos.
+  VITE_SUPABASE_URL: https://placeholder.supabase.co
   VITE_APP_ENV: local
 
 jobs:
@@ -26,6 +27,6 @@ jobs:
         env:
           VITE_SUPABASE_ANON_KEY: ci-placeholder-anon-key-not-a-secret
 
-# Las pruebas de base de datos, Edge Functions, integración y E2E (que necesitan Supabase local)
-# NO corren aquí: se ejecutan en local con `npm run verify`. El job `backend` se quitó el
-# 2026-10-30 por decisión del dueño del proyecto; la versión anterior está en el commit 9d886df.
+# Las pruebas contra la base (integración, pgTAP y E2E) NO corren aquí: son destructivas y se ejecutan a mano contra el
+# proyecto de Supabase de la nube con `npm run test:integration` y `npm run e2e` (necesitan .env.e2e). El job `backend`
+# (Supabase local en Docker) se quitó el 2026-10-30 y el Supabase local dejó de existir el 2026-11-05.

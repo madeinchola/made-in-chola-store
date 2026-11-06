@@ -1,18 +1,17 @@
-import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { promisify } from "node:util";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/lib/database.types";
 import {
   clearRateLimits,
-  localEnv,
+  dbPsql,
   randomTag,
   registerAndLogin,
   rest,
   rpc,
   svcRest,
   svcRpc,
+  testEnv,
 } from "../../../test-support/api";
 
 // Los servicios usan getSupabase(): en este archivo apunta a un cliente REAL contra Supabase local, que se
@@ -39,7 +38,7 @@ const PNG_1X1 = Buffer.from(
 );
 
 function clientWith(token?: string): SupabaseClient<Database> {
-  const env = localEnv();
+  const env = testEnv();
   return createClient<Database>(env.url, env.anon, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     ...(token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}),
@@ -66,24 +65,8 @@ async function runPool<T>(
   return results;
 }
 
-const run = promisify(execFile);
-/** Una sesión de psql INDEPENDIENTE dentro del contenedor de Postgres local (conexión propia, transacción propia). */
-const psql = (sql: string) =>
-  run("docker", [
-    "exec",
-    "-i",
-    "supabase_db_made-in-chola",
-    "psql",
-    "-U",
-    "postgres",
-    "-d",
-    "postgres",
-    "-At",
-    "-v",
-    "ON_ERROR_STOP=1",
-    "-c",
-    sql,
-  ]);
+/** Una sesión de psql INDEPENDIENTE contra la base de la nube (conexión propia, transacción propia). */
+const psql = dbPsql;
 
 interface MadeProduct {
   productId: string;
@@ -327,7 +310,8 @@ describe("reserve_stock bajo concurrencia real", () => {
     const key = 700000 + Math.floor(Math.random() * 90000);
     // El "portero" toma el cerrojo exclusivo y lo mantiene 6 s; las 30 sesiones piden el compartido y quedan en espera.
     // Al soltarse, TODAS avanzan a la vez hacia reserve_stock, cada una con su conexión y su transacción.
-    const gate = psql(`select pg_advisory_lock(${key}); select pg_sleep(6);`);
+    // La nube tarda en abrir cada conexión (TLS por internet): el portero espera 15 s y se da 5 s para que las 30 lleguen al cerrojo.
+    const gate = psql(`select pg_advisory_lock(${key}); select pg_sleep(15);`);
     await new Promise((resolve) => setTimeout(resolve, 800));
     const workers = Array.from({ length: 30 }, () =>
       psql(
@@ -635,7 +619,7 @@ describe("stock desde el panel admin (servicios con sesión de admin)", () => {
 
 // ── 5. Storage real ────────────────────────────────────────────────────────────────────────
 describe("Storage (API real)", () => {
-  const env = () => localEnv();
+  const env = () => testEnv();
   async function upload(
     bucket: string,
     path: string,
@@ -662,7 +646,10 @@ describe("Storage (API real)", () => {
     return { status: res.status, body: json };
   }
   const publicGet = (bucket: string, path: string) =>
-    fetch(`${env().url}/storage/v1/object/public/${bucket}/${path}`);
+    // `?t=` rompe la caché de la CDN: en la nube un archivo borrado se sigue sirviendo desde ella hasta que caduca su caché.
+    fetch(
+      `${env().url}/storage/v1/object/public/${bucket}/${path}?t=${Date.now()}${Math.random()}`,
+    );
   const remove = (bucket: string, path: string, token: string) =>
     fetch(`${env().url}/storage/v1/object/${bucket}/${path}`, {
       method: "DELETE",
@@ -922,7 +909,7 @@ describe("datos de ejemplo (supabase/seed.sql + npm run dev:seed)", () => {
     expect(d?.images.length, "faltan las imágenes de ejemplo: ejecuta `npm run dev:seed`").toBe(2);
     const first = d?.images[0];
     const res = await fetch(
-      `${localEnv().url}/storage/v1/object/public/product-images/${first?.path}`,
+      `${testEnv().url}/storage/v1/object/public/product-images/${first?.path}`,
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("image/png");

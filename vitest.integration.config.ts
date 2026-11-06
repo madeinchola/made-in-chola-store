@@ -15,7 +15,8 @@ export default defineConfig(({ mode }) => ({
     env: loadEnv(mode, process.cwd(), "VITE_"),
     // Los tests comparten estado global (rate limits, misma IP): se ejecutan en serie.
     fileParallelism: false,
-    testTimeout: 30_000,
-    hookTimeout: 30_000,
+    // La nube responde en segundos (arranques en frío de las funciones, ida y vuelta por internet): con 30 s fallaban pruebas sanas.
+    testTimeout: 120_000,
+    hookTimeout: 60_000,
   },
 }));

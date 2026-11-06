@@ -1,4 +1,4 @@
--- pgTAP · se ejecuta con `supabase test db` (requiere Docker / Supabase local).
+-- pgTAP · se ejecuta contra la base de la nube con psql (necesita la extensión pgtap y SUPABASE_DB_URL).
 begin;
 select plan(7);
 

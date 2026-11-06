@@ -2,8 +2,9 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   clearRateLimits,
   fn,
-  localEnv,
-  localSql,
+  testEnv,
+  dbExec,
+  dbSql,
   login,
   recoverySession,
   refreshSession,
@@ -141,7 +142,7 @@ describe("direcciones: permisos, aislamiento entre clientes y reglas (HTTP real)
   });
 
   it("sin sesión (anon) no hay acceso", async () => {
-    const env = localEnv();
+    const env = testEnv();
     const res = await fetch(`${env.url}/rest/v1/addresses?select=id`, {
       headers: { apikey: env.anon },
     });
@@ -451,7 +452,7 @@ describe("datos fiscales y preferencias del perfil (HTTP real)", () => {
   });
 
   it("los países y monedas habilitados se leen por las vistas públicas (sin sesión) y solo lo habilitado", async () => {
-    const env = localEnv();
+    const env = testEnv();
     const countries = await (
       await fetch(`${env.url}/rest/v1/public_countries?select=code`, {
         headers: { apikey: env.anon },
@@ -912,9 +913,9 @@ describe("arreglos de la revisión independiente (Edge Functions + GoTrue real)"
     const issued = (res.body as any).session;
     expect(issued.access_token).toBeTruthy();
     expect((await refreshSession(issued.refresh_token)).status).toBe(200);
-    expect(
-      Number(localSql(`select count(*) from auth.sessions where user_id = '${user.id}'`)),
-    ).toBe(1);
+    expect(Number(dbSql(`select count(*) from auth.sessions where user_id = '${user.id}'`))).toBe(
+      1,
+    );
     expect((await login(user.email!, NEW_PASSWORD)).status).toBe(200);
   });
 
@@ -932,15 +933,15 @@ describe("arreglos de la revisión independiente (Edge Functions + GoTrue real)"
     const issued = (res.body as any).session;
     expect(issued.access_token).toBeTruthy();
     expect((await refreshSession(issued.refresh_token)).status).toBe(200); // la nueva sí sirve
-    expect(
-      Number(localSql(`select count(*) from auth.sessions where user_id = '${user.id}'`)),
-    ).toBe(1);
+    expect(Number(dbSql(`select count(*) from auth.sessions where user_id = '${user.id}'`))).toBe(
+      1,
+    );
   });
 
   it("confirmar con la contraseña NO deja sesiones fantasma: tras update-contact y un intento fallido la cuenta sigue con UNA sola sesión; tras change-password, con la nueva", async () => {
     const user = await registerAndLogin();
     const sessions = () =>
-      Number(localSql(`select count(*) from auth.sessions where user_id = '${user.id}'`));
+      Number(dbSql(`select count(*) from auth.sessions where user_id = '${user.id}'`));
     expect(sessions()).toBe(1); // la del inicio de sesión
     await fn(
       "update-contact",
@@ -970,11 +971,18 @@ describe("arreglos de la revisión independiente (Edge Functions + GoTrue real)"
       { token: user.token },
     );
     expect(
-      localSql(`select raw_user_meta_data ? 'full_name' from auth.users where id = '${user.id}'`),
+      dbSql(`select raw_user_meta_data ? 'full_name' from auth.users where id = '${user.id}'`),
     ).toBe("t");
+    // En la nube GoTrue NO guarda sus eventos en `auth.audit_log_entries` (la tabla queda vacía), así que se inserta uno
+    // sintético con la forma del que escribe GoTrue (`actor_id`, email y nombre reales), para comprobar que se limpia.
+    dbExec(
+      `insert into auth.audit_log_entries (instance_id, id, payload, created_at, ip_address)
+       values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(),
+               json_build_object('action', 'login', 'actor_id', '${user.id}', 'actor_username', '${user.email}', 'actor_name', 'Persona Con Nombre', 'log_type', 'account'), now(), '')`,
+    );
     expect(
       Number(
-        localSql(
+        dbSql(
           `select count(*) from auth.audit_log_entries where payload::text like '%${user.email}%'`,
         ),
       ),
@@ -987,7 +995,7 @@ describe("arreglos de la revisión independiente (Edge Functions + GoTrue real)"
     );
     expect(res.status).toBe(200);
     expect(
-      localSql(
+      dbSql(
         `select raw_user_meta_data ?| array['full_name','phone_e164','name'] from auth.users where id = '${user.id}'`,
       ),
     ).toBe("f");
@@ -995,23 +1003,23 @@ describe("arreglos de la revisión independiente (Edge Functions + GoTrue real)"
     // genérico «deleted-…» y el id: no es un dato personal.)
     expect(
       Number(
-        localSql(
+        dbSql(
           `select count(*) from auth.audit_log_entries where payload::text like '%${user.email}%' or payload::text like '%Persona Con Nombre%'`,
         ),
       ),
     ).toBe(0);
     expect(
       Number(
-        localSql(
+        dbSql(
           `select count(*) from auth.audit_log_entries where payload::text like '%actor_name%' and payload::text like '%${user.id}%'`,
         ),
       ),
     ).toBe(0);
-    expect(localSql(`select email from auth.users where id = '${user.id}'`)).toMatch(
+    expect(dbSql(`select email from auth.users where id = '${user.id}'`)).toMatch(
       /^deleted-.*@deleted\.madeinchola\.invalid$/,
     );
     expect(
-      localSql(`select identity_data::text from auth.identities where user_id = '${user.id}'`),
+      dbSql(`select identity_data::text from auth.identities where user_id = '${user.id}'`),
     ).not.toContain(user.email!);
   });
 

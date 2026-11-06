@@ -1,36 +1,32 @@
-// Utilidades de prueba contra Supabase LOCAL (integración y E2E). Nunca apuntan a un entorno remoto.
-import { execSync } from "node:child_process";
+// Utilidades de prueba contra el Supabase de la NUBE de Made In Chola (integración y E2E). No existe un Supabase local.
+// Las claves llegan por el entorno: `npm run e2e` y `npm run test:integration` cargan `.env.local` (públicas) y `.env.e2e`
+// (secretas, git lo ignora) con `scripts/cloud-env.mjs`. El SQL directo (`dbSql`, `dbExec`) está en `./db`.
 import { randomBytes } from "node:crypto";
 
-export interface LocalEnv {
+export { dbExec, dbPsql, dbRunFile, dbSql } from "./db";
+
+export interface TestEnv {
   url: string;
   anon: string;
   service: string;
 }
 
-let cached: LocalEnv | undefined;
+let cached: TestEnv | undefined;
 
-export function localEnv(): LocalEnv {
+export function testEnv(): TestEnv {
   if (cached) return cached;
-  const url = process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:54321";
-  if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(url)) {
+  const url = process.env.VITE_SUPABASE_URL;
+  const anon = process.env.VITE_SUPABASE_ANON_KEY;
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !anon || !service) {
     throw new Error(
-      `Las pruebas de integración solo corren contra Supabase LOCAL (recibido: ${url})`,
+      "Faltan VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY o SUPABASE_SERVICE_ROLE_KEY. Lanza las pruebas con " +
+        "`npm run e2e` o `npm run test:integration`: cargan .env.local y .env.e2e.",
     );
   }
-  let anon = process.env.VITE_SUPABASE_ANON_KEY;
-  let service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!anon || !service || anon.startsWith("placeholder")) {
-    const out = execSync("npx supabase status -o env", {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-    const get = (k: string) => new RegExp(`^${k}="?([^"\\n]+)"?$`, "m").exec(out)?.[1];
-    anon = get("ANON_KEY");
-    service = get("SERVICE_ROLE_KEY");
+  if (/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(\/|$)/i.test(url)) {
+    throw new Error(`Solo existe el Supabase de la nube: la URL no puede ser local (${url}).`);
   }
-  if (!anon || !service)
-    throw new Error("No se pudo obtener las claves locales: ¿corre `supabase start`?");
   cached = { url, anon, service };
   return cached;
 }
@@ -46,7 +42,7 @@ async function call(
   path: string,
   opts: { body?: unknown; key?: string; token?: string; headers?: Record<string, string> } = {},
 ): Promise<ApiResponse> {
-  const env = localEnv();
+  const env = testEnv();
   const res = await fetch(`${env.url}${path}`, {
     method,
     redirect: "manual",
@@ -86,9 +82,13 @@ export const authApi = (
   opts: { body?: unknown; token?: string; anon?: boolean } = {},
 ) => call(method, `/auth/v1/${path}`, opts);
 
-const service = () => ({ key: localEnv().service, token: localEnv().service });
+const service = () => ({ key: testEnv().service, token: testEnv().service });
 export const svcRpc = (name: string, args: unknown) =>
   call("POST", `/rest/v1/rpc/${name}`, { body: args, ...service() });
+/** Auth de administración (crear/borrar usuarios) con la clave de servicio. */
+export const svcAuth = (method: string, path: string, body?: unknown) =>
+  call(method, `/auth/v1/${path}`, { body, ...service() });
+
 export const svcRest = (method: string, path: string, body?: unknown) =>
   call(method, `/rest/v1/${path}`, {
     body,
@@ -107,7 +107,14 @@ export const uniquePhone = () =>
     .toString()
     .padStart(7, "0")}`;
 
-export const STRONG_PASSWORD = "Chola-Cielo-2026!";
+/** Contraseña al azar que cumple la política (para cuentas de prueba en la base real: nunca una fija, el repo es público). */
+export const randomPassword = () => `Zq-${randomBytes(12).toString("base64url")}-9!`;
+
+/**
+ * Contraseña válida de las cuentas de prueba: AL AZAR en cada ejecución (la misma dentro de un proceso, así que registrar y
+ * volver a entrar con ella funciona). Antes era una constante, y el repo es público.
+ */
+export const STRONG_PASSWORD = randomPassword();
 
 export function jwtSub(token: string): string {
   return JSON.parse(Buffer.from(token.split(".")[1]!, "base64url").toString()).sub as string;
@@ -141,70 +148,25 @@ export async function registerAndLogin(
   };
 }
 
-export async function mailpitMessagesTo(address: string): Promise<{ ID: string }[]> {
-  const res = await fetch(
-    `http://127.0.0.1:54324/api/v1/search?query=${encodeURIComponent(`to:${address}`)}`,
-  );
-  return ((await res.json()) as { messages: { ID: string }[] }).messages ?? [];
-}
-
-export async function mailpitMessageText(id: string): Promise<string> {
-  const res = await fetch(`http://127.0.0.1:54324/api/v1/message/${id}`);
-  const m = (await res.json()) as { Text: string; HTML: string };
-  return `${m.Text}\n${m.HTML}`;
-}
-
 /**
- * Consulta SQL de SOLO LECTURA contra la base LOCAL (contenedor de `supabase start`), para mirar lo que la API REST no
- * expone (esquema `auth`: sesiones, metadatos, eventos). Solo para pruebas de integración locales.
+ * Enlace de recuperación de contraseña de esa cuenta, generado por la API de administración (no se manda ningún correo:
+ * la nube no tiene una bandeja donde leerlos). Es el mismo enlace que llevaría el correo.
  */
-export function localSql(query: string): string {
-  if (!/^\s*select\b/i.test(query)) throw new Error("localSql solo admite consultas SELECT");
-  return execSync(`docker exec -i supabase_db_made-in-chola psql -U postgres -d postgres -tA`, {
-    input: query,
-    encoding: "utf8",
-    stdio: ["pipe", "pipe", "ignore"],
-  }).trim();
-}
-
-/**
- * Sentencia SQL de ESCRITURA contra la base LOCAL desechable, para simular lo que la API no deja hacer (p. ej. el paso del
- * tiempo: vencer una retención o la garantía de un precio). Solo para pruebas de integración locales; nunca contra la nube.
- */
-export function localExec(statement: string): void {
-  execSync(
-    `docker exec -i supabase_db_made-in-chola psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q`,
-    {
-      input: statement,
-      encoding: "utf8",
-      stdio: ["pipe", "ignore", "pipe"],
-    },
-  );
-}
-
-/** Sesión temporal del ENLACE DE RECUPERACIÓN del correo de esa cuenta (access_token y refresh_token). */
-export async function recoverySession(email: string): Promise<{ access: string; refresh: string }> {
-  await authApi(
-    "POST",
-    `recover?redirect_to=${encodeURIComponent("http://localhost:5173/restablecer")}`,
-    {
-      body: { email },
-    },
-  );
-  let messages: { ID: string }[] = [];
-  for (let i = 0; i < 12 && messages.length === 0; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    messages = await mailpitMessagesTo(email);
-  }
-  if (messages.length === 0) throw new Error("no llegó el correo de recuperación");
-  const text = await mailpitMessageText(messages[messages.length - 1]!.ID);
-  const link = /https?:\/\/[^\s"'<>]+\/auth\/v1\/verify\?[^\s"'<>]+/
-    .exec(text)?.[0]
-    ?.replace(/&amp;/g, "&");
-  if (!link) throw new Error("el correo no trae el enlace de verificación");
-  const verify = await fetch(link.replace(/^https?:\/\/[^/]+/, localEnv().url), {
-    redirect: "manual",
+export async function recoveryLink(email: string, redirectTo?: string): Promise<string> {
+  const res = await svcAuth("POST", "admin/generate_link", {
+    type: "recovery",
+    email,
+    ...(redirectTo ? { redirect_to: redirectTo } : {}),
   });
+  if (res.status !== 200 || typeof res.body?.action_link !== "string") {
+    throw new Error(`generate_link falló: ${res.status} ${JSON.stringify(res.body)}`);
+  }
+  return res.body.action_link as string;
+}
+
+/** Sesión temporal del ENLACE DE RECUPERACIÓN de esa cuenta (access_token y refresh_token). */
+export async function recoverySession(email: string): Promise<{ access: string; refresh: string }> {
+  const verify = await fetch(await recoveryLink(email), { redirect: "manual" });
   const hash = new URLSearchParams((verify.headers.get("location") ?? "").split("#")[1]);
   return { access: hash.get("access_token")!, refresh: hash.get("refresh_token")! };
 }

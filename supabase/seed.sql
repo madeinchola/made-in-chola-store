@@ -1,9 +1,10 @@
--- Datos de DESARROLLO (solo se cargan con `supabase db reset` en local; jamás en staging/producción).
+-- Datos de EJEMPLO para el periodo de construcción (se cargaron a la nube con `psql -f supabase/seed.sql`).
+-- Antes de la ENTREGA la base se vacía (`npx supabase db reset --linked --no-seed`): estos datos no deben llegar al cliente.
 -- Catálogo de ejemplo inspirado en el diseño de Made In Chola: 30 productos con colores, tallas, stock variado
 -- (incluye agotados, ocultos por agotarse, un borrador y un archivado), categorías, colecciones, relacionados,
 -- banner y el home. TODO el texto de ejemplo es PROVISIONAL: se reemplaza desde el panel de administración.
 -- El stock inicial entra por el libro mayor (apply_stock_change), como en producción.
--- Las imágenes de ejemplo las sube `npm run dev:seed` (necesita la API de Storage).
+-- Las imágenes de ejemplo las sube `scripts/dev-seed-images.mjs` (necesita la API de Storage y la clave de servicio).
 
 do $seed$
 declare

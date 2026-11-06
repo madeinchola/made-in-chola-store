@@ -1,22 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { localEnv, rpc } from "../../test-support/api";
+import { testEnv, rpc } from "../../test-support/api";
 
-// Integración REAL contra Supabase local (`npm run test:integration`). No se salta en silencio.
-describe("Supabase local: API", () => {
+// Integración REAL contra el Supabase de la nube (`npm run test:integration`). No se salta en silencio.
+describe("Supabase: API", () => {
   it("healthcheck responde con ok, UTC y hora del servidor cercana a la local", async () => {
-    const res = await rpc("healthcheck", {}, localEnv().anon);
+    const res = await rpc("healthcheck", {}, testEnv().anon);
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(res.body.timezone).toBe("UTC");
     expect(Math.abs(Date.parse(res.body.server_time_utc) - Date.now())).toBeLessThan(60_000);
   });
-  it("una petición sin apikey se trata como anon (el gateway no la rechaza: la barrera es RLS/GRANT)", async () => {
-    const res = await fetch(`${localEnv().url}/rest/v1/rpc/healthcheck`, {
+  // En la nube el gateway EXIGE la apikey y rechaza con 401 una petición sin ella (el Supabase local la trataba como anon).
+  it("una petición sin apikey la rechaza el gateway con 401", async () => {
+    const res = await fetch(`${testEnv().url}/rest/v1/rpc/healthcheck`, {
       method: "POST",
       body: "{}",
       headers: { "Content-Type": "application/json" },
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(401);
   });
   it("un JWT falsificado se rechaza con 401", async () => {
     const res = await rpc(

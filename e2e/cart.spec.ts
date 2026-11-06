@@ -49,6 +49,7 @@ async function pickVariant(): Promise<Pick> {
   expect(response.status).toBe(200);
   for (const row of response.body as {
     id: string;
+    stock_on_hand: number;
     product_colors: { name: string } | null;
     product_sizes: { label: string } | null;
     products: { slug: string; name: string };
@@ -61,9 +62,21 @@ async function pickVariant(): Promise<Pick> {
     if (typeof priceBob !== "number") continue;
     // Las retenciones del carrito duran 10 minutos: lo que dejan las pruebas anteriores agotaría la variante de la semilla
     // (10 unidades). Se le repone stock para que cada prueba parta de una ficha con existencias, como un cliente real.
+    // Se repone hasta 40 unidades (solo si hace falta): es la base real y no se infla el stock en cada corrida.
+    const delta = 40 - row.stock_on_hand;
+    if (delta <= 0) {
+      return {
+        variantId: row.id,
+        slug: row.products.slug,
+        name: row.products.name,
+        color: row.product_colors?.name ?? null,
+        size: row.product_sizes?.label ?? null,
+        price: priceBob,
+      };
+    }
     const topUp = await svcRpc("apply_stock_change", {
       p_variant_id: row.id,
-      p_delta: 30,
+      p_delta: delta,
       p_reason: "import",
       p_note: "E2E del carrito: reposición",
     });
@@ -299,9 +312,7 @@ test.describe("Pagar", () => {
     await context.setOffline(true);
     await line.getByRole("button", { name: /^Aumentar la cantidad de / }).click();
     await expect(
-      page.getByText(
-        "Sin conexión. Mantén esta pestaña abierta: enviaremos tus cambios cuando vuelva la conexión.",
-      ),
+      page.getByText("Sin conexión. Enviaremos tus cambios cuando vuelva la conexión."),
     ).toBeVisible();
     // el cambio se ve igualmente y Pagar explica el bloqueo (sigue enfocable)
     await expect(line.getByRole("textbox", { name: /^Cantidad de / })).toHaveValue("2");
@@ -316,9 +327,7 @@ test.describe("Pagar", () => {
     const retry = page.getByRole("button", { name: "Reintentar" });
     if (await retry.isVisible()) await retry.click();
     await expect(
-      page.getByText(
-        "Sin conexión. Mantén esta pestaña abierta: enviaremos tus cambios cuando vuelva la conexión.",
-      ),
+      page.getByText("Sin conexión. Enviaremos tus cambios cuando vuelva la conexión."),
     ).toBeHidden(SLOW);
     await expect(line.locator("p", { hasText: "Total de la línea:" })).toContainText(
       money(pick.price * 2),
@@ -409,5 +418,263 @@ test.describe("diseño y accesibilidad", () => {
     levels.forEach((level, i) => {
       if (i > 0) expect(level, `encabezado ${i}`).toBeLessThanOrEqual(levels[i - 1]! + 1);
     });
+  });
+});
+
+/**
+ * Cambios que ocurren MIENTRAS la persona mira su bolsa (Sprint 7, criterios 3 y 4): el precio cambia desde la
+ * administración, el producto se agota y la reserva vence DE VERDAD en el servidor.
+ *
+ * Las tablas de reservas y de carritos no admiten escritura ni con la clave de servicio (por diseño), así que no se puede
+ * «adelantar el reloj» con SQL como en las pruebas locales. El vencimiento se prueba de verdad: se baja a 1
+ * minuto el tiempo de reserva (`reservation_ttl_minutes`, rango 1–1440), el cliente agrega y se espera. Todo lo que se
+ * cambia (tiempo de reserva, precio, stock) se restaura al terminar, también si la prueba falla.
+ */
+test.describe("cambios mientras se mira la bolsa", () => {
+  let originalTtl: number | null = null;
+
+  // Sin administrador: el tiempo de reserva y el precio los cambia la CLAVE DE SERVICIO. (Un administrador de prueba no se
+  // puede borrar después: `profiles.id` referencia a `auth.users` con `on delete restrict`, las cuentas solo se desactivan.)
+  test.beforeAll(async () => {
+    originalTtl = await reservationMinutes();
+  });
+
+  // Red de seguridad: si una prueba murió antes de su `finally`, el tiempo de reserva vuelve a su valor.
+  test.afterAll(async () => {
+    if (originalTtl !== null) await setting("reservation_ttl_minutes", originalTtl);
+  });
+
+  const setting = async (key: string, value: unknown) => {
+    const res = await svcRest("PATCH", `store_settings?key=eq.${key}`, { value });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+  };
+  const reservationMinutes = async () => {
+    const res = await svcRest("GET", "store_settings?key=eq.reservation_ttl_minutes&select=value");
+    return (res.body as { value: number }[])[0]!.value;
+  };
+  const stockOf = async (variantId: string) => {
+    const res = await svcRest("GET", `product_variants?id=eq.${variantId}&select=stock_on_hand`);
+    return (res.body as { stock_on_hand: number }[])[0]!.stock_on_hand;
+  };
+  const changeStock = async (variantId: string, delta: number) => {
+    const res = await svcRpc("apply_stock_change", {
+      p_variant_id: variantId,
+      p_delta: delta,
+      p_reason: delta < 0 ? "sale" : "import",
+      p_note: "E2E del carrito: cambio mientras se mira la bolsa",
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+  };
+  const productIdOf = async (slug: string) => {
+    const res = await svcRest("GET", `products?slug=eq.${slug}&select=id`);
+    return (res.body as { id: string }[])[0]!.id;
+  };
+  const setBobPrice = async (productId: string, amount: number) => {
+    const res = await svcRest(
+      "PATCH",
+      `product_prices?product_id=eq.${productId}&currency=eq.BOB&country=is.null`,
+      { amount },
+    );
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toHaveLength(1);
+  };
+
+  /** Lo que el servidor dice de la retención en CADA respuesta de la función `cart` que recibe el navegador. */
+  function watchReservation(page: Page) {
+    const seen: { state: string; expiresAt: number | null }[] = [];
+    page.on("response", async (response) => {
+      if (!response.url().includes("/functions/v1/cart") || response.request().method() !== "POST")
+        return;
+      try {
+        const body = (await response.json()) as {
+          cart?: { reservation?: { state: string; expires_at: string | null } } | null;
+        };
+        const r = body.cart?.reservation;
+        if (r)
+          seen.push({ state: r.state, expiresAt: r.expires_at ? Date.parse(r.expires_at) : null });
+      } catch {
+        /* no era JSON (preflight, redirección): no importa */
+      }
+    });
+    return seen;
+  }
+  const latestHold = (seen: { state: string; expiresAt: number | null }[]) =>
+    seen.reduce(
+      (max, s) => (s.state === "held" && s.expiresAt ? Math.max(max, s.expiresAt) : max),
+      0,
+    );
+
+  test("el precio cambia desde la administración: sube → se respeta el de entrada; baja → se cobra el menor", async ({
+    page,
+  }) => {
+    const pick = await pickVariant();
+    const productId = await productIdOf(pick.slug);
+    const raised = Number((pick.price + 10).toFixed(2));
+    const lowered = Number((pick.price - 10).toFixed(2));
+    expect(lowered).toBeGreaterThan(0);
+    try {
+      await addFromProduct(page, pick);
+      await goToBag(page);
+      const line = bagLines(page).first();
+      const total = line.locator("p", { hasText: "Total de la línea:" });
+      await expect(total).toContainText(money(pick.price));
+
+      // SUBE (dentro de la garantía de 7 días): se sigue cobrando lo que costaba al agregar, y se le dice
+      await setBobPrice(productId, raised);
+      await page.reload();
+      await expect(total).toContainText(money(pick.price), SLOW);
+      await expect(line.getByText(/Te respetamos el precio con el que lo agregaste/)).toBeVisible(
+        SLOW,
+      );
+      await expect(
+        page
+          .getByRole("region", { name: "Resumen" })
+          .getByText("Total", { exact: true })
+          .locator(".."),
+      ).toContainText(money(pick.price));
+      // avisar no bloquea: se puede pagar
+      await expect(page.getByRole("main").getByText("Pagar", { exact: true })).not.toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+
+      // BAJA por debajo del de entrada: se cobra el menor, y se le dice cuánto paga
+      await setBobPrice(productId, lowered);
+      await page.reload();
+      await expect(total).toContainText(money(lowered), SLOW);
+      await expect(line.getByText(`Bajó de precio: pagas ${money(lowered)}`)).toBeVisible();
+      await expect(
+        page
+          .getByRole("region", { name: "Resumen" })
+          .getByText("Total", { exact: true })
+          .locator(".."),
+      ).toContainText(money(lowered));
+    } finally {
+      await setBobPrice(productId, pick.price);
+    }
+  });
+
+  test("el producto se agota mientras está en la bolsa: avisa, bloquea «Pagar» explicando por qué y se recupera al reponerse", async ({
+    page,
+  }) => {
+    const pick = await pickVariant();
+    const before = await stockOf(pick.variantId);
+    let taken = 0;
+    try {
+      await addFromProduct(page, pick);
+      await goToBag(page);
+      const pay = page.getByRole("main").getByText("Pagar", { exact: true });
+      await expect(pay).not.toHaveAttribute("aria-disabled", "true");
+
+      // Se agota por completo (otra clienta compró todo): el stock físico llega a 0
+      taken = await stockOf(pick.variantId);
+      await changeStock(pick.variantId, -taken);
+      expect(await stockOf(pick.variantId)).toBe(0);
+      await page.reload();
+      const line = bagLines(page).first();
+      await expect(line.getByText("Se agotó")).toBeVisible(SLOW);
+      await expect(pay).toHaveAttribute("aria-disabled", "true");
+      await expect(pay).not.toHaveAttribute("href");
+      await expect(pay).toHaveAccessibleDescription(
+        "Algunos productos tienen problemas: resuélvelos para pagar.",
+      );
+      // el total no cuenta lo agotado
+      await expect(
+        page
+          .getByRole("region", { name: "Resumen" })
+          .getByText("Total", { exact: true })
+          .locator(".."),
+      ).toContainText(money(0));
+
+      // Se repone: al volver a mirar, el aviso desaparece y se puede pagar
+      await changeStock(pick.variantId, taken);
+      taken = 0;
+      await page.reload();
+      await expect(bagLines(page)).toHaveCount(1);
+      await expect(line.getByText("Se agotó")).toBeHidden(SLOW);
+      await expect(pay).not.toHaveAttribute("aria-disabled", "true", SLOW);
+    } finally {
+      if (taken > 0) await changeStock(pick.variantId, taken);
+      expect(await stockOf(pick.variantId)).toBeGreaterThanOrEqual(before);
+    }
+  });
+
+  test("la reserva vence de verdad en el servidor y, si hay stock, se renueva sola sin perder la bolsa", async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    const original = await reservationMinutes();
+    try {
+      await setting("reservation_ttl_minutes", 1);
+      const pick = await pickVariant();
+      const seen = watchReservation(page);
+      await addFromProduct(page, pick);
+      await expect(
+        drawer(page).getByText(/Reservamos tus productos durante (00:[0-5]\d|01:00)/),
+      ).toBeVisible(SLOW);
+      await expect.poll(() => latestHold(seen), SLOW).toBeGreaterThan(0);
+      const first = latestHold(seen);
+      await goToBag(page);
+
+      // El servidor deja vencer esa retención (1 minuto) y, al llegar la cuenta a 0, el cliente pide reservar de nuevo:
+      // una hora de vencimiento MÁS TARDÍA solo puede ser una retención nueva (el servidor no alarga la que sigue viva).
+      await expect
+        .poll(() => latestHold(seen), { timeout: 150_000, intervals: [2000] })
+        .toBeGreaterThan(first + 30_000);
+      await expect(bagLines(page)).toHaveCount(1);
+      await expect(
+        page.getByText(/Reservamos tus productos durante (00:[0-5]\d|01:00)/),
+      ).toBeVisible();
+      await expect(page.getByText(/Ya no reservamos tus productos/)).toBeHidden();
+    } finally {
+      await setting("reservation_ttl_minutes", original);
+    }
+  });
+
+  test("sin stock la bolsa lo dice y no muestra cuenta; al vencer la reserva y volver el stock, «Reintentar reserva» la reserva de nuevo", async ({
+    page,
+  }) => {
+    test.setTimeout(300_000);
+    const original = await reservationMinutes();
+    const pick = await pickVariant();
+    let taken = 0;
+    try {
+      await setting("reservation_ttl_minutes", 1);
+      const seen = watchReservation(page);
+      await addFromProduct(page, pick);
+      await expect.poll(() => latestHold(seen), SLOW).toBeGreaterThan(0);
+      const heldUntil = latestHold(seen);
+      await goToBag(page);
+      const line = bagLines(page).first();
+
+      // Se agota. Una línea agotada no se puede retener: el servidor ya no habla de reserva (estado «none»), así que la
+      // bolsa dice «Se agotó» y no muestra ni cuenta regresiva ni «Ya no reservamos».
+      taken = await stockOf(pick.variantId);
+      await changeStock(pick.variantId, -taken);
+      await page.reload();
+      await expect(line.getByText("Se agotó")).toBeVisible(SLOW);
+      await expect(page.getByText(/Reservamos tus productos durante/)).toBeHidden();
+      await expect(page.getByText(/Ya no reservamos tus productos/)).toBeHidden();
+
+      // La retención de 1 minuto que tenía vence DE VERDAD; vuelve el stock; al mirar de nuevo, el servidor dice que la
+      // propia retención venció y hay stock: ahí sí aparece el aviso y «Reintentar reserva».
+      const wait = heldUntil - Date.now() + 8_000;
+      if (wait > 0) await page.waitForTimeout(wait);
+      await changeStock(pick.variantId, taken);
+      taken = 0;
+      await page.reload();
+      await expect(page.getByText(/Ya no reservamos tus productos/)).toBeVisible(SLOW);
+      await expect(bagLines(page)).toHaveCount(1); // la bolsa permanece
+      await expect(line.getByText("Se agotó")).toBeHidden();
+
+      await page.getByRole("button", { name: "Reintentar reserva" }).click();
+      await expect(
+        page.getByText(/Reservamos tus productos durante (00:[0-5]\d|01:00)/),
+      ).toBeVisible(SLOW);
+      await expect(page.getByText(/Ya no reservamos tus productos/)).toBeHidden();
+    } finally {
+      if (taken > 0) await changeStock(pick.variantId, taken);
+      await setting("reservation_ttl_minutes", original);
+    }
   });
 });
