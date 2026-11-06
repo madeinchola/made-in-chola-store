@@ -36,6 +36,11 @@ export const adminConfig = {
         description:
           "Cuánto stock puede retener cada bolsa y cuánto tiempo se respeta el precio. Protegen contra quien quiera acaparar productos.",
       },
+      shipping: {
+        title: "Envíos y entregas",
+        description:
+          "Cómo se calcula la distancia de envío y con cuánta antelación se pueden programar las entregas. Las tarifas, zonas y franjas se editan en la sección Envíos.",
+      },
     },
     fields: {
       business_name: { label: "Nombre del negocio" },
@@ -98,6 +103,22 @@ export const adminConfig = {
       guest_cart_retention_days: {
         label: "Días que se guarda la bolsa de quien no inició sesión",
         hint: "Entre 1 y 365. Pasado ese tiempo sin actividad se da por abandonada.",
+      },
+      cart_max_units_per_ip: {
+        label: "Máximo de unidades retenidas por conexión a internet",
+        hint: "Entre 1 y 10000. Es lo que todas las bolsas de invitado de una misma conexión pueden tener apartado a la vez. Súbelo si muchas clientas comparten la misma red (por ejemplo, datos móviles) y se quedan sin reserva.",
+      },
+      shipping_route_factor_pct: {
+        label: "Factor de ruta del envío (%)",
+        hint: "Entre 100 y 300. La distancia en línea recta se multiplica por este factor para estimar la ruta real: 130 = 30 % más.",
+      },
+      delivery_min_lead_hours: {
+        label: "Horas mínimas de antelación de una entrega",
+        hint: "Entre 0 y 720. Con 24, la entrega más pronta es dentro de un día. 0 = se puede programar para ya.",
+      },
+      delivery_max_days_ahead: {
+        label: "Días máximos hacia adelante para programar una entrega",
+        hint: "Entre 1 y 180.",
       },
     },
     behavior: {

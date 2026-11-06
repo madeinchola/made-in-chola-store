@@ -33,7 +33,7 @@ async function setup(snapshot: CartSnapshot, options: Parameters<typeof renderWi
 }
 
 describe("CartSummary · importes del servidor", () => {
-  it("subtotal, envío («se calcula en el siguiente paso») y total; sin fila de descuento mientras sea null", async () => {
+  it("subtotal, envío («se calcula al elegir tu dirección») y total; sin fila de descuento mientras sea null", async () => {
     await setup(
       makeSnapshot([makeLine("a", 2, { unit_price: 560, line_total: 1120 }), makeLine("b", 1)]),
     );
@@ -42,7 +42,7 @@ describe("CartSummary · importes del servidor", () => {
     const rows = Array.from(summary.querySelectorAll("dl > div")).map((r) => r.textContent);
     expect(rows).toEqual([
       "Subtotal (3 productos)Bs 1.220,00",
-      "EnvíoSe calcula en el siguiente paso",
+      "EnvíoSe calcula al elegir tu dirección",
       "TotalBs 1.220,00",
     ]);
     expect(within(summary).queryByText("Descuento")).not.toBeInTheDocument();
@@ -119,14 +119,17 @@ describe("CartSummary · importes del servidor", () => {
     const server = new FakeCartServer(makeSnapshot([makeLine("a", 1)]));
     await setup(makeSnapshot([makeLine("a", 1)]), { server });
     const summary = screen.getByRole("region", { name: "Resumen" });
-    const status = within(summary).getByRole("status");
+    // la región viva de la CABECERA del resumen (el estimador de envío trae las suyas, más abajo)
+    const headerStatus = () =>
+      within(within(summary).getByRole("heading", { level: 2 }).parentElement!).getByRole("status");
+    const status = headerStatus();
     expect(summary).not.toHaveAttribute("aria-busy");
     expect(status).toBeEmptyDOMElement(); // existe vacía, esperando
     const resume = server.pause();
     await user.click(screen.getByRole("button", { name: /^Aumentar la cantidad de / }));
     // `aria-busy` haría que algunos lectores de pantalla no anuncien lo que hay dentro (la propia región viva)
     expect(summary).not.toHaveAttribute("aria-busy");
-    expect(within(summary).getByRole("status")).toBe(status); // el MISMO nodo: el texto entra en una región existente
+    expect(headerStatus()).toBe(status); // el MISMO nodo: el texto entra en una región existente
     expect(status).toHaveTextContent("Actualizando…");
     expect(summary.querySelector("dl")).toHaveClass("opacity-60");
     await act(async () => {

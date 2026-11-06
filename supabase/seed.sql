@@ -175,3 +175,50 @@ begin
   update public.store_settings set value = '"Texto provisional: ¿necesitas ayuda? Escríbenos por WhatsApp."' where key = 'pdp_assistance_text';
 end
 $seed$;
+
+-- ── Envíos (S8): datos de EJEMPLO ───────────────────────────────────────────────────────────
+-- TODO valor de aquí es PROVISIONAL (origen, zonas, tarifas, franjas): son los de ejemplo de SPRINT_08 para poder probar la
+-- cotización de punta a punta. Las respuestas reales del dueño (PENDIENTES_ADMIN §B) se cargan desde /admin/envios.
+-- Sin efecto si ya hay ubicaciones (se puede ejecutar de nuevo sin duplicar nada).
+do $seed_s8$
+declare
+  v_origin   uuid;
+  v_delivery uuid;
+  v_radius   uuid;
+begin
+  if exists (select 1 from public.store_locations) then
+    return;
+  end if;
+
+  insert into public.store_locations (name, address_text, city, lat, lng, pickup_hours, is_primary)
+  values ('Taller (ejemplo)', 'Dirección de ejemplo, zona centro', 'La Paz', -16.5, -68.15, 'Lun a Vie 9:00 a 18:00 (ejemplo)', true)
+  returning id into v_origin;
+
+  select id into v_delivery from public.shipping_methods where code = 'delivery';
+  update public.shipping_methods set eta_min_days = 1, eta_max_days = 2 where id = v_delivery;
+  insert into public.shipping_methods (code, name, kind, description, pickup_location_id, sort_order, eta_min_days, eta_max_days)
+  values ('recojo', 'Recojo en el taller', 'pickup', 'Sin costo. Te avisamos cuando tu pedido esté listo.', v_origin, 10, 0, 1);
+
+  -- Cobertura: un radio de 25 km del origen y las ciudades de la zona (ambas permiten; una zona NO permitida bloquearía).
+  insert into public.shipping_zones (name, kind, center_lat, center_lng, radius_km)
+  values ('Hasta 25 km del taller (ejemplo)', 'radius', -16.5, -68.15, 25)
+  returning id into v_radius;
+  insert into public.shipping_zones (name, kind, cities)
+  values ('La Paz y El Alto (ejemplo)', 'city', array['La Paz', 'El Alto']);
+
+  -- Tarifa por distancia: 0–3 km Bs 15, 3–6 km Bs 20, 6–10 km Bs 30; pasados 10 km, Bs 3 por km adicional; mínimo 15, máximo 60.
+  -- Va ATADA a la zona de radio: la zona por ciudades se decide con el texto que escribe la clienta, y sin esta atadura una
+  -- ciudad válida con un pin absurdo (otro continente) se cotizaría al máximo. Con ella, fuera de los 25 km no hay tarifa
+  -- («no_rate») aunque la ciudad coincida.
+  insert into public.shipping_rate_rules (method_id, zone_id, name, kind, params)
+  values (v_delivery, v_radius, 'Por distancia (ejemplo)', 'distance',
+          '{"tiers":[{"up_to_km":3,"cost":15},{"up_to_km":6,"cost":20},{"up_to_km":10,"cost":30}],
+            "extra_per_km":3,"min_cost":15,"max_cost":60}'::jsonb);
+
+  -- Franjas de entrega a domicilio: martes a sábado, por la mañana y por la tarde, 5 entregas por franja.
+  insert into public.delivery_slots (method_id, weekday, start_time, end_time, capacity)
+  select v_delivery, d.weekday, s.start_time, s.end_time, 5
+    from generate_series(2, 6) as d(weekday)
+    cross join (values ('09:00'::time, '12:00'::time), ('14:00'::time, '18:00'::time)) as s(start_time, end_time);
+end;
+$seed_s8$;

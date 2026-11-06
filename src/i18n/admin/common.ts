@@ -8,6 +8,7 @@ export const adminCommon = {
     categories: "Categorías",
     collections: "Colecciones",
     currencies: "Monedas",
+    shipping: "Envíos",
     settings: "Ajustes",
     audit: "Auditoría",
     storefront: "Ver tienda",

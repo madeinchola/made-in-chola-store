@@ -153,6 +153,50 @@ export const routes: RouteObject[] = [
             ),
           },
           {
+            path: "envios",
+            element: lazyPage(
+              () => import("@/features/admin/shipping/ShippingLayout"),
+              "ShippingLayout",
+            ),
+            children: [
+              {
+                index: true,
+                element: lazyPage(
+                  () => import("@/features/admin/shipping/StorePage"),
+                  "ShippingStorePage",
+                ),
+              },
+              {
+                path: "zonas",
+                element: lazyPage(
+                  () => import("@/features/admin/shipping/ZonesPage"),
+                  "ShippingZonesPage",
+                ),
+              },
+              {
+                path: "tarifas",
+                element: lazyPage(
+                  () => import("@/features/admin/shipping/RatesPage"),
+                  "ShippingRatesPage",
+                ),
+              },
+              {
+                path: "entregas",
+                element: lazyPage(
+                  () => import("@/features/admin/shipping/SlotsPage"),
+                  "ShippingDeliveryPage",
+                ),
+              },
+              {
+                path: "simulador",
+                element: lazyPage(
+                  () => import("@/features/admin/shipping/SimulatorPage"),
+                  "ShippingSimulatorPage",
+                ),
+              },
+            ],
+          },
+          {
             path: "ajustes",
             element: lazyPage(() => import("@/features/admin/config/SettingsPage"), "SettingsPage"),
           },

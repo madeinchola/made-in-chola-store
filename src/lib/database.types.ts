@@ -69,6 +69,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"blocked_dates": {
+                  Row: {
+                    "blocked_on": string,"id": string,"reason": string | null,"archived_at": string | null,"created_at": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blocked_on": string,"id"?: string,"reason"?: string | null,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "blocked_on"?: string,"id"?: string,"reason"?: string | null,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"categories": {
                   Row: {
                     "archived_at": string | null,"created_at": string,"description": string | null,"id": string,"name": string,"parent_id": string | null,"slug": string,"sort_order": number,"updated_at": string
@@ -148,6 +162,46 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"delivery_bookings": {
+                  Row: {
+                    "created_at": string,"delivery_date": string,"id": string,"owner_id": string,"owner_type": string,"slot_id": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"delivery_date": string,"id"?: string,"owner_id": string,"owner_type": string,"slot_id": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"delivery_date"?: string,"id"?: string,"owner_id"?: string,"owner_type"?: string,"slot_id"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "delivery_bookings_slot_id_fkey"
+      columns: ["slot_id"]
+isOneToOne: false
+      referencedRelation: "delivery_slots"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"delivery_slots": {
+                  Row: {
+                    "archived_at": string | null,"capacity": number,"created_at": string,"end_time": string,"id": string,"is_active": boolean,"method_id": string,"start_time": string,"updated_at": string,"weekday": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "archived_at"?: string | null,"capacity": number,"created_at"?: string,"end_time": string,"id"?: string,"is_active"?: boolean,"method_id": string,"start_time": string,"updated_at"?: string,"weekday": number
+                  }
+                  Update: {
+                    "archived_at"?: string | null,"capacity"?: number,"created_at"?: string,"end_time"?: string,"id"?: string,"is_active"?: boolean,"method_id"?: string,"start_time"?: string,"updated_at"?: string,"weekday"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "delivery_slots_method_id_fkey"
+      columns: ["method_id"]
+isOneToOne: false
+      referencedRelation: "shipping_methods"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"exchange_rates": {
                   Row: {
@@ -897,6 +951,72 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"shipping_methods": {
+                  Row: {
+                    "archived_at": string | null,"code": string,"created_at": string,"description": string | null,"eta_max_days": number | null,"eta_min_days": number | null,"id": string,"is_active": boolean,"kind": string,"name": string,"pickup_location_id": string | null,"sort_order": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "archived_at"?: string | null,"code": string,"created_at"?: string,"description"?: string | null,"eta_max_days"?: number | null,"eta_min_days"?: number | null,"id"?: string,"is_active"?: boolean,"kind": string,"name": string,"pickup_location_id"?: string | null,"sort_order"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "archived_at"?: string | null,"code"?: string,"created_at"?: string,"description"?: string | null,"eta_max_days"?: number | null,"eta_min_days"?: number | null,"id"?: string,"is_active"?: boolean,"kind"?: string,"name"?: string,"pickup_location_id"?: string | null,"sort_order"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shipping_methods_pickup_location_id_fkey"
+      columns: ["pickup_location_id"]
+isOneToOne: false
+      referencedRelation: "store_locations"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"shipping_rate_rules": {
+                  Row: {
+                    "archived_at": string | null,"created_at": string,"currency": string,"id": string,"is_active": boolean,"kind": string,"max_order_amount": number | null,"method_id": string,"min_order_amount": number | null,"name": string,"params": Json,"priority": number,"updated_at": string,"valid_from": string | null,"valid_until": string | null,"zone_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "archived_at"?: string | null,"created_at"?: string,"currency"?: string,"id"?: string,"is_active"?: boolean,"kind": string,"max_order_amount"?: number | null,"method_id": string,"min_order_amount"?: number | null,"name": string,"params": Json,"priority"?: number,"updated_at"?: string,"valid_from"?: string | null,"valid_until"?: string | null,"zone_id"?: string | null
+                  }
+                  Update: {
+                    "archived_at"?: string | null,"created_at"?: string,"currency"?: string,"id"?: string,"is_active"?: boolean,"kind"?: string,"max_order_amount"?: number | null,"method_id"?: string,"min_order_amount"?: number | null,"name"?: string,"params"?: Json,"priority"?: number,"updated_at"?: string,"valid_from"?: string | null,"valid_until"?: string | null,"zone_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "shipping_rate_rules_currency_fkey"
+      columns: ["currency"]
+isOneToOne: false
+      referencedRelation: "currencies"
+      referencedColumns: ["code"]
+    },{
+      foreignKeyName: "shipping_rate_rules_method_id_fkey"
+      columns: ["method_id"]
+isOneToOne: false
+      referencedRelation: "shipping_methods"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "shipping_rate_rules_zone_id_fkey"
+      columns: ["zone_id"]
+isOneToOne: false
+      referencedRelation: "shipping_zones"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"shipping_zones": {
+                  Row: {
+                    "allowed": boolean,"archived_at": string | null,"center_lat": number | null,"center_lng": number | null,"cities": (string)[] | null,"created_at": string,"id": string,"is_active": boolean,"kind": string,"name": string,"radius_km": number | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "allowed"?: boolean,"archived_at"?: string | null,"center_lat"?: number | null,"center_lng"?: number | null,"cities"?: (string)[] | null,"created_at"?: string,"id"?: string,"is_active"?: boolean,"kind": string,"name": string,"radius_km"?: number | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "allowed"?: boolean,"archived_at"?: string | null,"center_lat"?: number | null,"center_lng"?: number | null,"cities"?: (string)[] | null,"created_at"?: string,"id"?: string,"is_active"?: boolean,"kind"?: string,"name"?: string,"radius_km"?: number | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"stock_movements": {
                   Row: {
                     "created_at": string,"created_by": string | null,"delta": number,"id": number,"note": string | null,"reason": string,"ref": string | null,"stock_after": number,"variant_id": string
@@ -972,6 +1092,20 @@ isOneToOne: false
       referencedRelation: "variant_availability"
       referencedColumns: ["variant_id"]
     }
+                  ]
+                },"store_locations": {
+                  Row: {
+                    "address_text": string,"archived_at": string | null,"city": string,"created_at": string,"id": string,"is_active": boolean,"is_primary": boolean,"lat": number,"lng": number,"name": string,"pickup_hours": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "address_text": string,"archived_at"?: string | null,"city": string,"created_at"?: string,"id"?: string,"is_active"?: boolean,"is_primary"?: boolean,"lat": number,"lng": number,"name": string,"pickup_hours"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "address_text"?: string,"archived_at"?: string | null,"city"?: string,"created_at"?: string,"id"?: string,"is_active"?: boolean,"is_primary"?: boolean,"lat"?: number,"lng"?: number,"name"?: string,"pickup_hours"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"store_settings": {
                   Row: {
@@ -1669,6 +1803,9 @@ isOneToOne: false
 "admin_duplicate_product":
 { Args: { "p_new_code": string,"p_new_name": string,"p_product_id": string }; Returns: string
                            },
+"admin_set_primary_location":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
 "admin_set_product_categories":
 { Args: { "p_category_ids": (string)[],"p_product_id": string }; Returns: undefined
                            },
@@ -1709,6 +1846,9 @@ isOneToOne: false
                            },
 "f_unaccent":
 { Args: { "p_text": string }; Returns: string
+                           },
+"haversine_km":
+{ Args: { "p_lat1": number,"p_lat2": number,"p_lng1": number,"p_lng2": number }; Returns: number
                            },
 "healthcheck":
 { Args: Record<PropertyKey, never>; Returns: Json
@@ -1759,8 +1899,17 @@ isOneToOne: false
 "purge_stock_reservations":
 { Args: { "p_older_than"?: string }; Returns: number
                            },
+"quote_shipping":
+{ Args: { "p_city"?: string,"p_currency"?: string,"p_delivery_date"?: string,"p_lat"?: number,"p_list_days"?: number,"p_lng"?: number,"p_method_code"?: string,"p_order_amount"?: number,"p_slot_id"?: string }; Returns: Json
+                           },
+"release_delivery_slot":
+{ Args: { "p_owner_id": string,"p_owner_type": string }; Returns: number
+                           },
 "release_stock":
 { Args: { "p_owner_id": string,"p_owner_type": string,"p_variant_id"?: string }; Returns: number
+                           },
+"reserve_delivery_slot":
+{ Args: { "p_day": string,"p_owner_id": string,"p_owner_type": string,"p_slot_id": string }; Returns: Json
                            },
 "reserve_stock":
 { Args: { "p_owner_id": string,"p_owner_type": string,"p_qty": number,"p_ttl_seconds"?: number,"p_variant_id": string }; Returns: Json

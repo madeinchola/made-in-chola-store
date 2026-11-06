@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import "@/i18n/admin/register"; // los textos del panel se registran al cargar el panel; las pruebas los tienen siempre
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 

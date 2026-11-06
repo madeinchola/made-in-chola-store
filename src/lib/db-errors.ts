@@ -24,6 +24,10 @@ const UNIQUE_MESSAGES: Record<string, string> = {
   product_prices_currency_key: "Ese producto ya tiene precio en esa moneda.",
   product_prices_currency_country_key: "Ese producto ya tiene precio en esa moneda y país.",
   product_images_path_key: "Esa imagen ya está registrada.",
+  store_locations_one_primary: "Ya hay una ubicación marcada como origen del envío.",
+  shipping_methods_code_key: "Ya existe un método de envío con ese código.",
+  delivery_slots_unique_start: "Ya hay una franja que empieza a esa hora ese día de la semana.",
+  blocked_dates_unique_day: "Esa fecha ya está bloqueada.",
 };
 
 const UNIQUE_FALLBACK = "Ya existe un registro con esos datos.";

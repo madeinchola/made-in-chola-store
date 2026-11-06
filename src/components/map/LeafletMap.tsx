@@ -147,6 +147,12 @@ export default function LeafletMap({
     return () => {
       observer.disconnect();
       root.removeEventListener("keydown", onKeyDown);
+      // Leaflet 1.9.4: una animación de zoom en curso deja un temporizador de 250 ms (`_onZoomTransitionEnd`) que, si el
+      // mapa ya se quitó (el cajón se cierra enseguida tras escribir o marcar el punto), lee un panel que `remove()` borró
+      // y lanza «Cannot read properties of undefined (reading '_leaflet_pos')», que el visitante vería como «Algo salió
+      // mal». `remove()` no baja la bandera `_animatingZoom` (es privada): se baja aquí para que ese temporizador no haga nada.
+      map.stop();
+      (map as unknown as { _animatingZoom?: boolean })._animatingZoom = false;
       map.remove();
       mapRef.current = null;
       markerRef.current = null;

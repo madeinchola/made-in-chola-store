@@ -28,7 +28,13 @@ export type VersionedTable =
   | "collections"
   | "news_banners"
   | "currencies"
-  | "store_settings";
+  | "store_settings"
+  | "store_locations"
+  | "shipping_methods"
+  | "shipping_zones"
+  | "shipping_rate_rules"
+  | "delivery_slots"
+  | "blocked_dates";
 
 interface Outcome<T> {
   data: T | null;

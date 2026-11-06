@@ -60,6 +60,7 @@ function Harness({
   loadMap = loadFake,
   country,
   errors,
+  hint,
   onChangeSpy,
 }: {
   initial?: PinText;
@@ -67,6 +68,7 @@ function Harness({
   loadMap?: MapLoader;
   country?: string;
   errors?: { lat?: string; lng?: string };
+  hint?: string;
   onChangeSpy?: (value: PinText) => void;
 }) {
   const [value, setValue] = useState<PinText>(initial);
@@ -81,6 +83,7 @@ function Harness({
       {...(geocoder ? { geocoder } : {})}
       {...(country ? { country } : {})}
       {...(errors ? { errors } : {})}
+      {...(hint ? { hint } : {})}
     />
   );
 }
@@ -141,6 +144,13 @@ describe("LocationPicker · estructura y accesibilidad", () => {
     expect(lat()).toBeInTheDocument();
     expect(lng()).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Coordenadas" })).toBeInTheDocument();
+  });
+
+  it("`hint` reemplaza la frase «Opcional…» (donde el pin es obligatorio, como en envíos, no puede decir que es opcional)", () => {
+    render(<Harness hint="Marca el punto de entrega." />);
+    const region = screen.getByRole("region", { name: "Ubicación en el mapa" });
+    expect(within(region).getByText("Marca el punto de entrega.")).toBeInTheDocument();
+    expect(within(region).queryByText(/Opcional/)).not.toBeInTheDocument();
   });
 
   it("el mapa recibe nombre accesible, instrucciones de teclado y texto alternativo del pin", async () => {

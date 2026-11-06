@@ -57,6 +57,8 @@ export interface LocationPickerProps {
   center?: LatLng | undefined;
   zoom?: number | undefined;
   loadMap?: MapLoader | undefined;
+  /** Frase bajo el título. Por defecto dice que el pin es opcional; donde es obligatorio (envíos) se reemplaza. */
+  hint?: string | undefined;
 }
 
 type Feedback = { tone: "info" | "error"; text: string };
@@ -82,6 +84,7 @@ export function LocationPicker({
   center = DEFAULT_CENTER,
   zoom = DEFAULT_ZOOM,
   loadMap = loadLeafletMap,
+  hint,
 }: LocationPickerProps) {
   const ids = useId();
   const searchId = `${ids}-search`;
@@ -267,7 +270,9 @@ export function LocationPicker({
         <h3 id={`${ids}-title`} className="eyebrow">
           {t("acct.addresses.picker.title")}
         </h3>
-        <p className="text-sm text-muted-foreground">{t("acct.addresses.picker.optional")}</p>
+        <p className="text-sm text-muted-foreground">
+          {hint ?? t("acct.addresses.picker.optional")}
+        </p>
       </div>
 
       <div role="search" aria-label={t("acct.addresses.picker.search.label")} className="space-y-1">

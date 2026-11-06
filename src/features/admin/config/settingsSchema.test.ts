@@ -23,7 +23,7 @@ const problem = (key: string, raw: string) => {
 };
 
 describe("definiciones", () => {
-  it("cubren exactamente las 22 claves sembradas en la base (15 de S2 + tax_id_validation de S6 + 6 del carrito de S7), sin repetir", () => {
+  it("cubren exactamente las 26 claves sembradas en la base (15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8), sin repetir", () => {
     expect(SETTING_DEFS.map((d) => d.key).sort()).toEqual(
       [
         "base_currency",
@@ -31,15 +31,19 @@ describe("definiciones", () => {
         "cart_max_lines",
         "cart_max_qty_per_variant",
         "cart_max_reserved_units",
+        "cart_max_units_per_ip",
         "contact_email",
         "contact_phone",
         "default_out_of_stock_behavior",
+        "delivery_max_days_ahead",
+        "delivery_min_lead_hours",
         "guest_cart_retention_days",
         "pdp_assistance_text",
         "pdp_shipping_return_text",
         "price_guarantee_days",
         "reservation_ttl_minutes",
         "reserve_on_add_to_cart",
+        "shipping_route_factor_pct",
         "social_facebook",
         "social_instagram",
         "social_tiktok",
@@ -73,6 +77,21 @@ describe("definiciones", () => {
       expect(settingProblem(def(key), "7,5")).toBe("int");
       expect(settingProblem(def(key), "-1")).toBe("int");
       expect(def(key).section).toBe("cart");
+    }
+  });
+  it("el cupo por red y los ajustes de envíos son enteros que se guardan como número, en su sección", () => {
+    for (const [key, section] of [
+      ["cart_max_units_per_ip", "cart"],
+      ["shipping_route_factor_pct", "shipping"],
+      ["delivery_min_lead_hours", "shipping"],
+      ["delivery_max_days_ahead", "shipping"],
+    ] as const) {
+      expect(toJsonValue(def(key), "130")).toBe(130);
+      expect(settingProblem(def(key), "130")).toBeNull();
+      expect(settingProblem(def(key), "1,5")).toBe("int");
+      expect(settingProblem(def(key), "-1")).toBe("int");
+      expect(def(key).section).toBe(section);
+      expect(def(key).readOnly).toBeUndefined();
     }
   });
   it("la moneda base y el tiempo de reserva son de solo lectura", () => {

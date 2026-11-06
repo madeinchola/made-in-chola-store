@@ -115,6 +115,9 @@ const bagLinkLabel = (page: Page) => page.locator('header a[href="/carrito"]');
 // La primera llamada a la función `cart` tras un rato sin usarla arranca un proceso nuevo (decenas de segundos en una
 // máquina cargada): las esperas que dependen de ella no usan los 5 s por defecto.
 const SLOW = { timeout: 30_000 };
+/** El texto VISIBLE de «bolsa vacía» (la región viva `sr-only` repite la frase para los lectores de pantalla). */
+const emptyBagText = (scope: Page | ReturnType<Page["locator"]>) =>
+  scope.locator("p:not(.sr-only)", { hasText: "Tu bolsa está vacía" });
 const bagLines = (page: Page) =>
   page.getByRole("main").getByRole("list", { name: "Productos en tu bolsa" }).getByRole("listitem");
 
@@ -205,7 +208,7 @@ test.describe("agregar desde la ficha", () => {
     await expect(total).toContainText(money(pick.price * 2));
     const summary = page.getByRole("region", { name: "Resumen" });
     await expect(summary).toContainText("Subtotal (2 productos)");
-    await expect(summary).toContainText("Se calcula en el siguiente paso");
+    await expect(summary).toContainText("Se calcula al elegir tu dirección"); // S8: el envío se estima en la propia bolsa
     await expect(summary.getByText("Total", { exact: true }).locator("..")).toContainText(
       money(pick.price * 2),
     );
@@ -224,7 +227,7 @@ test.describe("agregar desde la ficha", () => {
       .first()
       .getByRole("button", { name: `Quitar ${pick.name} de la bolsa` })
       .click();
-    await expect(page.getByText("Tu bolsa está vacía")).toBeVisible();
+    await expect(emptyBagText(page)).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Tu bolsa" })).toBeFocused();
     const undo = page.getByRole("button", { name: "Deshacer" });
     await expect(undo).toBeVisible();
@@ -248,7 +251,7 @@ test.describe("agregar desde la ficha", () => {
     const undo = page.getByRole("button", { name: "Deshacer" });
     await expect(undo).toBeVisible();
     await expect(undo).toBeHidden({ timeout: 14_000 });
-    await expect(page.getByText("Tu bolsa está vacía")).toBeVisible();
+    await expect(emptyBagText(page)).toBeVisible();
   });
 
   test("dentro del cajón, «Quitar» ofrece «Deshacer» dentro del propio cajón", async ({ page }) => {
@@ -256,7 +259,7 @@ test.describe("agregar desde la ficha", () => {
     await addFromProduct(page, pick);
     const dialog = drawer(page);
     await dialog.getByRole("button", { name: `Quitar ${pick.name} de la bolsa` }).click();
-    await expect(dialog.getByText("Tu bolsa está vacía")).toBeVisible();
+    await expect(emptyBagText(dialog)).toBeVisible();
     await dialog.getByRole("button", { name: "Deshacer" }).click();
     await expect(dialog.getByRole("link", { name: pick.name })).toBeVisible();
   });
@@ -343,7 +346,7 @@ test.describe("diseño y accesibilidad", () => {
   }) => {
     await page.setViewportSize({ width: 360, height: 780 });
     await page.goto("/carrito");
-    await expect(page.getByText("Tu bolsa está vacía")).toBeVisible();
+    await expect(emptyBagText(page)).toBeVisible();
     expect(await noOverflow(page)).toBeLessThanOrEqual(0);
 
     const pick = await pickVariant();
@@ -389,7 +392,7 @@ test.describe("diseño y accesibilidad", () => {
   test("accesibilidad WCAG 2.1 A/AA: /carrito vacía", async ({ page }) => {
     await page.goto("/carrito");
     await expect(page.getByRole("heading", { level: 1, name: "Tu bolsa" })).toBeVisible();
-    await expect(page.getByText("Tu bolsa está vacía")).toBeVisible();
+    await expect(emptyBagText(page)).toBeVisible();
     await axe(page);
   });
 

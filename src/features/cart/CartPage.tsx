@@ -93,7 +93,7 @@ export function CartPage() {
             <ReservationCountdown />
             <BagList />
           </div>
-          <CartSummary className="lg:sticky lg:top-6" />
+          <CartSummary className="lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:overflow-y-auto" />
         </div>
         <CartSuggestions />
       </>

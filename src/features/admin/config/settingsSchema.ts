@@ -2,7 +2,8 @@ import { t } from "@/i18n";
 import { charLength, btrimSpaces, EMAIL_RE, HTTPS_URL_RE, INT_RE, PHONE_E164_RE } from "./pgText";
 
 export type SettingType = "text" | "int" | "bool" | "url" | "email" | "phone_e164";
-export type SettingSection = "business" | "social" | "pdp" | "inventory" | "customers" | "cart";
+export type SettingSection =
+  "business" | "social" | "pdp" | "inventory" | "customers" | "cart" | "shipping";
 export type SettingControl = "input" | "textarea" | "number" | "select";
 
 export interface SettingDef {
@@ -68,6 +69,12 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   { key: "cart_max_reserved_units", type: "int", section: "cart", control: "number" },
   { key: "price_guarantee_days", type: "int", section: "cart", control: "number" },
   { key: "guest_cart_retention_days", type: "int", section: "cart", control: "number" },
+  // Cupo de unidades retenidas por red (D-02): estaba en la base y en la documentación, pero no en el panel.
+  { key: "cart_max_units_per_ip", type: "int", section: "cart", control: "number" },
+  // Envíos y entregas (S8).
+  { key: "shipping_route_factor_pct", type: "int", section: "shipping", control: "number" },
+  { key: "delivery_min_lead_hours", type: "int", section: "shipping", control: "number" },
+  { key: "delivery_max_days_ahead", type: "int", section: "shipping", control: "number" },
 ];
 
 export const SECTIONS: readonly SettingSection[] = [
@@ -77,6 +84,7 @@ export const SECTIONS: readonly SettingSection[] = [
   "inventory",
   "customers",
   "cart",
+  "shipping",
 ];
 
 export const LOW_KEY = "stock_low_threshold";

@@ -1,3 +1,4 @@
+import "@/i18n/admin/register";
 import { useEffect, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";

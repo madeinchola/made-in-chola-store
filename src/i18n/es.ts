@@ -1,8 +1,4 @@
-import { adminCommon } from "./admin/common";
-import { adminProducts } from "./admin/products";
-import { adminTaxonomy } from "./admin/taxonomy";
-import { adminConfig } from "./admin/config";
-import { adminAudit } from "./admin/audit";
+import type { AdminMessages } from "./admin/messages";
 import { ui } from "./ui";
 import { store } from "./store";
 import { layout } from "./layout";
@@ -17,6 +13,7 @@ import { acctTax } from "./account/tax";
 import { acctSecurity } from "./account/security";
 import { acctOrders } from "./account/orders";
 import { cart } from "./cart";
+import { shipping } from "./shipping";
 
 export const es = {
   app: { name: "Made In Chola" },
@@ -135,6 +132,7 @@ export const es = {
   layout,
   shop: { home: shopHome, listing: shopListing, product: shopProduct, seo: shopSeo },
   cart,
+  shipping,
   acct: {
     layout: acctLayout,
     addresses: acctAddresses,
@@ -143,13 +141,8 @@ export const es = {
     security: acctSecurity,
     orders: acctOrders,
   },
-  admin: {
-    ...adminCommon,
-    products: adminProducts,
-    taxonomy: adminTaxonomy,
-    config: adminConfig,
-    audit: adminAudit,
-  },
+  // Los textos del panel se cargan con el panel (`./admin/register`): aquí solo se declara su FORMA para tipar las claves.
+  admin: {} as AdminMessages,
   account: { title: "Mi cuenta", name: "Nombre", email: "Email", phone: "Teléfono", none: "—" },
   placeholder: { soon: "Esta sección estará disponible pronto." },
   error: {

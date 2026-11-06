@@ -23,6 +23,7 @@ const fake = vi.hoisted(() => {
     zoom: number;
     centerValue: { lat: number; lng: number };
     setView = vi.fn();
+    stop = vi.fn();
     invalidateSize = vi.fn();
     attributionControl = { setPrefix: vi.fn() };
     constructor(
@@ -242,6 +243,24 @@ describe("LeafletMap · creación del mapa", () => {
     expect(fake.state.maps).toHaveLength(1);
     unmount();
     expect(lastMap().remove).toHaveBeenCalledTimes(1);
+  });
+
+  it("al desmontar frena las animaciones y baja la bandera de zoom ANTES de quitar el mapa (si no, el temporizador de 250 ms de Leaflet lanza «_leaflet_pos»)", () => {
+    const { unmount } = render(<LeafletMap {...baseProps()} />);
+    const map = lastMap() as unknown as {
+      stop: ReturnType<typeof vi.fn>;
+      remove: ReturnType<typeof vi.fn>;
+      _animatingZoom?: boolean;
+    };
+    map._animatingZoom = true; // una animación de zoom en curso
+    const seen: { stopped: number; flagAtRemove: boolean | undefined }[] = [];
+    const remove = map.remove;
+    map.remove = vi.fn(() => {
+      seen.push({ stopped: map.stop.mock.calls.length, flagAtRemove: map._animatingZoom });
+      return remove();
+    });
+    unmount();
+    expect(seen).toEqual([{ stopped: 1, flagAtRemove: false }]);
   });
 
   it("corrige los iconos por defecto con las imágenes del paquete resueltas por Vite (sin CDN)", () => {

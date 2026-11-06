@@ -1,5 +1,14 @@
 import type { ComponentType, SVGProps } from "react";
-import { Coins, Layers, LayoutDashboard, ScrollText, Settings, Shirt, Tags } from "lucide-react";
+import {
+  Coins,
+  Layers,
+  LayoutDashboard,
+  ScrollText,
+  Settings,
+  Shirt,
+  Tags,
+  Truck,
+} from "lucide-react";
 import type { MessageKey } from "@/i18n";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -16,6 +25,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   { to: "/admin/categorias", label: "admin.nav.categories", icon: Tags },
   { to: "/admin/colecciones", label: "admin.nav.collections", icon: Layers },
   { to: "/admin/monedas", label: "admin.nav.currencies", icon: Coins },
+  { to: "/admin/envios", label: "admin.nav.shipping", icon: Truck },
   { to: "/admin/ajustes", label: "admin.nav.settings", icon: Settings },
   { to: "/admin/auditoria", label: "admin.nav.audit", icon: ScrollText },
 ];

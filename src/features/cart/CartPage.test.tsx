@@ -394,7 +394,10 @@ describe("CartPage · el resumen sigue «actualizando» al quitar una línea", (
       server,
     });
     const summary = screen.getByRole("region", { name: "Resumen" });
-    const status = within(summary).getByRole("status");
+    // la región viva de la CABECERA del resumen (el estimador de envío trae las suyas, más abajo)
+    const status = within(
+      within(summary).getByRole("heading", { level: 2 }).parentElement!,
+    ).getByRole("status");
     expect(status).toBeEmptyDOMElement();
     const resume = server.pause();
     await user.click(screen.getByRole("button", { name: "Quitar Falda de la bolsa" }));
