@@ -48,6 +48,51 @@ describe("CartSummary · importes del servidor", () => {
     expect(within(summary).queryByText("Descuento")).not.toBeInTheDocument();
   });
 
+  it("«Subtotal (n productos)» cuenta lo que se COBRA, no las unidades agotadas (que suman 0 al importe)", async () => {
+    // a: 2 sanas · b: 3 agotadas (cobra 0) · c: pidió 4 y solo hay 2 (cobra 2) → se cobran 2 + 0 + 2 = 4 unidades
+    await setup(
+      makeSnapshot([
+        makeLine("a", 2),
+        makeLine("b", 3, {
+          status: "out_of_stock",
+          blocking: true,
+          available: 0,
+          billable_qty: 0,
+          line_total: 0,
+        }),
+        makeLine("c", 4, {
+          status: "low_stock",
+          blocking: true,
+          available: 2,
+          billable_qty: 2,
+          line_total: 200,
+        }),
+      ]),
+    );
+    const summary = screen.getByRole("region", { name: "Resumen" });
+    // el servidor cuenta 9 unidades en la bolsa (2 + 3 + 4) y el importe son 4 × Bs 100
+    expect(within(summary).getByText("Subtotal (4 productos)")).toBeInTheDocument();
+    expect(within(summary).getByText("Subtotal (4 productos)").nextSibling).toHaveTextContent(
+      "Bs 400,00",
+    );
+  });
+
+  it("si lo único que se cobra es una unidad lo dice en singular, aunque haya más cosas en la bolsa", async () => {
+    await setup(
+      makeSnapshot([
+        makeLine("a", 1),
+        makeLine("b", 5, {
+          status: "unavailable",
+          blocking: true,
+          available: 0,
+          billable_qty: 0,
+          line_total: 0,
+        }),
+      ]),
+    );
+    expect(screen.getByText("Subtotal (1 producto)")).toBeInTheDocument();
+  });
+
   it("un solo producto lo dice en singular", async () => {
     await setup(makeSnapshot([makeLine("a", 1)]));
     expect(screen.getByText("Subtotal (1 producto)")).toBeInTheDocument();
@@ -69,22 +114,27 @@ describe("CartSummary · importes del servidor", () => {
     ]);
   });
 
-  it("mientras hay un cambio sin confirmar, el resumen se atenúa y lo dice (sin cambiar de tamaño)", async () => {
+  it("mientras hay un cambio sin confirmar, el resumen se atenúa y lo dice con una región viva que YA existía (sin aria-busy)", async () => {
     const user = userEvent.setup();
     const server = new FakeCartServer(makeSnapshot([makeLine("a", 1)]));
     await setup(makeSnapshot([makeLine("a", 1)]), { server });
     const summary = screen.getByRole("region", { name: "Resumen" });
+    const status = within(summary).getByRole("status");
     expect(summary).not.toHaveAttribute("aria-busy");
+    expect(status).toBeEmptyDOMElement(); // existe vacía, esperando
     const resume = server.pause();
     await user.click(screen.getByRole("button", { name: /^Aumentar la cantidad de / }));
-    expect(summary).toHaveAttribute("aria-busy", "true");
-    expect(within(summary).getByText("Actualizando…")).toBeInTheDocument();
+    // `aria-busy` haría que algunos lectores de pantalla no anuncien lo que hay dentro (la propia región viva)
+    expect(summary).not.toHaveAttribute("aria-busy");
+    expect(within(summary).getByRole("status")).toBe(status); // el MISMO nodo: el texto entra en una región existente
+    expect(status).toHaveTextContent("Actualizando…");
     expect(summary.querySelector("dl")).toHaveClass("opacity-60");
     await act(async () => {
       resume();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(summary).not.toHaveAttribute("aria-busy");
+    expect(status).toBeEmptyDOMElement();
     expect(within(summary).getByText("Total").nextSibling).toHaveTextContent("Bs 200,00");
   });
 

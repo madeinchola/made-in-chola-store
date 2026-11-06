@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { FunctionResult } from "@/lib/functions";
 import { type CartApi, type CartEvent, CartStore } from "./cartStore";
-import { memoryCartStorage } from "./storage";
+import { memoryCartStorage, PENDING_TTL_MS, type PersistedPending } from "./storage";
 import type { CartLine, CartRequestBody, CartResponse, CartSnapshot } from "./types";
 
 const TOKEN = `ct_${"A".repeat(43)}`;
@@ -154,12 +154,23 @@ async function drain(
 const refreshes = (calls: { body: CartRequestBody }[]) =>
   calls.filter((c) => c.body.action === "refresh").length;
 
-function setup(opts: { mirror?: boolean; events?: CartEvent[] } = {}) {
+function setup(
+  opts: {
+    mirror?: boolean;
+    events?: CartEvent[];
+    saved?: PersistedPending;
+    /** Reutiliza un almacenamiento (simula recargar la página: otro almacén, mismo navegador). */
+    storage?: ReturnType<typeof memoryCartStorage>;
+  } = {},
+) {
   const f = fakeApi();
   const timers = fakeTimers();
-  const storage = memoryCartStorage(
-    opts.mirror ? { token: TOKEN, snapshot: snapshot([line("a", 1)]), savedAt: 1 } : null,
-  );
+  const storage =
+    opts.storage ??
+    memoryCartStorage(
+      opts.mirror ? { token: TOKEN, snapshot: snapshot([line("a", 1)]), savedAt: 1 } : null,
+      opts.saved ?? null,
+    );
   const channel = { posted: 0, handler: null as null | (() => void) };
   const store = new CartStore({
     api: f.api,
@@ -190,6 +201,19 @@ describe("identidad", () => {
     await tick();
     expect(store.getState().loaded).toBe(true);
     expect(store.getState().snapshot).toBeNull();
+    expect(calls).toHaveLength(0);
+  });
+
+  it("invitado sin token: volver a «leer» no cambia nada ni avisa a la pantalla (no se repinta por no hacer nada)", async () => {
+    const { store, calls } = setup();
+    store.setIdentity({ kind: "guest" });
+    const before = store.getState();
+    const listener = vi.fn();
+    store.subscribe(listener);
+    await store.refetch();
+    await tick();
+    expect(listener).not.toHaveBeenCalled();
+    expect(store.getState()).toBe(before); // ni siquiera un objeto de estado nuevo
     expect(calls).toHaveLength(0);
   });
 
@@ -535,7 +559,12 @@ describe("quitar y deshacer", () => {
     expect(store.getState().pending).toEqual({ a: 0 });
     expect(store.getState().lastRemoved).toEqual({ variantId: "a", qty: 3, name: "Producto a" });
     expect(events).toEqual([
-      { type: "removed", line: expect.objectContaining({ variant_id: "a" }), quantity: 3 },
+      {
+        type: "removed",
+        line: expect.objectContaining({ variant_id: "a" }),
+        quantity: 3,
+        currency: "BOB",
+      },
     ]);
   });
 
@@ -810,6 +839,237 @@ describe("reintentar la reserva a mano", () => {
     void store.reservationExpired();
     await drain(calls, () => ok(partial));
     expect(refreshes(calls)).toBe(4);
+  });
+});
+
+describe("lo pendiente sobrevive a una recarga (guardado en el navegador)", () => {
+  const saved = (
+    pending: Record<string, number>,
+    owner = "user:u1",
+    savedAt = NOW - 1000,
+  ): PersistedPending => ({ owner, pending, savedAt });
+
+  it("cada cambio se guarda con su dueño y la hora, y al confirmarlo el servidor se borra", async () => {
+    const { store, calls, storage } = setup();
+    store.setIdentity({ kind: "user", userId: "u1" });
+    await tick();
+    calls[0]?.resolve(ok(snapshot([])));
+    await tick();
+    store.setQty("a", 2);
+    expect(storage.readPending()).toEqual({ owner: "user:u1", pending: { a: 2 }, savedAt: NOW });
+    await tick();
+    expect(calls[1]?.body).toMatchObject({ action: "set_item", variant_id: "a", qty: 2 });
+    calls[1]?.resolve(ok(snapshot([line("a", 2)])));
+    await tick();
+    expect(store.getState().pending).toEqual({});
+    expect(storage.readPending()).toBeNull();
+  });
+
+  it("el invitado guarda con el dueño «guest»", async () => {
+    const { store, storage } = setup();
+    store.setIdentity({ kind: "guest" });
+    store.setQty("b", 4);
+    expect(storage.readPending()).toEqual({ owner: "guest", pending: { b: 4 }, savedAt: NOW });
+  });
+
+  it("mientras no se sabe quién es (identidad desconocida) no se guarda nada", () => {
+    const { store, storage } = setup();
+    store.setQty("a", 1);
+    expect(storage.readPending()).toBeNull();
+  });
+
+  it("tras recargar sin conexión, lo pendiente reaparece y se envía DESPUÉS de leer la bolsa", async () => {
+    const first = setup();
+    first.store.setIdentity({ kind: "user", userId: "u1" });
+    await tick();
+    first.calls[0]?.resolve(fail(0, "network")); // la lectura inicial ya falló: sin conexión
+    await tick();
+    first.store.setQty("a", 3);
+    await tick();
+    first.calls[1]?.resolve(fail(0, "network")); // y el envío también
+    await tick();
+    expect(first.storage.readPending()?.pending).toEqual({ a: 3 });
+
+    // «Recarga»: otro almacén, el mismo navegador.
+    const second = setup({ storage: first.storage });
+    second.store.setIdentity({ kind: "user", userId: "u1" });
+    expect(second.store.getState().pending).toEqual({ a: 3 }); // se ve al instante
+    await tick();
+    expect(second.calls.map((c) => c.body.action)).toEqual(["get"]); // la lectura va primero en la cola
+    second.calls[0]?.resolve(ok(snapshot([])));
+    await tick();
+    expect(second.calls.map((c) => c.body.action)).toEqual(["get", "set_item"]);
+    expect(second.calls[1]?.body).toMatchObject({ variant_id: "a", qty: 3 });
+    second.calls[1]?.resolve(ok(snapshot([line("a", 3)])));
+    await tick();
+    expect(second.store.getState().pending).toEqual({});
+    expect(second.storage.readPending()).toBeNull();
+    expect(second.store.getState().snapshot?.lines[0]?.qty).toBe(3);
+  });
+
+  it("un invitado sin token (su primer «agregar» no llegó) lo reenvía sin leer nada antes", async () => {
+    const { store, calls } = setup({ saved: saved({ a: 1 }, "guest") });
+    store.setIdentity({ kind: "guest" });
+    expect(store.getState().pending).toEqual({ a: 1 });
+    await tick();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.body).toEqual({ action: "set_item", variant_id: "a", qty: 1 });
+  });
+
+  it("lo guardado por OTRO dueño no se restaura y se borra (otro usuario, o invitado vs. usuario)", async () => {
+    for (const owner of ["user:u2", "guest"]) {
+      const { store, calls, storage } = setup({ saved: saved({ a: 3 }, owner) });
+      store.setIdentity({ kind: "user", userId: "u1" });
+      expect(store.getState().pending, owner).toEqual({});
+      expect(storage.readPending(), owner).toBeNull();
+      await tick();
+      expect(calls.map((c) => c.body.action)).toEqual(["get"]); // solo lee: no reenvía lo ajeno
+    }
+    const asGuest = setup({ saved: saved({ a: 3 }, "user:u1") });
+    asGuest.store.setIdentity({ kind: "guest" });
+    expect(asGuest.store.getState().pending).toEqual({});
+    expect(asGuest.storage.readPending()).toBeNull();
+  });
+
+  it("vigencia: 24 h exactas todavía valen; un milisegundo más, no; el futuro lejano tampoco", async () => {
+    const exactly = setup({ saved: saved({ a: 2 }, "user:u1", NOW - PENDING_TTL_MS) });
+    exactly.store.setIdentity({ kind: "user", userId: "u1" });
+    expect(exactly.store.getState().pending).toEqual({ a: 2 });
+
+    const stale = setup({ saved: saved({ a: 2 }, "user:u1", NOW - PENDING_TTL_MS - 1) });
+    stale.store.setIdentity({ kind: "user", userId: "u1" });
+    expect(stale.store.getState().pending).toEqual({});
+    expect(stale.storage.readPending()).toBeNull();
+
+    const future = setup({ saved: saved({ a: 2 }, "user:u1", NOW + 3_600_000) });
+    future.store.setIdentity({ kind: "user", userId: "u1" });
+    expect(future.store.getState().pending).toEqual({});
+  });
+
+  it("cerrar sesión (usuario → invitado) borra lo pendiente del usuario: el equipo queda limpio", async () => {
+    const { store, storage } = setup();
+    store.setIdentity({ kind: "user", userId: "u1" });
+    store.setQty("a", 2);
+    expect(storage.readPending()?.owner).toBe("user:u1");
+    store.setIdentity({ kind: "guest" });
+    expect(store.getState().pending).toEqual({});
+    expect(storage.readPending()).toBeNull();
+  });
+
+  it("un error sin remedio (400) descarta ese cambio también de lo guardado", async () => {
+    const { store, calls, storage } = setup();
+    store.setIdentity({ kind: "user", userId: "u1" });
+    await tick();
+    calls[0]?.resolve(ok(snapshot([])));
+    await tick();
+    store.setQty("a", 2);
+    await tick();
+    calls[1]?.resolve(fail(400, "validation"));
+    await tick();
+    expect(store.getState().pending).toEqual({});
+    expect(storage.readPending()).toBeNull();
+  });
+
+  it("con la sesión vencida (401) o sin red, lo pendiente se CONSERVA guardado", async () => {
+    for (const status of [401, 0]) {
+      const { store, calls, storage } = setup();
+      store.setIdentity({ kind: "user", userId: "u1" });
+      await tick();
+      calls[0]?.resolve(ok(snapshot([])));
+      await tick();
+      store.setQty("a", 2);
+      await tick();
+      calls[1]?.resolve(fail(status, "x"));
+      await tick();
+      expect(storage.readPending()?.pending, String(status)).toEqual({ a: 2 });
+    }
+  });
+
+  it("vaciar la bolsa borra lo guardado", async () => {
+    const { store, storage } = setup();
+    store.setIdentity({ kind: "guest" });
+    store.setQty("a", 2);
+    expect(storage.readPending()).not.toBeNull();
+    void store.clear();
+    expect(storage.readPending()).toBeNull();
+  });
+
+  it("varias variantes y una cantidad cero (quitar) se guardan tal cual", () => {
+    const { store, storage } = setup();
+    store.setIdentity({ kind: "guest" });
+    store.setQty("a", 0);
+    store.setQty("b", 5);
+    expect(storage.readPending()?.pending).toEqual({ a: 0, b: 5 });
+  });
+});
+
+describe("«reservando de nuevo» (reserving)", () => {
+  async function loaded() {
+    const f = setup();
+    f.store.setIdentity({ kind: "user", userId: "u1" });
+    await tick();
+    f.calls[0]?.resolve(ok(snapshot([line("a", 1)])));
+    await tick();
+    return f;
+  }
+
+  it("está activo desde que se pide hasta que el servidor contesta, y se apaga al contestar", async () => {
+    const { store, calls } = await loaded();
+    expect(store.getState().reserving).toBe(false);
+    void store.reservationExpired();
+    expect(store.getState().reserving).toBe(true); // ya al encolar: no hay un instante «sin reservar ni reservando»
+    await tick();
+    expect(refreshes(calls)).toBe(1);
+    expect(store.getState().reserving).toBe(true); // sigue mientras la petición vuela
+    calls[1]?.resolve(ok(snapshot([line("a", 1)])));
+    await tick();
+    expect(store.getState().reserving).toBe(false);
+  });
+
+  it("también se apaga si la petición falla (sin red): no se queda «reservando» para siempre", async () => {
+    const { store, calls } = await loaded();
+    void store.retryReservation();
+    await tick();
+    calls[1]?.resolve(fail(0, "network"));
+    await tick();
+    expect(store.getState().reserving).toBe(false);
+  });
+
+  it("con dos pedidas seguidas sigue activo hasta que termina la ÚLTIMA", async () => {
+    const { store, calls } = await loaded();
+    void store.retryReservation();
+    void store.retryReservation();
+    await tick();
+    calls[1]?.resolve(ok(snapshot([line("a", 1)])));
+    await tick();
+    expect(store.getState().reserving).toBe(true);
+    calls[2]?.resolve(ok(snapshot([line("a", 1)])));
+    await tick();
+    expect(store.getState().reserving).toBe(false);
+  });
+
+  it("si cambia la identidad mientras vuela, la identidad nueva no hereda «reservando»", async () => {
+    const { store, calls } = await loaded();
+    void store.retryReservation();
+    await tick();
+    store.setIdentity({ kind: "user", userId: "u2" });
+    expect(store.getState().reserving).toBe(false);
+    calls[1]?.resolve(ok(snapshot([line("a", 1)]))); // respuesta tardía de la identidad anterior
+    await tick();
+    expect(store.getState().reserving).toBe(false);
+    expect(store.getState().snapshot).toBeNull(); // y tampoco contamina la foto
+  });
+
+  it("tras disconnect()/connect() (StrictMode) no queda atascado en «reservando»", async () => {
+    const { store, calls } = await loaded();
+    void store.retryReservation();
+    await tick();
+    store.disconnect();
+    calls[1]?.resolve(ok(snapshot([line("a", 1)])));
+    await tick();
+    store.connect();
+    await tick();
+    expect(store.getState().reserving).toBe(false);
   });
 });
 

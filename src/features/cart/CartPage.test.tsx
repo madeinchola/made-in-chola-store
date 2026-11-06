@@ -1,4 +1,4 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getProductBySlug } from "@/features/catalog/catalogService";
@@ -82,6 +82,15 @@ async function setup(lines: CartLine[] | null, options: Parameters<typeof render
   return view;
 }
 
+/** La región viva sr-only de la página («Cargando…», «Agregando…»): un `<p role="status" class="sr-only">` directo del contenedor. */
+const spokenStatus = () =>
+  screen
+    .getAllByRole("status")
+    .find((el) => el.tagName === "P" && el.classList.contains("sr-only") && !el.closest("li"))!;
+/** La región viva de AVISOS de la página: lo primero que sigue al título. */
+const noticeRegion = () =>
+  screen.getByRole("heading", { level: 1 }).nextElementSibling as HTMLElement;
+
 describe("CartPage · estructura", () => {
   it("UN solo h1 «Tu bolsa», título del documento y sin indexar", async () => {
     await setup([makeLine("a", 1)]);
@@ -121,7 +130,11 @@ describe("CartPage · estructura", () => {
     const resume = server.pause();
     renderWithCart(<CartPage />, { server, auth: signedIn() });
     await flush();
-    expect(screen.getByRole("status")).toHaveTextContent("Cargando tu bolsa…");
+    // lo dice una región viva sr-only montada desde el primer pintado; el esqueleto no es `aria-busy` (algunos lectores no
+    // anuncian lo que hay dentro de un contenedor ocupado)
+    const spoken = spokenStatus();
+    expect(spoken).toHaveTextContent("Cargando tu bolsa…");
+    expect(document.querySelector("[aria-busy]")).toBeNull();
     expect(screen.queryByText("Tu bolsa está vacía")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     await act(async () => {
@@ -129,6 +142,8 @@ describe("CartPage · estructura", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(await screen.findByRole("region", { name: "Resumen" })).toBeInTheDocument();
+    expect(spokenStatus()).toBe(spoken); // el mismo nodo: la región no se recrea, cambia su texto
+    expect(spoken).toBeEmptyDOMElement();
   });
 
   it("al entrar revalida la bolsa con el servidor", async () => {
@@ -137,10 +152,32 @@ describe("CartPage · estructura", () => {
   });
 });
 
+describe("CartPage · estabilidad del diseño (CLS)", () => {
+  // El pie es alto: si la página mide menos que el marcador de carga de la ruta (100svh), sube de golpe al aparecer el
+  // contenido. Se comprueba que el contenedor reserva esa altura en cada estado.
+  const root = () => screen.getByRole("heading", { level: 1 }).parentElement;
+
+  it("con productos, vacía y cargando: el contenedor reserva la altura de la pantalla", async () => {
+    await setup([makeLine("a", 1)]);
+    expect(root()).toHaveClass("min-h-[100svh]");
+    cleanup();
+    await setup([]);
+    expect(root()).toHaveClass("min-h-[100svh]");
+    cleanup();
+    const server = new FakeCartServer(makeSnapshot([makeLine("a", 1)]));
+    server.pause();
+    renderWithCart(<CartPage />, { server, auth: signedIn() });
+    await flush();
+    expect(root()).toHaveClass("min-h-[100svh]");
+  });
+});
+
 describe("CartPage · bolsa vacía", () => {
   it("estado amable con enlace a la tienda; sigue habiendo un único h1", async () => {
     await setup([]);
-    expect(screen.getByRole("status")).toHaveTextContent("Tu bolsa está vacía");
+    expect(
+      screen.getAllByRole("status").some((el) => el.textContent?.includes("Tu bolsa está vacía")),
+    ).toBe(true);
     expect(screen.getByRole("link", { name: "Ir a la tienda" })).toHaveAttribute("href", "/tienda");
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.queryByRole("region", { name: "Resumen" })).not.toBeInTheDocument();
@@ -348,7 +385,7 @@ describe("CartPage · «Deshacer» en línea", () => {
 });
 
 describe("CartPage · el resumen sigue «actualizando» al quitar una línea", () => {
-  it("quitar A (Bs 100) deja el resumen atenuado y ocupado mientras el servidor no confirma; luego se actualiza", async () => {
+  it("quitar A (Bs 100) deja el resumen atenuado y «Actualizando…» mientras el servidor no confirma; luego se actualiza", async () => {
     const user = userEvent.setup();
     const server = new FakeCartServer(
       makeSnapshot([makeLine("a", 1, { name: "Falda" }), makeLine("b", 1, { name: "Blusa" })]),
@@ -356,16 +393,22 @@ describe("CartPage · el resumen sigue «actualizando» al quitar una línea", (
     await setup([makeLine("a", 1, { name: "Falda" }), makeLine("b", 1, { name: "Blusa" })], {
       server,
     });
+    const summary = screen.getByRole("region", { name: "Resumen" });
+    const status = within(summary).getByRole("status");
+    expect(status).toBeEmptyDOMElement();
     const resume = server.pause();
     await user.click(screen.getByRole("button", { name: "Quitar Falda de la bolsa" }));
-    const summary = screen.getByRole("region", { name: "Resumen" });
-    expect(summary).toHaveAttribute("aria-busy", "true"); // aunque la línea quitada ya no esté en la lista
+    // aunque la línea quitada ya no esté en la lista; sin `aria-busy` (ocultaría la región viva a algunos lectores)
+    expect(summary).not.toHaveAttribute("aria-busy");
+    expect(status).toHaveTextContent("Actualizando…");
     expect(summary.querySelector("dl")).toHaveClass("opacity-60");
     await act(async () => {
       resume();
       await new Promise((r) => setTimeout(r, 0));
     });
     expect(summary).not.toHaveAttribute("aria-busy");
+    expect(status).toBeEmptyDOMElement();
+    expect(summary.querySelector("dl")).not.toHaveClass("opacity-60");
   });
 });
 
@@ -374,13 +417,109 @@ describe("CartPage · avisos de sincronización", () => {
     const server = new FakeCartServer(makeSnapshot([makeLine("a", 1)]));
     const { cart } = await setup([makeLine("a", 1)], { server });
     server.forced = { ok: false, status: 0, code: "network", message: "network" };
+    const region = noticeRegion();
+    expect(region).toBeEmptyDOMElement(); // existe antes del aviso
     act(() => cart().store.setQty("a", 2));
     await flush();
     expect(
-      screen.getByText(
-        "Sin conexión. Mantén esta pestaña abierta: enviaremos tus cambios cuando vuelva la conexión.",
-      ),
+      screen.getByText("Sin conexión. Enviaremos tus cambios cuando vuelva la conexión."),
     ).toBeInTheDocument();
+    // …y el aviso entró dentro de ella (la región viva que ya existía), sin `role` propio
+    expect(noticeRegion()).toBe(region);
+    expect(region).toHaveTextContent("Sin conexión.");
+    expect(region.querySelectorAll("[role]")).toHaveLength(0);
     expect(screen.getByRole("textbox", { name: /^Cantidad de / })).toHaveValue("2");
+  });
+});
+
+describe("CartPage · regiones vivas persistentes y foco", () => {
+  const failingAdd = (server: FakeCartServer) => {
+    server.onSetItem = () => ({
+      ok: true,
+      data: {
+        token_state: "ok",
+        server_time: new Date().toISOString(),
+        cart: server.snapshot,
+        outcome: "out_of_stock",
+        requested: 1,
+        applied: 0,
+      },
+    });
+  };
+
+  it("la región de avisos existe, vacía, antes del primero y un alta que no cabe entra en ESE nodo aunque la página cambie de rama (vacía → con altas → vacía)", async () => {
+    const server = new FakeCartServer(makeSnapshot([]));
+    failingAdd(server);
+    const { cart } = await setup([], { server });
+    const region = noticeRegion();
+    expect(region).toHaveAttribute("role", "status");
+    expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveAttribute("aria-atomic", "false");
+    expect(region).toBeEmptyDOMElement();
+
+    act(() => cart().store.setQty("otra", 1)); // «Agregando…» y luego el servidor dice que se agotó
+    await flush();
+    expect(noticeRegion()).toBe(region);
+    expect(region).toHaveTextContent("No pudimos agregar ese producto: se agotó.");
+    expect(region.querySelectorAll("[role]")).toHaveLength(0); // el aviso no nace con su propio `role`
+  });
+
+  it("mientras se agrega, la región sr-only dice «Agregando a tu bolsa…» (mismo nodo, cambia el texto)", async () => {
+    const server = new FakeCartServer(makeSnapshot([]));
+    const { cart } = await setup([], { server });
+    const spoken = spokenStatus();
+    expect(spoken).toBeEmptyDOMElement();
+    const resume = server.pause();
+    act(() => cart().store.setQty("nuevo", 1));
+    expect(spokenStatus()).toBe(spoken);
+    expect(spoken).toHaveTextContent("Agregando a tu bolsa…");
+    await act(async () => {
+      resume();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(spoken).toBeEmptyDOMElement();
+  });
+
+  it("cerrar el aviso (X) con el foco en el botón lleva el foco al título «Tu bolsa», no al <body>", async () => {
+    const user = userEvent.setup();
+    const server = new FakeCartServer(makeSnapshot([]));
+    failingAdd(server);
+    const { cart } = await setup([], { server });
+    act(() => cart().store.setQty("otra", 1));
+    await flush();
+    const close = screen.getByRole("button", { name: "Cerrar aviso" });
+    await user.click(close);
+    expect(close).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole("heading", { level: 1, name: "Tu bolsa" })).toHaveFocus();
+  });
+
+  it("«Deshacer»: el aviso se va al pulsarlo y el foco pasa al título (no al <body>)", async () => {
+    const user = userEvent.setup();
+    await setup([makeLine("a", 2, { name: "Falda" }), makeLine("b", 1, { name: "Blusa" })]);
+    await user.click(screen.getByRole("button", { name: "Quitar Falda de la bolsa" }));
+    const undo = screen.getByRole("button", { name: "Deshacer" });
+    expect(noticeRegion()).toContainElement(undo); // el aviso entró en la región de avisos
+    await user.click(undo);
+    await flush();
+    expect(undo).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole("heading", { level: 1, name: "Tu bolsa" })).toHaveFocus();
+  });
+
+  it("«Reintentar» de «No pudimos cargar tu bolsa»: al cargar, el botón se va y el foco pasa al título", async () => {
+    const user = userEvent.setup();
+    const server = new FakeCartServer(makeSnapshot([makeLine("a", 3)]));
+    server.forced = { ok: false, status: 0, code: "network", message: "network" };
+    renderWithCart(<CartPage />, { server, auth: signedIn() });
+    await flush();
+    const retry = await screen.findByRole("button", { name: "Reintentar" });
+    server.forced = null;
+    await user.click(retry);
+    await flush();
+    expect(await screen.findByRole("region", { name: "Resumen" })).toBeInTheDocument();
+    expect(retry).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole("heading", { level: 1, name: "Tu bolsa" })).toHaveFocus();
   });
 });

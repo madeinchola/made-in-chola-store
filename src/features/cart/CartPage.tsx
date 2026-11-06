@@ -14,6 +14,7 @@ import { CartSuggestions } from "./CartSuggestions";
 import { CartSummary } from "./CartSummary";
 import { LoadError } from "./LoadError";
 import { OrphanNotices } from "./LineNotice";
+import { LiveStatus, NoticeRegion } from "./NoticeRegion";
 import { ReservationCountdown } from "./ReservationCountdown";
 import { SyncBanner } from "./SyncBanner";
 import { UndoNotice } from "./UndoNotice";
@@ -50,16 +51,18 @@ export function CartPage() {
   const empty = lines.length === 0 && adding.length === 0;
 
   const loadFailed = cartLoadFailed(state) && empty;
+  const loading = !state.loaded && empty && !loadFailed;
+  // Lo que oye un lector de pantalla mientras algo está en curso. Lo dice UNA región viva persistente (`LiveStatus`, montada
+  // desde el primer pintado): un `role="status"` que nace con su texto, o dentro de un `aria-busy`, no se anuncia de forma
+  // fiable.
+  const spoken = loading ? t("cart.loading") : adding.length > 0 ? t("cart.adding") : "";
 
   let body;
   if (loadFailed) {
     body = <LoadError />;
-  } else if (!state.loaded && empty) {
+  } else if (loading) {
     body = (
-      <div aria-busy="true" className="space-y-4">
-        <p role="status" className="sr-only">
-          {t("cart.loading")}
-        </p>
+      <div className="space-y-4">
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-32 w-full" />
       </div>
@@ -67,7 +70,6 @@ export function CartPage() {
   } else if (empty) {
     body = (
       <>
-        <OrphanNotices />
         <EmptyState
           icon={ShoppingBag}
           title={t("cart.empty.title")}
@@ -88,7 +90,6 @@ export function CartPage() {
       <>
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-12">
           <div className="min-w-0 space-y-4">
-            <OrphanNotices />
             <ReservationCountdown />
             <BagList />
           </div>
@@ -100,16 +101,23 @@ export function CartPage() {
   }
 
   return (
-    <div className="container py-8 lg:py-12">
+    // `min-h-[100svh]` en TODOS los estados (cargando, vacía, con productos): el marcador de carga de la ruta (`lazyPage`) ya
+    // reserva esa altura, y una bolsa vacía es mucho más corta. Sin esto el pie de página, que es alto, sube de golpe al
+    // aparecer el contenido (Lighthouse móvil sobre el sitio publicado: CLS 0,247 en /carrito frente a ≈ 0,05 en el resto).
+    <div className="container min-h-[100svh] py-8 lg:py-12">
       <h1 tabIndex={-1} data-cart-heading="" className="mb-6 font-display text-display-lg lg:mb-10">
         {t("cart.title")}
       </h1>
-      <div className="space-y-4">
+      {/* Región viva PERSISTENTE de los avisos que informan sin interrumpir: existe antes de que entre el primero. Vacía mide 0
+          y no suma separación; con avisos deja 1 rem antes del contenido. Los que bloquean el pago son `role="alert"`. */}
+      <NoticeRegion className="space-y-4 [&:not(:empty)]:mb-4">
         {/* Con la lectura fallida el error ya trae su «Reintentar»: no se repite el aviso de conexión. */}
         {!loadFailed && <SyncBanner />}
         <UndoNotice />
-        {body}
-      </div>
+        <OrphanNotices />
+      </NoticeRegion>
+      <LiveStatus message={spoken} />
+      <div className="space-y-4">{body}</div>
     </div>
   );
 }

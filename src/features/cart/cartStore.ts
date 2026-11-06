@@ -1,6 +1,6 @@
 import type { FunctionResult } from "@/lib/functions";
 import { UNDO_DURATION_MS } from "./constants";
-import type { CartStorage } from "./storage";
+import { type CartStorage, isPendingFresh } from "./storage";
 import type { CartLine, CartRequestBody, CartResponse, CartSnapshot, ItemResult } from "./types";
 
 export interface CartApi {
@@ -31,9 +31,16 @@ export interface CartState {
   /** servidor − dispositivo, en ms: la cuenta regresiva usa la hora del servidor (relojes mal puestos). */
   clockOffsetMs: number;
   mergeReport: MergeReport | null;
+  /**
+   * Hay una petición para reservar de nuevo (la automática al vencer la cuenta regresiva o «Reintentar reserva») esperando
+   * turno o en vuelo. La pantalla dice «Reservando de nuevo…» en vez de «Ya no reservamos…» mientras dura: si había stock,
+   * ese segundo aviso aparecía y desaparecía (parpadeo).
+   */
+  reserving: boolean;
 }
 
-export type CartEvent = { type: "removed"; line: CartLine; quantity: number } | { type: "viewed" };
+export type CartEvent =
+  { type: "removed"; line: CartLine; quantity: number; currency: string } | { type: "viewed" };
 
 export interface CartStoreOptions {
   api: CartApi;
@@ -56,6 +63,7 @@ const INITIAL: CartState = {
   sync: { state: "idle" },
   clockOffsetMs: 0,
   mergeReport: null,
+  reserving: false,
 };
 
 const RETRY_BASE_MS = 2000;
@@ -93,6 +101,8 @@ export class CartStore {
   private retryHandle: unknown = null;
   private undoHandle: unknown = null;
   private retryAttempt = 0;
+  /** Peticiones de «reservar de nuevo» sin terminar (de cualquier época): `state.reserving` es `> 0`. */
+  private reserveInFlight = 0;
   private lastExpiryRefreshed: string | null = null;
   private lastFetchAt = 0;
   private unsubscribeChannel: (() => void) | null = null;
@@ -123,7 +133,44 @@ export class CartStore {
   };
   private set(patch: Partial<CartState>): void {
     this.state = { ...this.state, ...patch };
+    // Todo cambio de lo pendiente se guarda (o se borra al quedar vacío): sobrevive a una recarga sin conexión.
+    if ("pending" in patch) this.persistPending();
     for (const listener of [...this.listeners]) listener();
+  }
+
+  /** Quién es el dueño de lo pendiente guardado: «guest» o «user:<id>» (null mientras no se sabe quién es). */
+  private ownerOf(identity: CartIdentity): string | null {
+    if (identity.kind === "guest") return "guest";
+    if (identity.kind === "user") return `user:${identity.userId}`;
+    return null;
+  }
+
+  private persistPending(): void {
+    const owner = this.ownerOf(this.state.identity);
+    if (!owner) return;
+    if (Object.keys(this.state.pending).length === 0) {
+      this.options.storage.clearPending();
+      return;
+    }
+    this.options.storage.writePending({
+      owner,
+      pending: { ...this.state.pending },
+      savedAt: this.now(),
+    });
+  }
+
+  /**
+   * Lo pendiente que quedó guardado para ESTA identidad (una recarga sin conexión, p. ej.). Lo de otro dueño o lo vencido
+   * se borra: quien cierra sesión o cede el equipo no deja nada suyo, y nadie hereda cambios ajenos.
+   */
+  private restorePending(identity: CartIdentity): Record<string, number> {
+    const owner = this.ownerOf(identity);
+    if (!owner) return {};
+    const saved = this.options.storage.readPending();
+    if (!saved) return {};
+    if (saved.owner === owner && isPendingFresh(saved.savedAt, this.now())) return saved.pending;
+    this.options.storage.clearPending();
+    return {};
   }
   /**
    * Suelta lo vivo (temporizador, canal, lo que vuela) SIN olvidar nada: se puede volver a `connect()`. Es lo que hace
@@ -170,15 +217,19 @@ export class CartStore {
     this.lastFetchAt = 0;
     // Un usuario nunca ve (ni deja) nada del anterior: la foto, lo pendiente y los avisos empiezan de cero.
     const mirror = identity.kind === "guest" ? this.options.storage.read() : null;
+    const pending = this.restorePending(identity);
     this.state = {
       ...INITIAL,
       identity,
       loaded: identity.kind === "guest",
       snapshot: identity.kind === "guest" ? (mirror?.snapshot ?? null) : null,
+      pending,
     };
     for (const listener of [...this.listeners]) listener();
     if (identity.kind === "guest" && mirror) void this.refetch();
     if (identity.kind === "user") void this.refetch();
+    // Lo que quedó sin confirmar antes de recargar se envía ahora (después de leer la bolsa, que va primero en la cola).
+    if (Object.keys(pending).length > 0) this.scheduleFlush();
   }
 
   // ── Lecturas ──────────────────────────────────────────────────────────────────────────────
@@ -189,7 +240,11 @@ export class CartStore {
       this.getQueued = false;
       if (this.state.identity.kind === "unknown") return;
       if (this.state.identity.kind === "guest" && !this.token()) {
-        if (this.epoch === epoch) this.set({ loaded: true, snapshot: null });
+        // Un invitado sin token no tiene bolsa que leer: ya está «cargado» y vacío desde `setIdentity`. Solo se toca el
+        // estado si algo cambia (no se repinta toda la tienda por no hacer nada).
+        if (this.epoch === epoch && (!this.state.loaded || this.state.snapshot !== null)) {
+          this.set({ loaded: true, snapshot: null });
+        }
         return;
       }
       await this.send(epoch, { action: "get" });
@@ -259,7 +314,12 @@ export class CartStore {
       this.undoHandle = null;
       this.dismissUndo();
     }, UNDO_DURATION_MS);
-    this.options.onEvent?.({ type: "removed", line, quantity: qty });
+    this.options.onEvent?.({
+      type: "removed",
+      line,
+      quantity: qty,
+      currency: this.state.snapshot?.currency ?? "BOB",
+    });
   }
 
   undoRemove(): void {
@@ -320,9 +380,7 @@ export class CartStore {
     const key = this.state.snapshot?.reservation.expires_at ?? "none";
     if (this.lastExpiryRefreshed === key) return Promise.resolve();
     this.lastExpiryRefreshed = key;
-    return this.enqueue(async (epoch) => {
-      await this.send(epoch, { action: "refresh" });
-    });
+    return this.reserveAgain();
   }
 
   /**
@@ -331,8 +389,18 @@ export class CartStore {
    * está retenido, así que repetirlo no regala tiempo.
    */
   retryReservation(): Promise<void> {
+    return this.reserveAgain();
+  }
+
+  /** Pide `refresh` y marca `reserving` desde que se encola hasta que termina (también si la época cambió o falló). */
+  private reserveAgain(): Promise<void> {
+    this.reserveInFlight++;
+    if (!this.state.reserving) this.set({ reserving: true });
     return this.enqueue(async (epoch) => {
       await this.send(epoch, { action: "refresh" });
+    }).finally(() => {
+      this.reserveInFlight--;
+      if (this.reserveInFlight === 0 && this.state.reserving) this.set({ reserving: false });
     });
   }
 

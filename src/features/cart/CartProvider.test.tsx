@@ -3,12 +3,21 @@ import { act, render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { subscribeToTracking, type TrackEvent } from "@/features/storefront/analytics/track";
 import { WithAuth } from "@/test/auth-test-utils";
 import type { AuthContextValue } from "@/features/auth/auth-context";
 import { CartProvider } from "./CartProvider";
 import type { CartContextValue } from "./cart-context";
-import { CartSpy, failure, FakeCartServer, flush, signedIn } from "./cart-test-utils";
+import {
+  CartSpy,
+  failure,
+  FakeCartServer,
+  flush,
+  makeLine,
+  makeSnapshot,
+  signedIn,
+} from "./cart-test-utils";
 import { memoryCartStorage } from "./storage";
 
 const withToken = (accessToken: string): AuthContextValue =>
@@ -34,6 +43,24 @@ function mount() {
   );
   const view = render(tree(withToken("tok-1")));
   return { server, cart: () => cart.current as CartContextValue, view, tree };
+}
+
+/** Como `mount()`, pero con el servidor de mentira que se le pase (ya con una bolsa). */
+function mountWith(server: FakeCartServer) {
+  const cart: { current: CartContextValue | null } = { current: null };
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <WithAuth value={withToken("tok-1")}>
+        <MemoryRouter>
+          <CartProvider api={server.api} storage={memoryCartStorage()}>
+            <CartSpy into={cart} />
+          </CartProvider>
+        </MemoryRouter>
+      </WithAuth>
+    </QueryClientProvider>,
+  );
+  return { cart: () => cart.current as CartContextValue, view };
 }
 
 const setItems = (server: FakeCartServer) => server.calls.filter((c) => c.action === "set_item");
@@ -71,4 +98,36 @@ describe("CartProvider · sesión renovada", () => {
     await flush();
     expect(server.calls).toHaveLength(before);
   });
+});
+
+describe("CartProvider · evento remove_from_cart", () => {
+  const events: TrackEvent[] = [];
+  let off: () => void;
+  beforeEach(() => {
+    events.length = 0;
+    off = subscribeToTracking((event) => events.push(event));
+  });
+  afterEach(() => off());
+
+  it.each(["BOB", "USD"])(
+    "lleva la moneda de la BOLSA (%s), no una fija, junto al precio y la cantidad de la línea",
+    async (currency) => {
+      const server = new FakeCartServer(
+        makeSnapshot([makeLine("a", 3, { name: "Falda", unit_price: 250, line_total: 750 })], {
+          currency,
+        }),
+      );
+      const { cart } = mountWith(server);
+      await flush();
+      act(() => cart().store.remove("a"));
+      await flush();
+      expect(events.filter((event) => event.name === "remove_from_cart")).toEqual([
+        {
+          name: "remove_from_cart",
+          quantity: 3,
+          item: { id: "p-a", name: "Falda", price: 250, currency },
+        },
+      ]);
+    },
+  );
 });

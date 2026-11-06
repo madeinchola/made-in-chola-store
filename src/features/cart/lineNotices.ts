@@ -10,12 +10,37 @@ export type NoticeActionKind = "remove" | "adjust" | "accept";
 export interface NoticeSpec {
   key: string;
   tone: NoticeTone;
-  /** Impide pagar: se anuncia como alerta (`role="alert"`); si no, como estado (`role="status"`). */
+  /** Impide pagar: se anuncia como alerta (`role="alert"`); si no, entra en la región viva (`NoticeRegion`). */
   blocking: boolean;
   message: string;
   action?: { kind: NoticeActionKind; label: string };
   /** El aviso viene de un resultado (`state.results`) y se puede cerrar. */
   dismissible?: boolean;
+}
+
+/** La tienda vende en Bolivia: el día de la garantía es el de allá (UTC−4), no el del navegador ni el de UTC. */
+let guaranteeDay: Intl.DateTimeFormat | null | undefined;
+
+/**
+ * «10 de noviembre»: el día (en hora de Bolivia) en que vence la garantía de precio (`price_locked_until`, un instante en
+ * UTC). Null si no es una fecha válida o el entorno no conoce la zona horaria: el aviso se dice entonces sin fecha en vez
+ * de escribir «Invalid Date» (o de romper la carga del módulo).
+ */
+export function formatGuaranteeDate(iso: string): string | null {
+  const instant = Date.parse(iso);
+  if (!Number.isFinite(instant)) return null;
+  if (guaranteeDay === undefined) {
+    try {
+      guaranteeDay = new Intl.DateTimeFormat("es-BO", {
+        day: "numeric",
+        month: "long",
+        timeZone: "America/La_Paz",
+      });
+    } catch {
+      guaranteeDay = null;
+    }
+  }
+  return guaranteeDay ? guaranteeDay.format(instant) : null;
 }
 
 /** Avisos de la propia línea (estado y precio). Todo viene decidido por el servidor: aquí solo se traduce a texto. */
@@ -57,6 +82,7 @@ function statusNotices(line: DisplayLine, currency: string): NoticeSpec[] {
   }
 
   const accept = { kind: "accept", label: t("cart.notice.acceptPrice") } as const;
+  const guaranteedUntil = formatGuaranteeDate(line.price_locked_until);
   switch (line.price_notice) {
     case "dropped":
       specs.push({
@@ -73,7 +99,10 @@ function statusNotices(line: DisplayLine, currency: string): NoticeSpec[] {
         key: "price",
         tone: "info",
         blocking: false,
-        message: t("cart.notice.priceGuaranteed"),
+        // Dice hasta cuándo: sin la fecha, «te respetamos el precio» no permite saber cuánto se puede esperar.
+        message: guaranteedUntil
+          ? t("cart.notice.priceGuaranteedUntil", { date: guaranteedUntil })
+          : t("cart.notice.priceGuaranteed"),
       });
       break;
     case "expired_raised":

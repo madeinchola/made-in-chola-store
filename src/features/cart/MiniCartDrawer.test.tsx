@@ -46,6 +46,18 @@ async function setup(
 }
 
 const opener = () => screen.getByRole("button", { name: "Abrir bolsa" });
+/** La región viva sr-only del cajón («Agregando…», «Tu bolsa está vacía»): un `<p role="status" class="sr-only">` fuera de las líneas. */
+const spoken = (dialog: HTMLElement) =>
+  within(dialog)
+    .getAllByRole("status")
+    .find((el) => el.tagName === "P" && el.classList.contains("sr-only") && !el.closest("li"))!;
+/** La región viva de AVISOS del cajón: la primera región educada que no es de una línea (va antes que la cuenta regresiva). */
+const noticeRegion = (dialog: HTMLElement) =>
+  Array.from(
+    dialog.querySelectorAll<HTMLElement>(
+      '[role="status"][aria-live="polite"][aria-atomic="false"]',
+    ),
+  ).find((el) => !el.closest("li"))!;
 async function openDrawer() {
   const user = userEvent.setup();
   await user.click(opener());
@@ -162,7 +174,9 @@ describe("MiniCartDrawer", () => {
       cart().setOpen(true);
     });
     const dialog = await screen.findByRole("dialog", { name: "Tu bolsa" });
-    expect(await within(dialog).findByText("Agregando a tu bolsa…")).toBeInTheDocument();
+    // la fila provisional lo dice con texto y la región viva sr-only (que existía antes) también
+    expect(await within(dialog).findByRole("listitem")).toHaveTextContent("Agregando a tu bolsa…");
+    expect(spoken(dialog)).toHaveTextContent("Agregando a tu bolsa…");
     expect(within(dialog).queryByText("Tu bolsa está vacía")).not.toBeInTheDocument();
     await act(async () => {
       resume();
@@ -216,7 +230,7 @@ describe("MiniCartDrawer", () => {
     const dialog = await screen.findByRole("dialog", { name: "Tu bolsa" });
     expect(
       await within(dialog).findByText(
-        "Sin conexión. Mantén esta pestaña abierta: enviaremos tus cambios cuando vuelva la conexión.",
+        "Sin conexión. Enviaremos tus cambios cuando vuelva la conexión.",
       ),
     ).toBeInTheDocument();
   });
@@ -284,11 +298,184 @@ describe("MiniCartDrawer · la bolsa no se pudo leer", () => {
     await user.click(within(dialog).getByRole("button", { name: "Quitar Falda de la bolsa" }));
     const subtotal = within(dialog).getByText("Subtotal").closest("p");
     expect(subtotal).toHaveClass("opacity-60");
-    expect(subtotal).toHaveAttribute("aria-busy", "true");
+    // sin `aria-busy` (algunos lectores no leen un contenedor ocupado y el subtotal es justo lo que se quiere oír); lo dice
+    // la región viva sr-only, que ya existía (pasa de «Actualizando…» a vacía)
+    expect(subtotal).not.toHaveAttribute("aria-busy");
+    expect(subtotal!.closest("[aria-busy]")).toBeNull();
+    const updating = subtotal!.nextElementSibling as HTMLElement; // la región viva sr-only que acompaña al subtotal
+    expect(updating).toHaveAttribute("role", "status");
+    expect(updating).toHaveTextContent("Actualizando…");
     await act(async () => {
       resume();
       await new Promise((r) => setTimeout(r, 0));
     });
     expect(subtotal).not.toHaveClass("opacity-60");
+    expect(subtotal!.nextElementSibling).toBe(updating); // el mismo nodo: cambió su texto, no se recreó
+    expect(updating).toBeEmptyDOMElement();
+  });
+});
+
+describe("MiniCartDrawer · regiones vivas dentro del diálogo y foco", () => {
+  it("la región de avisos vive DENTRO del cajón (lo de fuera es inerte), existe vacía y «Deshacer» entra en ese nodo", async () => {
+    await setup(makeSnapshot([makeLine("a", 2, { name: "Falda" })]));
+    const { user, dialog } = await openDrawer();
+    const region = noticeRegion(dialog);
+    expect(region).toBeInTheDocument();
+    expect(dialog).toContainElement(region);
+    expect(region).toBeEmptyDOMElement();
+
+    await user.click(within(dialog).getByRole("button", { name: "Quitar Falda de la bolsa" }));
+    expect(noticeRegion(dialog)).toBe(region);
+    expect(region).toContainElement(within(dialog).getByRole("button", { name: "Deshacer" }));
+    expect(region.querySelectorAll("[role]")).toHaveLength(0);
+  });
+
+  it("quitar la última línea con el cajón abierto lo DICE (región sr-only que ya existía); abrirlo ya vacío no lo repite", async () => {
+    // abierto ya vacío: el texto visible basta, la región sr-only no lo duplica
+    const emptyView = await setup(makeSnapshot([]));
+    const first = userEvent.setup();
+    await first.click(opener());
+    const emptyDialog = await screen.findByRole("dialog", { name: "Tu bolsa" });
+    expect(await within(emptyDialog).findByText("Tu bolsa está vacía")).toBeInTheDocument();
+    expect(spoken(emptyDialog)).toBeEmptyDOMElement();
+    await first.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    emptyView.unmount();
+
+    // se vacía con el cajón abierto: la MISMA región pasa de vacía a «Tu bolsa está vacía»
+    await setup(makeSnapshot([makeLine("a", 1, { name: "Falda" })]));
+    const { user, dialog } = await openDrawer();
+    const region = spoken(dialog);
+    expect(region).toBeEmptyDOMElement();
+    await user.click(within(dialog).getByRole("button", { name: "Quitar Falda de la bolsa" }));
+    await flush();
+    expect(spoken(dialog)).toBe(region);
+    expect(region).toHaveTextContent("Tu bolsa está vacía");
+  });
+
+  it("cerrar un aviso dentro del cajón no deja el foco en el <body>: queda dentro del diálogo, en su título", async () => {
+    const server = new FakeCartServer(makeSnapshot([makeLine("a", 1)]));
+    server.onSetItem = () => ({
+      ok: true,
+      data: {
+        token_state: "ok",
+        server_time: new Date(NOW).toISOString(),
+        cart: server.snapshot,
+        outcome: "out_of_stock",
+        requested: 1,
+        applied: 0,
+      },
+    });
+    const { cart } = await setup(makeSnapshot([makeLine("a", 1)]), { server });
+    act(() => {
+      cart().store.setQty("otra", 1);
+      cart().setOpen(true);
+    });
+    const dialog = await screen.findByRole("dialog", { name: "Tu bolsa" });
+    const close = await within(dialog).findByRole("button", { name: "Cerrar aviso" });
+    const user = userEvent.setup();
+    await user.click(close);
+    expect(close).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(within(dialog).getByRole("heading", { name: "Tu bolsa" })).toHaveFocus();
+  });
+
+  it("«Deshacer» dentro del cajón: el aviso se va y el foco sigue dentro del diálogo", async () => {
+    await setup(makeSnapshot([makeLine("a", 2, { name: "Falda" })]));
+    const { user, dialog } = await openDrawer();
+    await user.click(within(dialog).getByRole("button", { name: "Quitar Falda de la bolsa" }));
+    await user.click(within(dialog).getByRole("button", { name: "Deshacer" }));
+    await flush();
+    expect(within(dialog).queryByRole("button", { name: "Deshacer" })).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+  });
+
+  it("«Reintentar» de «No pudimos cargar tu bolsa»: al cargar, el foco queda dentro del diálogo (no en el <body>)", async () => {
+    const server = new FakeCartServer(makeSnapshot([makeLine("a", 3)]));
+    server.forced = { ok: false, status: 0, code: "network", message: "network" };
+    renderWithCart(
+      <>
+        <Opener />
+        <MiniCartDrawer />
+      </>,
+      { server, auth: signedIn(), path: "/tienda" },
+    );
+    await flush();
+    const user = userEvent.setup();
+    await user.click(opener());
+    const dialog = await screen.findByRole("dialog", { name: "Tu bolsa" });
+    const retry = await within(dialog).findByRole("button", { name: "Reintentar" });
+    server.forced = null;
+    await user.click(retry);
+    await flush();
+    expect(await within(dialog).findByRole("link", { name: "Pagar" })).toBeInTheDocument();
+    expect(retry).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+  });
+});
+
+describe("MiniCartDrawer · carga y foco con otra página detrás", () => {
+  it("mientras la bolsa se lee, el cajón lo dice con la región sr-only y el esqueleto NO es aria-busy", async () => {
+    const server = new FakeCartServer(makeSnapshot([makeLine("a", 1, { name: "Falda" })]));
+    const resume = server.pause();
+    renderWithCart(
+      <>
+        <Opener />
+        <MiniCartDrawer />
+      </>,
+      { server, auth: signedIn(), path: "/tienda" },
+    );
+    await flush();
+    const user = userEvent.setup();
+    await user.click(opener());
+    const dialog = await screen.findByRole("dialog", { name: "Tu bolsa" });
+    await vi.waitFor(() => expect(spoken(dialog)).toHaveTextContent("Cargando tu bolsa…"));
+    expect(dialog.querySelector("[aria-busy]")).toBeNull();
+    const region = spoken(dialog);
+    await act(async () => {
+      resume();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(await within(dialog).findByRole("link", { name: "Falda" })).toBeInTheDocument();
+    expect(spoken(dialog)).not.toBe(region); // otra rama de la vista (cargada): su propia región, ya sin «Cargando…»
+    expect(spoken(dialog)).toBeEmptyDOMElement();
+  });
+
+  it("con la página de la bolsa detrás, el foco rescatado va al título DEL CAJÓN, no al de la página", async () => {
+    const server = new FakeCartServer(makeSnapshot([makeLine("a", 1)]));
+    server.onSetItem = () => ({
+      ok: true,
+      data: {
+        token_state: "ok",
+        server_time: new Date(NOW).toISOString(),
+        cart: server.snapshot,
+        outcome: "out_of_stock",
+        requested: 1,
+        applied: 0,
+      },
+    });
+    const view = renderWithCart(
+      <>
+        <h1 tabIndex={-1} data-cart-heading="">
+          Título de la página
+        </h1>
+        <Opener />
+        <MiniCartDrawer />
+      </>,
+      { snapshot: makeSnapshot([makeLine("a", 1)]), server, path: "/tienda" },
+    );
+    await flush();
+    act(() => {
+      view.cart().store.setQty("otra", 1);
+      view.cart().setOpen(true);
+    });
+    const dialog = await screen.findByRole("dialog", { name: "Tu bolsa" });
+    const user = userEvent.setup();
+    await user.click(await within(dialog).findByRole("button", { name: "Cerrar aviso" }));
+    expect(within(dialog).getByRole("heading", { name: "Tu bolsa" })).toHaveFocus();
+    expect(screen.getByText("Título de la página")).not.toHaveFocus();
   });
 });

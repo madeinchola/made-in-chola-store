@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { CartEffects } from "@/features/cart/CartEffects";
+import { CartScope } from "@/features/cart/CartScope";
 import { MiniCartDrawer } from "@/features/cart/MiniCartDrawer";
 
 /** Estructura de las páginas públicas: aviso · cabecera · contenido · pie, con enlace para saltar al contenido. */
@@ -21,33 +22,35 @@ export function PublicLayout() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <ScrollToTop />
-      {/* Bolsa: avisos globales (fusión, deshacer) y cajón lateral; sin CartProvider no pintan nada. */}
-      <CartEffects />
-      <MiniCartDrawer />
-      <a
-        href="#contenido"
-        onClick={skip}
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
-      >
-        {t("layout.skipToContent")}
-      </a>
-      <AnnouncementBar />
-      {/* La cabecera de la portada va superpuesta (absoluta) sobre el hero: este contenedor hace que empiece DEBAJO de la
-          barra de anuncios en vez de taparla. */}
-      <div className="relative flex flex-1 flex-col">
-        <Header overlay={overlay} />
-        <main
-          ref={main}
-          id="contenido"
-          tabIndex={-1}
-          className="flex-1 scroll-mt-header focus-visible:ring-0"
+    <CartScope>
+      <div className="flex min-h-screen flex-col">
+        <ScrollToTop />
+        {/* Bolsa: avisos globales (fusión, deshacer) y cajón lateral; sin carrito no pintan nada. El carrito se monta aquí (y no en `App`) para que `/admin` no lo cargue. */}
+        <CartEffects />
+        <MiniCartDrawer />
+        <a
+          href="#contenido"
+          onClick={skip}
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
         >
-          <Outlet />
-        </main>
+          {t("layout.skipToContent")}
+        </a>
+        <AnnouncementBar />
+        {/* La cabecera de la portada va superpuesta (absoluta) sobre el hero: este contenedor hace que empiece DEBAJO de la
+          barra de anuncios en vez de taparla. */}
+        <div className="relative flex flex-1 flex-col">
+          <Header overlay={overlay} />
+          <main
+            ref={main}
+            id="contenido"
+            tabIndex={-1}
+            className="flex-1 scroll-mt-header focus-visible:ring-0"
+          >
+            <Outlet />
+          </main>
+        </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
+    </CartScope>
   );
 }

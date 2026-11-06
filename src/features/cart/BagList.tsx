@@ -8,8 +8,9 @@ import { pendingAdds } from "./viewState";
 /** Fila provisional de un producto recién agregado que el servidor aún no confirma (evita el parpadeo del estado vacío). */
 function PendingAddRow({ compact }: { compact: boolean }) {
   return (
+    // Sin `aria-busy` ni `role="status"` propio: lo que oye un lector de pantalla («Agregando a tu bolsa…») lo dice la región
+    // viva persistente de la página o del cajón (`LiveStatus`); un `status` que nace con su texto no se anuncia de forma fiable.
     <li
-      aria-busy="true"
       className={cn("flex gap-3 border-b border-border", compact ? "py-4" : "gap-4 py-6 sm:gap-6")}
     >
       <Skeleton
@@ -18,9 +19,7 @@ function PendingAddRow({ compact }: { compact: boolean }) {
       <div className="min-w-0 flex-1 space-y-3">
         <Skeleton className="h-5 w-2/3" />
         <Skeleton className="h-4 w-1/3" />
-        <p role="status" className="text-sm text-muted-foreground">
-          {t("cart.adding")}
-        </p>
+        <p className="text-sm text-muted-foreground">{t("cart.adding")}</p>
       </div>
     </li>
   );

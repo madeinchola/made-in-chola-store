@@ -1,8 +1,8 @@
 import { CloudOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useCart } from "./cart-context";
+import { RescueButton } from "./RescueButton";
 
 /**
  * La bolsa no se pudo LEER (sin red o error del servidor): se dice con claridad y se deja reintentar. Reemplaza al falso
@@ -18,14 +18,14 @@ export function LoadError({ className }: { className?: string }) {
       <CloudOff aria-hidden="true" className="h-10 w-10 text-muted-foreground" strokeWidth={1.25} />
       <p className="font-display text-display-sm">{t("cart.loadError.title")}</p>
       <p className="text-sm text-muted-foreground">{t("cart.loadError.description")}</p>
-      <Button
+      <RescueButton
         type="button"
         variant="outline"
         className="mt-2 min-h-11"
         onClick={() => store.retryNow()}
       >
         {t("cart.loadError.action")}
-      </Button>
+      </RescueButton>
     </div>
   );
 }

@@ -1,15 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { storeRoutes } from "@/components/layout/storeRoutes";
 import { t } from "@/i18n";
 import { useCart } from "./cart-context";
 import { NoticeBanner } from "./NoticeBanner";
+import { RescueButton } from "./RescueButton";
 
 /**
  * Avisa cuando la bolsa no se puede sincronizar: sin conexión (lo pendiente se conserva y se reintenta), demasiadas
  * peticiones, sesión vencida u otro error. Todos con «Reintentar» (`store.retryNow()`); el de sesión además lleva un
- * enlace para iniciar sesión y volver aquí. `role="status"`: informa sin interrumpir.
+ * enlace para iniciar sesión y volver aquí. Informa sin interrumpir: va dentro de la `NoticeRegion` de la página o del
+ * cajón (la región viva que ya existía), no lleva rol propio. Si «Reintentar» funciona y el aviso se va con el foco
+ * puesto en el botón, el foco pasa al título de la bolsa.
  */
 export function SyncBanner({ className }: { className?: string }) {
   const { state, store } = useCart();
@@ -18,7 +20,7 @@ export function SyncBanner({ className }: { className?: string }) {
   if (sync.state !== "offline" && sync.state !== "error") return null;
 
   const retry = (
-    <Button
+    <RescueButton
       type="button"
       variant="outline"
       size="sm"
@@ -26,7 +28,7 @@ export function SyncBanner({ className }: { className?: string }) {
       onClick={() => store.retryNow()}
     >
       {t("cart.sync.retry")}
-    </Button>
+    </RescueButton>
   );
 
   if (sync.state === "offline") {

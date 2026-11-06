@@ -1,5 +1,5 @@
 import type { CartState } from "./cartStore";
-import { canCheckout, displayLines } from "./selectors";
+import { canCheckout, displayLines, reservationRemainingMs } from "./selectors";
 
 /**
  * Variantes que se acaban de agregar y que el servidor aún no ha confirmado: no están en la foto del carrito, así que
@@ -45,4 +45,46 @@ export function checkoutBlockReason(state: CartState): CheckoutBlockReason | nul
     return blocking.every((line) => line.price_notice === "expired_raised") ? "prices" : "blocking";
   }
   return "unknown";
+}
+
+/** Qué muestra la cuenta regresiva de la retención. */
+export type ReservationView =
+  | { kind: "none" }
+  | { kind: "counting"; remainingMs: number }
+  /** Venció y se está pidiendo (o está por pedirse) reservar de nuevo: estado NEUTRO, sin botón. */
+  | { kind: "reserving" }
+  /** Venció y reservar de nuevo ya se intentó sin éxito: «Ya no reservamos…» y «Reintentar reserva». */
+  | { kind: "expired" };
+
+/**
+ * Decide qué se ve, SIN efectos (se calcula en el primer pintado). El problema que resuelve: al llegar a 0 el efecto que
+ * pide reservar de nuevo corre DESPUÉS de pintar, y en ese hueco se veía un «Ya no reservamos tus productos» que
+ * desaparecía si había stock. Regla: «Ya no reservamos…» solo cuando el servidor dijo `expired` (o, tras vencer el reloj,
+ * `held` con hora pasada) Y el nuevo intento ya se hizo Y no está en vuelo. Mientras tanto —también en el primer pintado
+ * tras llegar a 0, cuando aún no se ha pedido— es «reservando».
+ *
+ * `requestedKey`: el vencimiento (`expires_at`) para el que el componente ya pidió `reservationExpired()`.
+ */
+export function reservationView(
+  state: CartState,
+  deviceNow: number,
+  requestedKey: string | null,
+): ReservationView {
+  const snapshot = state.snapshot;
+  const reservation = snapshot?.reservation;
+  if (
+    !snapshot ||
+    !reservation ||
+    reservation.state === "none" ||
+    snapshot.reserve_on_add === false
+  ) {
+    return { kind: "none" };
+  }
+  const remaining = reservationRemainingMs(state, deviceNow); // null salvo que esté `held`
+  const lapsedByClock = remaining === 0;
+  const lapsedByServer = reservation.state === "expired";
+  if (!lapsedByClock && !lapsedByServer) return { kind: "counting", remainingMs: remaining ?? 0 };
+  const requested = requestedKey === (reservation.expires_at ?? "none");
+  if (state.reserving || (lapsedByClock && !requested)) return { kind: "reserving" };
+  return { kind: "expired" };
 }

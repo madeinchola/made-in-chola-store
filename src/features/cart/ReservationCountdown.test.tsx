@@ -38,11 +38,43 @@ const tickSeconds = async (seconds: number) => {
 };
 
 const time = () => screen.getByText(/Reservamos tus productos durante/).textContent;
-/** Región viva de los avisos de la cuenta regresiva (la única que un lector de pantalla oye). */
-const live = () =>
-  screen
-    .getAllByRole("status")
-    .find((el) => el.getAttribute("aria-live") === "polite" && el.classList.contains("sr-only"))!;
+/** Región viva de los avisos de la cuenta regresiva (la única que un lector de pantalla oye): persistente. */
+const live = () => screen.getByRole("status");
+
+/**
+ * Registra TODO nodo (o texto) que entra al DOM y que dice `needle`, aunque se quite en el mismo instante: un
+ * `MutationObserver` entrega cada registro, así que un fotograma intermedio de «Ya no reservamos…» no se le escapa (mirar
+ * solo el estado final no vería un parpadeo).
+ */
+function watchAdded(needle: RegExp) {
+  const seen: string[] = [];
+  const handle = (records: MutationRecord[]) => {
+    for (const record of records) {
+      record.addedNodes.forEach((node) => {
+        if (needle.test(node.textContent ?? "")) seen.push(node.textContent ?? "");
+      });
+      if (record.type === "characterData" && needle.test(record.target.textContent ?? "")) {
+        seen.push(record.target.textContent ?? "");
+      }
+    }
+  };
+  const observer = new MutationObserver(handle);
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  return {
+    seen,
+    stop() {
+      handle(observer.takeRecords());
+      observer.disconnect();
+    },
+  };
+}
+
+/** Termina la espera de una petición pausada (el servidor de mentira contesta) y deja correr las promesas. */
+const settle = (resume: () => void) =>
+  act(async () => {
+    resume();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  });
 
 describe("ReservationCountdown", () => {
   it("muestra «Reservamos tus productos durante mm:ss» y baja de segundo en segundo", async () => {
@@ -182,5 +214,145 @@ describe("ReservationCountdown", () => {
     });
     await flush();
     expect(screen.queryByText(/Reservamos/)).not.toBeInTheDocument();
+  });
+});
+
+describe("ReservationCountdown · región viva persistente", () => {
+  it("la región existe desde el primer pintado, VACÍA, y sigue siendo el MISMO nodo mientras entra cada mensaje", async () => {
+    const server = new FakeCartServer(heldFor(65));
+    renderWithCart(<ReservationCountdown />, { snapshot: heldFor(65), server });
+    await flush();
+    const region = live();
+    expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveAttribute("aria-atomic", "false");
+    expect(region).toBeEmptyDOMElement(); // 65 s: todavía no hay nada que anunciar
+
+    await tickSeconds(5); // quedan 60 s
+    expect(live()).toBe(region);
+    expect(region).toHaveTextContent("Queda menos de un minuto de reserva.");
+
+    // al vencer, sin stock: «reservando» y luego «ya no reservamos», siempre dentro de la MISMA región
+    server.snapshot = makeSnapshot([makeLine("a", 1)], {
+      reservation: { state: "expired", expires_at: null },
+    });
+    await tickSeconds(60);
+    expect(live()).toBe(region);
+    expect(region).toHaveTextContent(
+      "Ya no reservamos tus productos, pero aún puedes comprarlos si hay stock",
+    );
+    expect(region).toContainElement(screen.getByRole("button", { name: "Reintentar reserva" }));
+  });
+
+  it("la cuenta que cambia cada segundo NO está dentro de la región viva", async () => {
+    renderWithCart(<ReservationCountdown />, { snapshot: heldFor(90) });
+    await flush();
+    expect(live().contains(screen.getByText(/Reservamos tus productos durante/))).toBe(false);
+  });
+});
+
+describe("ReservationCountdown · sin parpadeo al vencer", () => {
+  it("al llegar a 0 se ve «Reservando de nuevo…» (sin botón) mientras vuela la petición, y NUNCA «Ya no reservamos» si había stock", async () => {
+    const server = new FakeCartServer(heldFor(2));
+    renderWithCart(<ReservationCountdown />, { snapshot: heldFor(2), server });
+    await flush();
+    const watch = watchAdded(/Ya no reservamos/);
+    const resume = server.pause(); // la petición de reservar de nuevo queda en vuelo
+    // lo que contestará: una retención nueva de 10 min desde el vencimiento (NOW + 2 s + 600 s)
+    server.snapshot = makeSnapshot([makeLine("a", 1)], {
+      reservation: { state: "held", expires_at: new Date(NOW + 2000 + 600_000).toISOString() },
+    });
+    await tickSeconds(2);
+    expect(server.callsOf("refresh")).toHaveLength(1);
+    expect(screen.getByText("Reservando de nuevo…")).toBeInTheDocument();
+    expect(screen.queryByText(/Ya no reservamos/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reintentar reserva" })).not.toBeInTheDocument();
+
+    await settle(resume);
+    expect(time()).toBe("Reservamos tus productos durante 10:00");
+    expect(screen.queryByText("Reservando de nuevo…")).not.toBeInTheDocument();
+    watch.stop();
+    expect(watch.seen).toEqual([]); // ni un fotograma de «Ya no reservamos…» en todo el recorrido
+  });
+
+  it("sin stock: tras la respuesta aparece «Ya no reservamos…» con «Reintentar reserva» (control: el observador SÍ ve ese texto)", async () => {
+    const server = new FakeCartServer(heldFor(2));
+    renderWithCart(<ReservationCountdown />, { snapshot: heldFor(2), server });
+    await flush();
+    const watch = watchAdded(/Ya no reservamos/);
+    const resume = server.pause();
+    server.snapshot = makeSnapshot([makeLine("a", 1)], {
+      reservation: { state: "expired", expires_at: null },
+    });
+    await tickSeconds(2);
+    expect(screen.getByText("Reservando de nuevo…")).toBeInTheDocument();
+    expect(screen.queryByText(/Ya no reservamos/)).not.toBeInTheDocument();
+
+    await settle(resume);
+    expect(
+      screen.getByText("Ya no reservamos tus productos, pero aún puedes comprarlos si hay stock"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reintentar reserva" })).toBeInTheDocument();
+    expect(screen.queryByText("Reservando de nuevo…")).not.toBeInTheDocument();
+    watch.stop();
+    expect(watch.seen.length).toBeGreaterThan(0); // el observador funciona: el texto apareció, pero solo DESPUÉS
+  });
+
+  it("el servidor contesta lo mismo (retención «vigente» con hora ya pasada): tras el intento se dice «ya no reservamos» y no se queda «reservando» para siempre", async () => {
+    // `FakeCartServer` devuelve la misma foto vencida: el almacén no la renueva
+    const server = new FakeCartServer(heldFor(2));
+    renderWithCart(<ReservationCountdown />, { snapshot: heldFor(2), server });
+    await flush();
+    await tickSeconds(2);
+    await tickSeconds(1);
+    expect(server.callsOf("refresh")).toHaveLength(1);
+    expect(screen.queryByText("Reservando de nuevo…")).not.toBeInTheDocument();
+    expect(screen.getByText(/Ya no reservamos/)).toBeInTheDocument();
+  });
+
+  it("«Reintentar reserva»: el botón se va (reservando…), el foco pasa al título y, sin stock, el botón vuelve", async () => {
+    const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTime(ms) });
+    const expired = makeSnapshot([makeLine("a", 1)], {
+      reservation: { state: "expired", expires_at: null },
+    });
+    const server = new FakeCartServer(expired);
+    renderWithCart(
+      <>
+        <h1 tabIndex={-1} data-cart-heading="">
+          Tu bolsa
+        </h1>
+        <ReservationCountdown />
+      </>,
+      { snapshot: expired, server },
+    );
+    await flush();
+    const resume = server.pause();
+    await user.click(screen.getByRole("button", { name: "Reintentar reserva" }));
+    expect(screen.getByText("Reservando de nuevo…")).toBeInTheDocument();
+    expect(screen.queryByText(/Ya no reservamos/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reintentar reserva" })).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole("heading", { name: "Tu bolsa" })).toHaveFocus();
+
+    await settle(resume); // sigue sin stock
+    expect(screen.getByRole("button", { name: "Reintentar reserva" })).toBeInTheDocument();
+    expect(server.callsOf("refresh")).toHaveLength(1);
+  });
+
+  it("con stock, «Reintentar reserva» vuelve a la cuenta regresiva sin pasar por «ya no reservamos» de nuevo", async () => {
+    const user = userEvent.setup({ advanceTimers: (ms) => vi.advanceTimersByTime(ms) });
+    const expired = makeSnapshot([makeLine("a", 1)], {
+      reservation: { state: "expired", expires_at: null },
+    });
+    const server = new FakeCartServer(expired);
+    renderWithCart(<ReservationCountdown />, { snapshot: expired, server });
+    await flush();
+    const resume = server.pause();
+    server.snapshot = heldFor(600);
+    await user.click(screen.getByRole("button", { name: "Reintentar reserva" }));
+    const watch = watchAdded(/Ya no reservamos/);
+    await settle(resume);
+    expect(time()).toBe("Reservamos tus productos durante 10:00");
+    watch.stop();
+    expect(watch.seen).toEqual([]);
   });
 });

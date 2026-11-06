@@ -36,7 +36,8 @@ export function CartProvider({ children, api, storage }: CartProviderProps) {
                 id: event.line.product_id,
                 name: event.line.name,
                 price: event.line.unit_price,
-                currency: "BOB",
+                // La moneda de la bolsa (la del servidor), no una fija: el precio y la moneda deben decir lo mismo.
+                currency: event.currency,
               },
             });
           }

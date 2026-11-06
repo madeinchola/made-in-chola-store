@@ -8,6 +8,7 @@ import { productImageUrl } from "@/features/catalog/mediaUrl";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useCart } from "./cart-context";
+import { HEADING_FOCUS, NEIGHBOUR_FOCUS } from "./focus";
 import { formatCartMoney, limitReason, maxQtyFor, productHref } from "./format";
 import { LineNotice } from "./LineNotice";
 import type { DisplayLine } from "./selectors";
@@ -17,10 +18,6 @@ interface CartLineItemProps {
   /** `compact`: la versión del cajón (foto y tipografía más pequeñas). */
   variant?: "page" | "compact";
 }
-
-/** Elementos a los que se mueve el foco cuando una línea desaparece (ver `quitar`). */
-const NEIGHBOUR_FOCUS = "[data-line-focus]";
-const HEADING_FOCUS = "[data-cart-heading]";
 
 /**
  * Una línea de la bolsa: foto (marcador provisional mientras no haya fotografía), nombre enlazado a la ficha, color y
@@ -73,9 +70,10 @@ export function CartLineItem({ line, variant = "page" }: CartLineItemProps) {
   };
 
   return (
+    // Sin `aria-busy`: dentro vive la región viva «Actualizando…», y algunos lectores no anuncian lo que hay en un contenedor
+    // ocupado. El indicador visual (atenuado + círculo) y el texto hablado bastan.
     <li
       ref={itemRef}
-      aria-busy={line.syncing || undefined}
       className={cn("flex gap-3 border-b border-border", compact ? "py-4" : "gap-4 py-6 sm:gap-6")}
     >
       <Link

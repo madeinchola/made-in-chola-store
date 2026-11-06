@@ -19,6 +19,7 @@ const base: CartState = {
   sync: { state: "idle" },
   clockOffsetMs: 0,
   mergeReport: null,
+  reserving: false,
 };
 const withState = (patch: Partial<CartState>): CartState => ({ ...base, ...patch });
 

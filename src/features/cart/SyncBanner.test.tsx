@@ -1,6 +1,7 @@
 import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { NoticeRegion } from "./NoticeRegion";
 import { SyncBanner } from "./SyncBanner";
 import {
   FakeCartServer,
@@ -14,7 +15,18 @@ import {
 async function setup() {
   const snapshot = makeSnapshot([makeLine("a", 1)]);
   const server = new FakeCartServer(snapshot);
-  const view = renderWithCart(<SyncBanner />, { snapshot, server, path: "/carrito" });
+  // Como en la página y el cajón: el aviso entra en la región viva persistente, y hay un título al que rescatar el foco.
+  const view = renderWithCart(
+    <>
+      <h1 tabIndex={-1} data-cart-heading="">
+        Tu bolsa
+      </h1>
+      <NoticeRegion>
+        <SyncBanner />
+      </NoticeRegion>
+    </>,
+    { snapshot, server, path: "/carrito" },
+  );
   await flush();
   return { ...view, server };
 }
@@ -30,10 +42,19 @@ async function failChange(
 }
 
 describe("SyncBanner", () => {
-  it("sin problemas no pinta nada", async () => {
+  it("sin problemas no pinta nada: la región viva está, vacía, esperando", async () => {
     await setup();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("el aviso ENTRA en la región viva que ya existía (el mismo nodo) y no lleva un role propio", async () => {
+    const view = await setup();
+    const region = screen.getByRole("status");
+    await failChange(view, failure(0, "network"));
+    expect(screen.getByRole("status")).toBe(region);
+    expect(region).toHaveTextContent("Sin conexión.");
+    expect(region.querySelectorAll("[role]")).toHaveLength(0);
   });
 
   it("sin conexión: avisa que se guardará al volver, como estado, con «Reintentar»", async () => {
@@ -41,7 +62,7 @@ describe("SyncBanner", () => {
     await failChange(view, failure(0, "network"));
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent(
-      "Sin conexión. Mantén esta pestaña abierta: enviaremos tus cambios cuando vuelva la conexión.",
+      "Sin conexión. Enviaremos tus cambios cuando vuelva la conexión.",
     );
     expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
   });
@@ -54,8 +75,34 @@ describe("SyncBanner", () => {
     await user.click(screen.getByRole("button", { name: "Reintentar" }));
     await flush();
     expect(view.server.callsOf("set_item").at(-1)).toMatchObject({ variant_id: "a", qty: 2 });
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
     expect(view.cart().state.sync.state).toBe("idle");
+  });
+
+  it("al pulsar «Reintentar» con éxito el botón desaparece y el foco pasa al título, no al <body>", async () => {
+    const user = userEvent.setup();
+    const view = await setup();
+    await failChange(view, failure(0, "network"));
+    view.server.forced = null;
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+    await flush();
+    expect(screen.queryByRole("button", { name: "Reintentar" })).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole("heading", { name: "Tu bolsa" })).toHaveFocus();
+  });
+
+  it("si «Reintentar» no arregla nada, el aviso vuelve (entra otra vez en la región) y el foco quedó en el título, no en el <body>", async () => {
+    const user = userEvent.setup();
+    const view = await setup();
+    await failChange(view, failure(0, "network"));
+    const region = screen.getByRole("status");
+    // mientras reenvía, el aviso se retira (ya no está «sin conexión» sino «sincronizando») y con él el botón enfocado
+    await user.click(screen.getByRole("button", { name: "Reintentar" })); // sigue sin red
+    await flush();
+    expect(screen.getByRole("status")).toBe(region);
+    expect(region).toHaveTextContent("Sin conexión.");
+    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole("heading", { name: "Tu bolsa" })).toHaveFocus();
   });
 
   it("demasiadas peticiones: dice cuándo se reintenta", async () => {

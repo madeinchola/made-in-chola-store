@@ -113,10 +113,16 @@ describe("CartLineItem · cantidad", () => {
     expect(screen.getByText(/Total de la línea:/).parentElement).toHaveTextContent("Bs 300,00");
   });
 
-  it("el cambio se ve al instante y mientras el servidor no responde la línea dice que se está actualizando", async () => {
+  it("el cambio se ve al instante y mientras el servidor no responde la línea dice que se está actualizando (región viva existente, sin aria-busy)", async () => {
     const user = userEvent.setup();
     const server = new FakeCartServer(makeSnapshot([makeLine("a", 2)]));
     await setup([makeLine("a", 2)], server);
+    const item = screen.getByRole("listitem");
+    // la región viva «Actualizando…» (sr-only) existe desde el principio, vacía
+    const status = within(item)
+      .getAllByRole("status")
+      .find((el) => el.classList.contains("sr-only"))!;
+    expect(status).toBeEmptyDOMElement();
     const resume = server.pause();
     await user.click(plus());
     // ya muestra 3 aunque el servidor no ha contestado; el total sigue siendo el del servidor, atenuado
@@ -124,14 +130,17 @@ describe("CartLineItem · cantidad", () => {
     const total = screen.getByText(/Total de la línea:/).parentElement!;
     expect(total).toHaveTextContent("Bs 200,00");
     expect(total).toHaveClass("opacity-60");
-    expect(screen.getByRole("listitem")).toHaveAttribute("aria-busy", "true");
-    expect(within(screen.getByRole("listitem")).getByText("Actualizando…")).toBeInTheDocument();
+    // `aria-busy` haría que algunos lectores de pantalla no anuncien lo que hay dentro (la propia región viva)
+    expect(item).not.toHaveAttribute("aria-busy");
+    expect(status).toBeInTheDocument();
+    expect(status).toHaveTextContent("Actualizando…"); // el texto entró en el MISMO nodo que ya estaba
     await act(async () => {
       resume();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(screen.queryByText("Actualizando…")).not.toBeInTheDocument();
-    expect(screen.getByRole("listitem")).not.toHaveAttribute("aria-busy");
+    expect(status).toBeEmptyDOMElement();
+    expect(item).not.toHaveAttribute("aria-busy");
     expect(screen.getByText(/Total de la línea:/).parentElement).toHaveTextContent("Bs 300,00");
     expect(screen.getByText(/Total de la línea:/).parentElement).not.toHaveClass("opacity-60");
   });
@@ -287,6 +296,10 @@ describe("BagList · altas pendientes", () => {
     const resume = server.pause();
     act(() => cart().store.setQty("nuevo", 1));
     expect(screen.getByText("Agregando a tu bolsa…")).toBeInTheDocument();
+    // la fila no es `aria-busy` ni nace con su `role="status"`: lo que se oye lo dice la región viva de la página o el cajón
+    const row = screen.getByText("Agregando a tu bolsa…").closest("li")!;
+    expect(row).not.toHaveAttribute("aria-busy");
+    expect(row.querySelector("[role], [aria-busy]")).toBeNull();
     await act(async () => {
       resume();
       await new Promise((resolve) => setTimeout(resolve, 0));

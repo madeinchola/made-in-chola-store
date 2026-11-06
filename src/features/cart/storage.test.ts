@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { browserCartStorage, GUEST_CART_KEY, memoryCartStorage, parseGuestMirror } from "./storage";
+import {
+  browserCartStorage,
+  GUEST_CART_KEY,
+  isPendingFresh,
+  memoryCartStorage,
+  parseGuestMirror,
+  parsePersistedPending,
+  PENDING_KEY,
+  PENDING_TTL_MS,
+} from "./storage";
 import type { CartLine, CartSnapshot } from "./types";
 
 const TOKEN = `ct_${"A".repeat(43)}`;
@@ -194,5 +203,158 @@ describe("almacenamiento del navegador", () => {
     expect(storage.read()?.token).toBe(TOKEN);
     storage.clear();
     expect(storage.read()).toBeNull();
+  });
+});
+
+describe("parsePersistedPending (lo pendiente guardado)", () => {
+  const good = { owner: "guest", pending: { a: 2, b: 0 }, savedAt: 5 };
+
+  it("acepta lo bien formado, con cantidad 0 (quitar) y el tope 1000", () => {
+    expect(parsePersistedPending(raw(good))).toEqual(good);
+    expect(
+      parsePersistedPending(raw({ ...good, owner: "user:3f2c-AA-9", pending: { v: 1000 } })),
+    ).toEqual({ owner: "user:3f2c-AA-9", pending: { v: 1000 }, savedAt: 5 });
+  });
+
+  it("sin nada, JSON roto o algo que no es un objeto → null", () => {
+    for (const value of [null, "", "{roto", "42", "null", "[]", '"texto"']) {
+      expect(parsePersistedPending(value), String(value)).toBeNull();
+    }
+  });
+
+  it("el dueño debe ser «guest» o «user:<id>» (sin espacios, sin vacío, de hasta 64 caracteres)", () => {
+    for (const owner of [
+      "",
+      "admin",
+      "user:",
+      "user:a b",
+      `user:${"x".repeat(65)}`,
+      "Guest",
+      7,
+      null,
+    ]) {
+      expect(parsePersistedPending(raw({ ...good, owner })), JSON.stringify(owner)).toBeNull();
+    }
+    expect(
+      parsePersistedPending(raw({ ...good, owner: `user:${"x".repeat(64)}` }))?.owner,
+    ).toHaveLength(69);
+  });
+
+  it("una cantidad negativa, decimal, mayor de 1000 o que no es número descarta TODO", () => {
+    for (const qty of [-1, 1.5, 1001, "2", null, true, [], {}]) {
+      expect(
+        parsePersistedPending(raw({ ...good, pending: { a: 2, b: qty } })),
+        JSON.stringify(qty),
+      ).toBeNull();
+    }
+    // un número que JSON.parse convierte en Infinity (1e999) tampoco pasa
+    expect(parsePersistedPending('{"owner":"guest","pending":{"a":1e999},"savedAt":5}')).toBeNull();
+  });
+
+  it("claves inválidas (vacía, con espacios, demasiado larga, «__proto__») descartan todo", () => {
+    for (const key of ["", "a b", "x".repeat(65), "a/b"]) {
+      expect(
+        parsePersistedPending(raw({ ...good, pending: { [key]: 1 } })),
+        JSON.stringify(key),
+      ).toBeNull();
+    }
+    expect(
+      parsePersistedPending('{"owner":"guest","pending":{"__proto__":1},"savedAt":5}'),
+    ).toBeNull();
+    // 64 caracteres sí
+    expect(
+      parsePersistedPending(raw({ ...good, pending: { ["x".repeat(64)]: 1 } }))?.pending,
+    ).toEqual({ ["x".repeat(64)]: 1 });
+  });
+
+  it("vacío o con más de 100 variantes → null; con 100 exactas, sí", () => {
+    const many = (n: number) =>
+      Object.fromEntries(Array.from({ length: n }, (_, i) => [`v${i}`, 1]));
+    expect(parsePersistedPending(raw({ ...good, pending: {} }))).toBeNull();
+    expect(parsePersistedPending(raw({ ...good, pending: [] }))).toBeNull();
+    expect(parsePersistedPending(raw({ ...good, pending: many(101) }))).toBeNull();
+    expect(
+      Object.keys(parsePersistedPending(raw({ ...good, pending: many(100) }))!.pending),
+    ).toHaveLength(100);
+  });
+
+  it("la hora debe ser un número", () => {
+    for (const savedAt of ["5", null, undefined, {}, [1]]) {
+      expect(parsePersistedPending(raw({ ...good, savedAt })), String(savedAt)).toBeNull();
+    }
+    const { savedAt: _omit, ...withoutTime } = good;
+    void _omit;
+    expect(parsePersistedPending(raw(withoutTime))).toBeNull();
+  });
+});
+
+describe("isPendingFresh", () => {
+  const now = 10_000_000;
+  it("vale hasta 24 h exactas y ni un milisegundo más", () => {
+    expect(PENDING_TTL_MS).toBe(86_400_000);
+    expect(isPendingFresh(now - 86_400_000, now)).toBe(true);
+    expect(isPendingFresh(now - 86_400_001, now)).toBe(false);
+    expect(isPendingFresh(now, now)).toBe(true);
+  });
+  it("tolera un reloj adelantado hasta 60 s; más allá se descarta", () => {
+    expect(isPendingFresh(now + 60_000, now)).toBe(true);
+    expect(isPendingFresh(now + 60_001, now)).toBe(false);
+  });
+});
+
+describe("almacenamiento de lo pendiente", () => {
+  it("el navegador escribe y lee con su clave versionada, borra, y lo manipulado se descarta al leer", () => {
+    localStorage.clear();
+    const storage = browserCartStorage();
+    const value = { owner: "user:u1", pending: { a: 3 }, savedAt: 9 };
+    expect(storage.readPending()).toBeNull();
+    storage.writePending(value);
+    expect(localStorage.getItem(PENDING_KEY)).toBe(JSON.stringify(value));
+    expect(storage.readPending()).toEqual(value);
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ ...value, pending: { a: -3 } }));
+    expect(storage.readPending()).toBeNull();
+    storage.writePending(value);
+    storage.clearPending();
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+    // el espejo del invitado y lo pendiente viven en claves distintas y no se pisan
+    storage.write({ token: TOKEN, snapshot: null, savedAt: 1 });
+    storage.writePending(value);
+    storage.clear();
+    expect(storage.readPending()).toEqual(value);
+    expect(localStorage.getItem(GUEST_CART_KEY)).toBeNull();
+  });
+
+  it("si localStorage lanza (modo privado, datos bloqueados) no rompe nada", () => {
+    const original = Object.getOwnPropertyDescriptor(window, "localStorage");
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("bloqueado");
+      },
+    });
+    try {
+      const storage = browserCartStorage();
+      expect(storage.readPending()).toBeNull();
+      expect(() =>
+        storage.writePending({ owner: "guest", pending: { a: 1 }, savedAt: 1 }),
+      ).not.toThrow();
+      expect(() => storage.clearPending()).not.toThrow();
+    } finally {
+      if (original) Object.defineProperty(window, "localStorage", original);
+    }
+  });
+
+  it("la memoria de prueba guarda una COPIA (cambiar el original después no altera lo guardado) y borra", () => {
+    const storage = memoryCartStorage();
+    const pending = { a: 1 };
+    storage.writePending({ owner: "guest", pending, savedAt: 1 });
+    pending.a = 99;
+    expect(storage.readPending()?.pending).toEqual({ a: 1 });
+    storage.clearPending();
+    expect(storage.readPending()).toBeNull();
+    expect(
+      memoryCartStorage(null, { owner: "guest", pending: { z: 2 }, savedAt: 1 }).readPending()
+        ?.pending,
+    ).toEqual({ z: 2 });
   });
 });

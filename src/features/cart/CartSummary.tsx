@@ -22,11 +22,17 @@ export function CartSummary({ className }: { className?: string }) {
   // Con CUALQUIER cambio sin confirmar: una línea quitada (cantidad 0) ya no está en `lines`, y su total viejo no debe
   // verse como definitivo.
   const syncing = Object.keys(state.pending).length > 0;
+  // El rótulo cuenta lo que se COBRA (Σ `billable_qty`), no las unidades que hay en la bolsa (`totals.item_count`): una línea
+  // agotada o con menos stock del pedido suma 0 (o menos) al importe, y «Subtotal (3 productos)» con un importe de 2 sería
+  // engañoso. Es un conteo, no dinero. La cabecera SÍ cuenta todo lo que hay en la bolsa (`displayCount`): es otro número
+  // con otro propósito («tienes cosas aquí»), y por eso pueden diferir.
+  const chargedUnits = snapshot.lines.reduce((sum, line) => sum + line.billable_qty, 0);
   const row = "flex items-baseline justify-between gap-4";
+  // Sin `aria-busy`: algunos lectores de pantalla no anuncian lo que está dentro de un contenedor ocupado, y aquí dentro
+  // vive la región viva «Actualizando…».
   return (
     <section
       aria-labelledby="cart-summary-title"
-      aria-busy={syncing || undefined}
       className={cn("space-y-5 rounded-card border border-border bg-card p-5 sm:p-6", className)}
     >
       <div className="flex items-center justify-between gap-3">
@@ -44,9 +50,9 @@ export function CartSummary({ className }: { className?: string }) {
       <dl className={cn("space-y-3 text-sm", syncing && "opacity-60")}>
         <div className={row}>
           <dt>
-            {totals.item_count === 1
+            {chargedUnits === 1
               ? t("cart.summary.subtotalItemsOne")
-              : t("cart.summary.subtotalItems", { n: totals.item_count })}
+              : t("cart.summary.subtotalItems", { n: chargedUnits })}
           </dt>
           <dd className="tabular-nums">{formatCartMoney(totals.subtotal, currency)}</dd>
         </div>

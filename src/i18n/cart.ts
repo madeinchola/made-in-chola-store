@@ -44,6 +44,7 @@ export const cart = {
     acceptPriceLabel: "Aceptar nuevo precio de {name}",
     priceDropped: "Bajó de precio: pagas {price}",
     priceGuaranteed: "Te respetamos el precio con el que lo agregaste",
+    priceGuaranteedUntil: "Te respetamos el precio con el que lo agregaste hasta el {date}",
     priceRaised: "El precio cambió a {price}",
     priceLowered: "El precio bajó a {price}",
     acceptPrice: "Aceptar nuevo precio",
@@ -69,8 +70,7 @@ export const cart = {
     generic: "inténtalo de nuevo.",
   },
   sync: {
-    offline:
-      "Sin conexión. Mantén esta pestaña abierta: enviaremos tus cambios cuando vuelva la conexión.",
+    offline: "Sin conexión. Enviaremos tus cambios cuando vuelva la conexión.",
     rateLimited: "Hiciste muchos cambios seguidos. Reintentaremos en {seconds} segundos.",
     rateLimitedNoTime: "Hiciste muchos cambios seguidos. Reintentaremos en unos segundos.",
     session: "Tu sesión terminó. Inicia sesión para seguir guardando tu bolsa.",
@@ -81,6 +81,7 @@ export const cart = {
   reservation: {
     held: "Reservamos tus productos durante {time}",
     oneMinute: "Queda menos de un minuto de reserva.",
+    reserving: "Reservando de nuevo…",
     expired: "Ya no reservamos tus productos, pero aún puedes comprarlos si hay stock",
     retry: "Reintentar reserva",
   },

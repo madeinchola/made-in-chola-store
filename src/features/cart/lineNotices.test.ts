@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lineNotices, orphanNotice } from "./lineNotices";
+import { formatGuaranteeDate, lineNotices, orphanNotice } from "./lineNotices";
 import { makeLine } from "./cart-test-utils";
 import type { DisplayLine } from "./selectors";
 import type { CartLimits, CartLine, ItemResult } from "./types";
@@ -102,14 +102,37 @@ describe("avisos de precio (los cuatro price_notice)", () => {
     expect(notice?.action).toBeUndefined();
   });
 
-  it("guaranteed: informativo, no bloquea", () => {
-    const [notice] = priced({ price_notice: "guaranteed", unit_price: 100, current_price: 120 });
+  it("guaranteed: informativo, no bloquea y dice HASTA CUÁNDO (el día en hora de Bolivia)", () => {
+    // 2026-11-10 12:00 UTC = 08:00 en La Paz (UTC−4): sigue siendo el 10
+    const [notice] = priced({
+      price_notice: "guaranteed",
+      unit_price: 100,
+      current_price: 120,
+      price_locked_until: "2026-11-10T12:00:00.000Z",
+    });
     expect(notice).toMatchObject({
       tone: "info",
       blocking: false,
-      message: "Te respetamos el precio con el que lo agregaste",
+      message: "Te respetamos el precio con el que lo agregaste hasta el 10 de noviembre",
     });
     expect(notice?.action).toBeUndefined();
+  });
+
+  it("guaranteed: la fecha es la de Bolivia aunque en UTC ya sea otro día (frontera a las 04:00 UTC)", () => {
+    // 03:59:59 UTC = 23:59:59 del día 9 en La Paz; 04:00:00 UTC = 00:00:00 del día 10
+    const day = (iso: string) =>
+      priced({ price_notice: "guaranteed", price_locked_until: iso })[0]?.message;
+    expect(day("2026-11-10T03:59:59.000Z")).toBe(
+      "Te respetamos el precio con el que lo agregaste hasta el 9 de noviembre",
+    );
+    expect(day("2026-11-10T04:00:00.000Z")).toBe(
+      "Te respetamos el precio con el que lo agregaste hasta el 10 de noviembre",
+    );
+  });
+
+  it("guaranteed: sin una fecha válida lo dice sin fecha (nunca «Invalid Date»)", () => {
+    const [notice] = priced({ price_notice: "guaranteed", price_locked_until: "no es una fecha" });
+    expect(notice?.message).toBe("Te respetamos el precio con el que lo agregaste");
   });
 
   it("expired_raised: BLOQUEA y pide aceptar el precio nuevo", () => {
@@ -259,5 +282,22 @@ describe("avisos sin línea (no se pudo agregar)", () => {
   it("ok y removed no dicen nada", () => {
     expect(orphanNotice(result("ok"), limits)).toBeNull();
     expect(orphanNotice(result("removed"), limits)).toBeNull();
+  });
+});
+
+describe("formatGuaranteeDate", () => {
+  it("escribe día y mes en español con la hora de La Paz (UTC−4, sin horario de verano)", () => {
+    expect(formatGuaranteeDate("2026-11-12T15:30:00.000Z")).toBe("12 de noviembre");
+    expect(formatGuaranteeDate("2026-07-01T12:00:00.000Z")).toBe("1 de julio");
+  });
+
+  it("cruza de año por la zona horaria: 1 ene 03:59:59 UTC todavía es 31 dic en La Paz", () => {
+    expect(formatGuaranteeDate("2027-01-01T03:59:59.000Z")).toBe("31 de diciembre");
+    expect(formatGuaranteeDate("2027-01-01T04:00:00.000Z")).toBe("1 de enero");
+  });
+
+  it("una fecha inválida o vacía devuelve null", () => {
+    expect(formatGuaranteeDate("")).toBeNull();
+    expect(formatGuaranteeDate("mañana")).toBeNull();
   });
 });

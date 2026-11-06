@@ -1,14 +1,16 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, matchRoutes, useLocation, useRoutes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { asAdmin, asCustomer, fakeAuth, WithAuth } from "@/test/auth-test-utils";
 import type { AuthContextValue } from "@/features/auth/auth-context";
+import { createCartApi } from "@/features/cart/cartApi";
 import { CartProvider } from "@/features/cart/CartProvider";
 import { FakeCartServer } from "@/features/cart/cart-test-utils";
 import { memoryCartStorage } from "@/features/cart/storage";
 import { routes } from "./router";
+import appSource from "./App.tsx?raw";
 
 // Se prueban las rutas REALES con sus guards REALES. Se usa MemoryRouter + useRoutes (y no un data router)
 // porque jsdom y Node/undici tienen AbortSignal incompatibles al ejecutar <Navigate> en data routers;
@@ -22,6 +24,16 @@ vi.mock("@/features/admin/stock/api", () => ({
   listStockAlertVariants: async () => [],
 }));
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+// Cuando una ruta monta el carrito SIN darle una API de mentira, usa esta (así se ve si lo monta y qué pide).
+const cartRequest = vi.fn(async () => ({
+  ok: true as const,
+  data: { token_state: "none", cart: null, server_time: "2026-11-03T12:00:00.000Z" },
+}));
+vi.mock("@/features/cart/cartApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/cart/cartApi")>()),
+  createCartApi: vi.fn(() => ({ request: cartRequest })),
+}));
 
 function Routes() {
   location = useLocation();
@@ -97,6 +109,32 @@ describe("rutas públicas", () => {
       expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
       unmount();
     }
+  });
+});
+
+describe("el carrito solo se monta donde se usa", () => {
+  it("las páginas públicas lo montan: quien tiene sesión lee su bolsa al entrar", async () => {
+    vi.mocked(createCartApi).mockClear();
+    cartRequest.mockClear();
+    renderAt("/", asCustomer({ session: { user: { id: "u1" }, access_token: "t" } as never }));
+    await waitFor(() => expect(cartRequest).toHaveBeenCalledWith({ action: "get" }));
+    expect(createCartApi).toHaveBeenCalledTimes(1);
+  });
+
+  it("el panel de administración NO lo monta: ni se crea el almacén ni se lee la bolsa", async () => {
+    vi.mocked(createCartApi).mockClear();
+    cartRequest.mockClear();
+    renderAt("/admin", asAdmin({ session: { user: { id: "u2" }, access_token: "t" } as never }));
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Panel de administración" }),
+    ).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(createCartApi).not.toHaveBeenCalled();
+    expect(cartRequest).not.toHaveBeenCalled();
+  });
+
+  it("`App` ya no envuelve todo el sitio con el carrito (se monta en el diseño público)", () => {
+    expect(appSource).not.toMatch(/CartProvider|CartScope/);
   });
 });
 

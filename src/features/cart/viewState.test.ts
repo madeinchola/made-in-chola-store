@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CartStore, type CartState } from "./cartStore";
-import { makeLine, makeSnapshot } from "./cart-test-utils";
+import { makeLine, makeSnapshot, NOW } from "./cart-test-utils";
 import { memoryCartStorage } from "./storage";
-import { checkoutBlockReason, pendingAdds } from "./viewState";
+import { checkoutBlockReason, pendingAdds, reservationView } from "./viewState";
 
 function stateWith(extra: Partial<CartState>): CartState {
   const store = new CartStore({
@@ -73,5 +73,72 @@ describe("checkoutBlockReason", () => {
         stateWith({ snapshot: makeSnapshot([makeLine("a", 1)], { can_checkout: false }) }),
       ),
     ).toBe("unknown");
+  });
+});
+
+describe("reservationView (qué muestra la cuenta regresiva)", () => {
+  // `makeSnapshot` retiene hasta 2026-11-03T12:10:00Z; NOW = 12:00:00Z → quedan exactamente 10 min = 600 000 ms
+  const EXPIRY = "2026-11-03T12:10:00.000Z";
+  const EXPIRY_MS = Date.parse(EXPIRY);
+  const held = (extra: Partial<CartState> = {}) =>
+    stateWith({ snapshot: makeSnapshot([makeLine("a", 1)]), ...extra });
+  const withReservation = (reservation: {
+    state: "held" | "expired" | "none";
+    expires_at: string | null;
+  }) => stateWith({ snapshot: makeSnapshot([makeLine("a", 1)], { reservation }) });
+
+  it("sin foto, sin retención o con la reserva desactivada: nada", () => {
+    expect(reservationView(stateWith({ snapshot: null }), NOW, null)).toEqual({ kind: "none" });
+    expect(reservationView(stateWith({ snapshot: makeSnapshot([]) }), NOW, null)).toEqual({
+      kind: "none",
+    });
+    const off = stateWith({
+      snapshot: makeSnapshot([makeLine("a", 1)], { reserve_on_add: false }),
+    });
+    expect(reservationView(off, NOW, null)).toEqual({ kind: "none" });
+  });
+
+  it("vigente: cuenta lo que falta según el servidor (10 min = 600 000 ms; 1 ms antes de vencer sigue contando)", () => {
+    expect(reservationView(held(), NOW, null)).toEqual({ kind: "counting", remainingMs: 600_000 });
+    expect(reservationView(held(), EXPIRY_MS - 1, null)).toEqual({
+      kind: "counting",
+      remainingMs: 1,
+    });
+  });
+
+  it("el reloj del servidor manda: con el servidor 9 min adelantado faltan 60 s; con 10 min adelantado ya venció", () => {
+    // faltan 600 000 − (0 + 540 000) = 60 000 con 9 min de desfase; con 10 min de desfase faltan 0
+    expect(reservationView(held({ clockOffsetMs: 540_000 }), NOW, null)).toEqual({
+      kind: "counting",
+      remainingMs: 60_000,
+    });
+    expect(reservationView(held({ clockOffsetMs: 600_000 }), NOW, null)).toEqual({
+      kind: "reserving",
+    });
+  });
+
+  it("llegó a 0 y aún NO se pidió reservar de nuevo: «reservando» (jamás «ya no reservamos» en el primer pintado)", () => {
+    expect(reservationView(held(), EXPIRY_MS, null)).toEqual({ kind: "reserving" });
+    // ya se pidió para OTRO vencimiento (uno anterior): para este todavía no
+    expect(reservationView(held(), EXPIRY_MS, "2026-11-03T11:50:00.000Z")).toEqual({
+      kind: "reserving",
+    });
+  });
+
+  it("llegó a 0, se pidió y está en vuelo: «reservando»; terminó sin éxito: «ya no reservamos»", () => {
+    expect(reservationView(held({ reserving: true }), EXPIRY_MS, EXPIRY)).toEqual({
+      kind: "reserving",
+    });
+    expect(reservationView(held({ reserving: false }), EXPIRY_MS, EXPIRY)).toEqual({
+      kind: "expired",
+    });
+  });
+
+  it("el servidor dijo «vencida»: ya no reservamos, SALVO que se esté reintentando", () => {
+    const expired = withReservation({ state: "expired", expires_at: null });
+    expect(reservationView(expired, NOW, null)).toEqual({ kind: "expired" });
+    expect(reservationView({ ...expired, reserving: true }, NOW, null)).toEqual({
+      kind: "reserving",
+    });
   });
 });

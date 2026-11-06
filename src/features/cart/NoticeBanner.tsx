@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 import { Ban, Info, TriangleAlert, X } from "lucide-react";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
+import { useRescueFocus } from "./focus";
 import type { NoticeTone } from "./lineNotices";
 
 const TONES = {
@@ -12,7 +13,11 @@ const TONES = {
 
 interface NoticeBannerProps {
   tone: NoticeTone;
-  /** Impide pagar: `role="alert"`. Si no, `role="status"` (se anuncia con educación). */
+  /**
+   * Impide pagar: `role="alert"` (se anuncia al insertarse). Si no, NO lleva rol: va dentro de una `NoticeRegion`, la región
+   * viva que ya existía y que es la que lo anuncia con educación (un nodo que nace con `role="status"` no se anuncia de
+   * forma fiable).
+   */
   blocking?: boolean;
   message: string;
   /** Botones o enlaces de acción (cada uno ≥ 44 px de alto). */
@@ -23,7 +28,8 @@ interface NoticeBannerProps {
 
 /**
  * Aviso en banda del carrito. El significado NUNCA va solo en el color: lleva un icono distinto por gravedad y el texto
- * dice qué pasa. Los botones y el de cerrar miden al menos 44 px (objetivo táctil).
+ * dice qué pasa. Los botones y el de cerrar miden al menos 44 px (objetivo táctil). Si se cierra con el foco en «Cerrar»,
+ * el foco pasa al producto de su línea o al título de la bolsa (no cae al `<body>`).
  */
 export function NoticeBanner({
   tone,
@@ -34,9 +40,11 @@ export function NoticeBanner({
   className,
 }: NoticeBannerProps) {
   const { box, Icon } = TONES[tone];
+  const dismissRef = useRef<HTMLButtonElement>(null);
+  useRescueFocus(dismissRef);
   return (
     <div
-      role={blocking ? "alert" : "status"}
+      role={blocking ? "alert" : undefined}
       className={cn(
         "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-3 py-2 text-sm",
         box,
@@ -48,6 +56,7 @@ export function NoticeBanner({
       {actions}
       {onDismiss && (
         <button
+          ref={dismissRef}
           type="button"
           aria-label={t("cart.notice.dismiss")}
           onClick={onDismiss}

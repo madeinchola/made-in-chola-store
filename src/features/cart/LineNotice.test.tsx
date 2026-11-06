@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { BagList } from "./BagList";
 import { OrphanNotices } from "./LineNotice";
+import { NoticeRegion } from "./NoticeRegion";
 import { FakeCartServer, flush, makeLine, makeSnapshot, renderWithCart } from "./cart-test-utils";
 import type { CartLine } from "./types";
 
@@ -10,7 +11,10 @@ async function setup(lines: CartLine[], server?: FakeCartServer) {
   const snapshot = makeSnapshot(lines);
   const view = renderWithCart(
     <>
-      <OrphanNotices />
+      {/* Como en la página y el cajón: los avisos sin línea entran en la región viva persistente. */}
+      <NoticeRegion>
+        <OrphanNotices />
+      </NoticeRegion>
       <BagList />
     </>,
     { snapshot, ...(server ? { server } : {}) },
@@ -118,7 +122,10 @@ describe("LineNotice · avisos de precio", () => {
 
   it("guaranteed: informativo, no bloquea", async () => {
     await setup([priced("guaranteed", { unit_price: 100, current_price: 120 })]);
-    expect(screen.getByText("Te respetamos el precio con el que lo agregaste")).toBeInTheDocument();
+    // price_locked_until de `makeLine` = 2026-11-10T12:00Z = 10 de noviembre en La Paz
+    expect(
+      screen.getByText("Te respetamos el precio con el que lo agregaste hasta el 10 de noviembre"),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -247,5 +254,136 @@ describe("LineNotice · avisos del último cambio", () => {
     await user.click(screen.getByRole("button", { name: "Cerrar aviso" }));
     expect(screen.queryByText(/No pudimos agregar/)).not.toBeInTheDocument();
     expect(cart().state.results).toEqual({});
+  });
+});
+
+/** La región viva propia de la línea (`NoticeRegion`): la única con `aria-atomic="false"` dentro del `<li>`. */
+const lineRegion = (item: HTMLElement) =>
+  item.querySelector<HTMLElement>('[role="status"][aria-live="polite"][aria-atomic="false"]');
+
+function adjustingServer(lineName: string) {
+  const server = new FakeCartServer(makeSnapshot([makeLine("a", 2, { name: lineName })]));
+  server.onSetItem = () => {
+    server.snapshot = makeSnapshot([makeLine("a", 3, { name: lineName, available: 3 })]);
+    return {
+      ok: true,
+      data: {
+        token_state: "ok",
+        server_time: new Date().toISOString(),
+        cart: server.snapshot,
+        outcome: "adjusted",
+        requested: 6,
+        applied: 3,
+      },
+    };
+  };
+  return server;
+}
+
+describe("LineNotice · región viva persistente", () => {
+  it("la región existe VACÍA antes del aviso y el aviso entra en ESE MISMO nodo (no nace con su role)", async () => {
+    const user = userEvent.setup();
+    await setup([makeLine("a", 2, { name: "Falda" })], adjustingServer("Falda"));
+    const item = screen.getByRole("listitem");
+    const before = lineRegion(item);
+    expect(before).not.toBeNull();
+    expect(before).toBeEmptyDOMElement();
+
+    await user.click(screen.getByRole("button", { name: /^Aumentar la cantidad de / }));
+    await flush();
+
+    // el mismo nodo, ahora con el aviso dentro; el aviso no trae un `role` propio (lo anuncia la región)
+    expect(lineRegion(item)).toBe(before);
+    expect(before).toHaveTextContent("Solo había 3 unidades; ajustamos tu pedido.");
+    expect(before!.querySelectorAll("[role]")).toHaveLength(0);
+  });
+
+  it("un aviso que BLOQUEA no entra en la región educada: es una alerta aparte", async () => {
+    await setup([
+      makeLine("a", 1, { name: "Falda", status: "out_of_stock", blocking: true, available: 0 }),
+    ]);
+    const item = screen.getByRole("listitem");
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Se agotó");
+    const region = lineRegion(item)!;
+    expect(region).toBeEmptyDOMElement();
+    expect(region.contains(alert)).toBe(false);
+  });
+
+  it("sin avisos la región no ocupa sitio (la línea se ve igual que antes)", async () => {
+    await setup([makeLine("a", 1)]);
+    const region = lineRegion(screen.getByRole("listitem"))!;
+    // `empty:!mt-0` anula el margen que `space-y-3` le daría al hueco
+    expect(region).toHaveClass("empty:!mt-0");
+    expect(region).toBeEmptyDOMElement();
+  });
+});
+
+describe("LineNotice · el foco no cae al <body> al cerrar un aviso", () => {
+  it("cerrar el aviso de una línea deja el foco en el nombre de SU producto", async () => {
+    const user = userEvent.setup();
+    await setup([makeLine("a", 2, { name: "Falda" })], adjustingServer("Falda"));
+    await user.click(screen.getByRole("button", { name: /^Aumentar la cantidad de / }));
+    await flush();
+    const close = screen.getByRole("button", { name: "Cerrar aviso" });
+    await user.click(close);
+    expect(screen.queryByText(/ajustamos tu pedido/)).not.toBeInTheDocument();
+    expect(close).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(screen.getByRole("link", { name: "Falda" })).toHaveFocus();
+  });
+
+  it("cerrar un aviso SIN línea (no se pudo agregar) lleva el foco al título de la bolsa", async () => {
+    const user = userEvent.setup();
+    const server = new FakeCartServer(makeSnapshot([makeLine("a", 1)]));
+    server.onSetItem = () => ({
+      ok: true,
+      data: {
+        token_state: "ok",
+        server_time: new Date().toISOString(),
+        cart: server.snapshot,
+        outcome: "out_of_stock",
+        requested: 1,
+        applied: 0,
+      },
+    });
+    const view = renderWithCart(
+      <>
+        <h1 tabIndex={-1} data-cart-heading="">
+          Tu bolsa
+        </h1>
+        <NoticeRegion>
+          <OrphanNotices />
+        </NoticeRegion>
+        <BagList />
+      </>,
+      { snapshot: makeSnapshot([makeLine("a", 1)]), server },
+    );
+    await flush();
+    act(() => view.cart().store.setQty("otra", 1));
+    await flush();
+    await user.click(screen.getByRole("button", { name: "Cerrar aviso" }));
+    expect(screen.queryByText(/No pudimos agregar/)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tu bolsa" })).toHaveFocus();
+  });
+
+  it("no ROBA el foco: si estaba en otra parte cuando el aviso se va, ahí se queda", async () => {
+    const user = userEvent.setup();
+    const view = await setup([makeLine("a", 2, { name: "Falda" })], adjustingServer("Falda"));
+    await user.click(screen.getByRole("button", { name: /^Aumentar la cantidad de / }));
+    await flush();
+    // un elemento ajeno a la bolsa, que ningún componente del carrito gestiona. (react-dom ya devuelve el foco al elemento que
+    // lo tenía antes de un commit si sigue en el documento; este test fija el contrato por si el rescate dejara de apoyarse en eso.)
+    const other = document.createElement("button");
+    document.body.append(other);
+    try {
+      other.focus();
+      expect(other).toHaveFocus();
+      act(() => view.cart().store.dismissResult("a")); // se cierra por otra vía, sin tocar el botón del aviso
+      expect(screen.queryByText(/ajustamos tu pedido/)).not.toBeInTheDocument();
+      expect(other).toHaveFocus();
+    } finally {
+      other.remove();
+    }
   });
 });
