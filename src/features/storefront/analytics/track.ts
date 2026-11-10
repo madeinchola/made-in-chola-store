@@ -22,7 +22,19 @@ export type TrackEvent =
       variant?: { color?: string; size?: string };
     }
   | { name: "remove_from_cart"; item: TrackedItem; quantity: number }
-  | { name: "view_cart"; items: number; value: number; currency: string };
+  | { name: "view_cart"; items: number; value: number; currency: string }
+  // Checkout (S10): sin datos personales. `transactionId` es el número del pedido (MIC-000123), no la persona.
+  | { name: "begin_checkout"; items: number; value: number; currency: string }
+  | { name: "add_payment_info"; paymentMethod: string; value: number | null; currency: string }
+  | {
+      name: "purchase";
+      transactionId: string;
+      value: number;
+      currency: string;
+      items: number;
+      shipping: number;
+      discount: number;
+    };
 
 export type TrackListener = (event: TrackEvent) => void;
 

@@ -2,12 +2,16 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { t } from "@/i18n";
 import { useAuth } from "./useAuth";
 
+/**
+ * Mientras se lee la sesión se reserva TODA la altura de la pantalla (igual que `lazyPage`): con un aviso corto el pie de
+ * página quedaba a la vista y, al aparecer la pantalla real, bajaba de golpe (CLS ≈ 1 en /checkout y /cuenta al cargar).
+ */
 function Loading() {
   return (
     <div
       role="status"
       aria-live="polite"
-      className="container py-16 text-center text-muted-foreground"
+      className="container min-h-[100svh] py-16 text-center text-muted-foreground"
     >
       {t("guard.loading")}
     </div>

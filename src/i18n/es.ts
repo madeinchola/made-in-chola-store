@@ -13,6 +13,7 @@ import { acctTax } from "./account/tax";
 import { acctSecurity } from "./account/security";
 import { acctOrders } from "./account/orders";
 import { cart } from "./cart";
+import { checkout } from "./checkout";
 import { shipping } from "./shipping";
 
 export const es = {
@@ -132,6 +133,7 @@ export const es = {
   layout,
   shop: { home: shopHome, listing: shopListing, product: shopProduct, seo: shopSeo },
   cart,
+  checkout,
   shipping,
   acct: {
     layout: acctLayout,

@@ -1,9 +1,19 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { asCustomer, customerProfile, WithAuth } from "@/test/auth-test-utils";
 import { money } from "@/lib/money";
 import { OrderDetailPage, OrderDetailView } from "./OrderDetailPage";
+import type { OrderRow } from "./ordersApi";
 import type { OrderDetail } from "./types";
+
+const getOrderById = vi.hoisted(() => vi.fn());
+vi.mock("./ordersApi", async (original) => ({
+  ...(await original<typeof import("./ordersApi")>()),
+  getOrderById,
+}));
 
 const ORDER: OrderDetail = {
   id: "o-1",
@@ -25,36 +35,192 @@ const ORDER: OrderDetail = {
   payment: { label: "Transferencia bancaria" },
 };
 
+const UUID = "11111111-2222-4333-8444-555555555555";
+
+const ROW: OrderRow = {
+  id: UUID,
+  number: "MIC-000123",
+  status: "pending_payment",
+  currency: "BOB",
+  subtotal: 240,
+  discount_total: 24,
+  shipping_cost: 15,
+  shipping_discount: 0,
+  total: 231,
+  contact_name: "Ana Pérez",
+  shipping_method: { code: "delivery", name: "Entrega a domicilio", kind: "delivery" },
+  shipping_address: { line1: "Calle 1", line2: null, city: "La Paz" },
+  delivery_slot: { date: "2026-12-01", start: "10:00", end: "12:00" },
+  payment_method: "whatsapp",
+  coupon_code: "VERANO20",
+  created_at: "2026-11-09T15:30:00Z",
+  order_items: [
+    {
+      id: "i2",
+      line_no: 2,
+      product_name: "Gorro",
+      color_name: null,
+      size_label: null,
+      qty: 1,
+      unit_price: 40,
+      final_total: 36,
+    },
+    {
+      id: "i1",
+      line_no: 1,
+      product_name: "Camisa",
+      color_name: "Celeste",
+      size_label: "S",
+      qty: 2,
+      unit_price: 100,
+      final_total: 180,
+    },
+  ],
+  order_status_history: [
+    { id: 1, to_status: "pending_payment", created_at: "2026-11-09T15:30:00Z" },
+  ],
+};
+
 const renderAt = (path: string, ui: React.ReactElement = <OrderDetailPage />) =>
   render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/cuenta/pedidos/:orderId" element={ui} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <WithAuth value={asCustomer()}>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/cuenta/pedidos/:orderId" element={ui} />
+          </Routes>
+        </MemoryRouter>
+      </WithAuth>
+    </QueryClientProvider>,
   );
 
-describe("OrderDetailPage (hoy: ningún pedido existe hasta S10)", () => {
-  it.each(["abc", "o-1", "00000000-0000-0000-0000-000000000000", "%3Cscript%3E", "a%2Fb"])(
-    "el id «%s» muestra «Pedido no encontrado» con camino de vuelta",
-    (id) => {
-      renderAt(`/cuenta/pedidos/${id}`);
-      expect(screen.getByRole("status")).toHaveTextContent("Pedido no encontrado");
-      expect(screen.getByRole("link", { name: "Volver a mis pedidos" })).toHaveAttribute(
-        "href",
-        "/cuenta/pedidos",
-      );
-    },
-  );
+describe("OrderDetailPage (S10: pedido real)", () => {
+  beforeEach(() => getOrderById.mockReset());
 
-  it("no repite el id de la URL en la pantalla", () => {
+  it("lee el pedido de la clienta por el id de la URL y muestra el desglose del servidor", async () => {
+    getOrderById.mockResolvedValue(ROW);
+    renderAt(`/cuenta/pedidos/${UUID}`);
+    expect(await screen.findByRole("heading", { name: "Pedido MIC-000123" })).toBeInTheDocument();
+    expect(getOrderById).toHaveBeenCalledWith(customerProfile.id, UUID);
+    // líneas en el orden del pedido (no el de llegada), variante y precio por unidad
+    const items = screen
+      .getAllByRole("listitem")
+      .filter((li) => li.textContent?.includes("Cantidad"));
+    expect(items.map((li) => li.querySelector("p")?.textContent)).toEqual(["Camisa", "Gorro"]);
+    expect(items[0]).toHaveTextContent("Celeste · S");
+    expect(items[0]).toHaveTextContent("Bs 100,00 c/u");
+    expect(items[0]).toHaveTextContent("Bs 180,00");
+    // desglose: subtotal 240 − descuento 24 + envío 15 = 231
+    expect(screen.getByText("Subtotal").nextElementSibling).toHaveTextContent("Bs 240,00");
+    expect(screen.getByText(/^Descuento/).nextElementSibling).toHaveTextContent("−Bs 24,00");
+    expect(screen.getByText(/Cupón: VERANO20/)).toBeInTheDocument();
+    expect(screen.getAllByText("Envío")[1]!.nextElementSibling).toHaveTextContent("Bs 15,00");
+    expect(screen.getByText("Total", { selector: "dt" }).nextElementSibling).toHaveTextContent(
+      "Bs 231,00",
+    );
+    expect(screen.getByText("Entrega a domicilio")).toBeInTheDocument();
+    expect(screen.getByText("Calle 1, La Paz")).toBeInTheDocument();
+    expect(screen.getByText("Fecha y franja: mar 1 dic, 10:00 a 12:00")).toBeInTheDocument();
+    expect(screen.getByText("Pedido por WhatsApp")).toBeInTheDocument();
+  });
+
+  it("el envío gratis (descuento de envío = costo) se muestra «Gratis», no 0,00", async () => {
+    getOrderById.mockResolvedValue({ ...ROW, shipping_discount: 15, total: 216 });
+    renderAt(`/cuenta/pedidos/${UUID}`);
+    await screen.findByRole("heading", { name: "Pedido MIC-000123" });
+    expect(screen.getAllByText("Envío")[1]!.nextElementSibling).toHaveTextContent("Gratis");
+  });
+
+  it("muestra el seguimiento con el paso actual marcado", async () => {
+    getOrderById.mockResolvedValue({
+      ...ROW,
+      status: "shipped",
+      order_status_history: [
+        { id: 3, to_status: "shipped", created_at: "2026-11-11T10:00:00Z" },
+        { id: 1, to_status: "pending_payment", created_at: "2026-11-09T15:30:00Z" },
+        { id: 2, to_status: "paid", created_at: "2026-11-10T09:00:00Z" },
+      ],
+    });
+    renderAt(`/cuenta/pedidos/${UUID}`);
+    const timeline = await screen.findByRole("list", { name: "Seguimiento" });
+    const steps = within(timeline).getAllByRole("listitem");
+    expect(steps.map((li) => li.querySelector("p")?.textContent)).toEqual([
+      "Pedido recibido",
+      "Pedido confirmado",
+      "Enviado",
+    ]);
+    expect(steps[2]).toHaveAttribute("aria-current", "step");
+    expect(steps[0]).not.toHaveAttribute("aria-current");
+  });
+
+  it("«Cancelar el pedido» solo aparece mientras se puede (antes de «preparing»)", async () => {
+    getOrderById.mockResolvedValue(ROW);
+    const { unmount } = renderAt(`/cuenta/pedidos/${UUID}`);
+    expect(await screen.findByRole("button", { name: "Cancelar el pedido" })).toBeInTheDocument();
+    unmount();
+    for (const status of [
+      "preparing",
+      "shipped",
+      "delivered",
+      "completed",
+      "cancelled",
+      "refunded",
+    ]) {
+      getOrderById.mockResolvedValue({ ...ROW, status });
+      const view = renderAt(`/cuenta/pedidos/${UUID}`);
+      await screen.findByRole("heading", { name: "Pedido MIC-000123" });
+      expect(
+        screen.queryByRole("button", { name: "Cancelar el pedido" }),
+        status,
+      ).not.toBeInTheDocument();
+      view.unmount();
+    }
+    getOrderById.mockResolvedValue({ ...ROW, status: "paid" });
+    renderAt(`/cuenta/pedidos/${UUID}`);
+    expect(await screen.findByRole("button", { name: "Cancelar el pedido" })).toBeInTheDocument();
+  });
+
+  it("el botón abre la confirmación y NO cancela hasta confirmar", async () => {
+    getOrderById.mockResolvedValue(ROW);
+    renderAt(`/cuenta/pedidos/${UUID}`);
+    await userEvent.click(await screen.findByRole("button", { name: "Cancelar el pedido" }));
+    const dialog = await screen.findByRole("dialog", { name: "¿Cancelar el pedido MIC-000123?" });
+    expect(within(dialog).getByRole("button", { name: "No, conservar" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Sí, cancelar pedido" })).toBeInTheDocument();
+  });
+
+  it("un pedido que no existe o no es de la clienta es «Pedido no encontrado», con camino de vuelta", async () => {
+    getOrderById.mockResolvedValue(null);
+    renderAt(`/cuenta/pedidos/${UUID}`);
+    expect(await screen.findByText("Pedido no encontrado")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Volver a mis pedidos" })).toHaveAttribute(
+      "href",
+      "/cuenta/pedidos",
+    );
+  });
+
+  it("no repite el id de la URL en la pantalla cuando no existe", async () => {
+    getOrderById.mockResolvedValue(null);
     renderAt("/cuenta/pedidos/secreto-123");
+    await screen.findByText("Pedido no encontrado");
     expect(document.body).not.toHaveTextContent("secreto-123");
   });
 
-  it("tiene migas: Mi cuenta › Mis pedidos › (página actual)", () => {
-    renderAt("/cuenta/pedidos/abc");
-    const nav = screen.getByRole("navigation", { name: "Ruta de tu pedido" });
+  it("un fallo de lectura ofrece reintentar (no dice que el pedido no existe)", async () => {
+    getOrderById.mockRejectedValueOnce(new Error("sin red")).mockResolvedValueOnce(ROW);
+    renderAt(`/cuenta/pedidos/${UUID}`);
+    expect(await screen.findByText("No pudimos cargar tus pedidos")).toBeInTheDocument();
+    expect(screen.queryByText("Pedido no encontrado")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /reintentar/i }));
+    expect(await screen.findByRole("heading", { name: "Pedido MIC-000123" })).toBeInTheDocument();
+  });
+
+  it("tiene migas: Mi cuenta › Mis pedidos › (página actual)", async () => {
+    getOrderById.mockResolvedValue(null);
+    renderAt(`/cuenta/pedidos/${UUID}`);
+    const nav = await screen.findByRole("navigation", { name: "Ruta de tu pedido" });
     expect(within(nav).getByRole("link", { name: "Mi cuenta" })).toHaveAttribute("href", "/cuenta");
     expect(within(nav).getByRole("link", { name: "Mis pedidos" })).toHaveAttribute(
       "href",
@@ -64,7 +230,7 @@ describe("OrderDetailPage (hoy: ningún pedido existe hasta S10)", () => {
   });
 });
 
-describe("OrderDetailView (estructura preparada para S10)", () => {
+describe("OrderDetailView (presentacional)", () => {
   it("cabecera: número, estado con texto y fecha", () => {
     renderAt("/cuenta/pedidos/o-1", <OrderDetailView order={ORDER} />);
     expect(

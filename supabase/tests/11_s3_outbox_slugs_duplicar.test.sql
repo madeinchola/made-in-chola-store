@@ -6,11 +6,13 @@ select plan(140);
 alter table public.stock_movements disable trigger user;
 alter table public.exchange_rates disable trigger user;
 alter table public.product_slug_history disable trigger user;
+alter table public.order_items disable trigger user;
 truncate public.products, public.categories, public.collections, public.news_banners, public.home_sections,
          public.exchange_rates, public.notification_outbox restart identity cascade;
 alter table public.stock_movements enable trigger user;
 alter table public.exchange_rates enable trigger user;
 alter table public.product_slug_history enable trigger user;
+alter table public.order_items enable trigger user;
 
 insert into auth.users (id, email, raw_user_meta_data, aud, role) values
   ('c0000000-0000-0000-0000-0000000000c1', 'cliente.s3@test.com', '{"full_name":"Cliente S3"}', 'authenticated', 'authenticated'),

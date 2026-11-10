@@ -23,7 +23,7 @@ const problem = (key: string, raw: string) => {
 };
 
 describe("definiciones", () => {
-  it("cubren exactamente las 26 claves sembradas en la base (15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8), sin repetir", () => {
+  it("cubren exactamente las 28 claves sembradas en la base (15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8 + 2 de pedidos de S10), sin repetir", () => {
     expect(SETTING_DEFS.map((d) => d.key).sort()).toEqual(
       [
         "base_currency",
@@ -38,6 +38,8 @@ describe("definiciones", () => {
         "delivery_max_days_ahead",
         "delivery_min_lead_hours",
         "guest_cart_retention_days",
+        "open_orders_max",
+        "order_reminder_hours",
         "pdp_assistance_text",
         "pdp_shipping_return_text",
         "price_guarantee_days",
@@ -79,12 +81,14 @@ describe("definiciones", () => {
       expect(def(key).section).toBe("cart");
     }
   });
-  it("el cupo por red y los ajustes de envíos son enteros que se guardan como número, en su sección", () => {
+  it("el cupo por red y los ajustes de envíos y pedidos son enteros que se guardan como número, en su sección", () => {
     for (const [key, section] of [
       ["cart_max_units_per_ip", "cart"],
       ["shipping_route_factor_pct", "shipping"],
       ["delivery_min_lead_hours", "shipping"],
       ["delivery_max_days_ahead", "shipping"],
+      ["order_reminder_hours", "orders"],
+      ["open_orders_max", "orders"],
     ] as const) {
       expect(toJsonValue(def(key), "130")).toBe(130);
       expect(settingProblem(def(key), "130")).toBeNull();

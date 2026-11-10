@@ -1,5 +1,7 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { EmptyState } from "@/components/store/EmptyState";
+import { ErrorState } from "@/components/store/ErrorState";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,11 +10,17 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/features/auth/useAuth";
 import { t } from "@/i18n";
 import { accountRoutes } from "../accountRoutes";
+import { CancelOrderDialog } from "./CancelOrderDialog";
 import { displayDate, displayMoney } from "./format";
+import { useOrderById } from "./hooks";
 import { OrderStatusBadge } from "./OrderStatusBadge";
+import { OrderTimeline } from "./OrderTimeline";
 import type { OrderDetail } from "./types";
 
 function Crumbs({ current }: { current: string }) {
@@ -49,10 +57,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /**
- * Estructura del detalle de un pedido: migas, número y estado, artículos, envío y pago. Presentacional y PROVISIONAL: la
- * forma real de los datos llega con el Sprint 10.
+ * Detalle de un pedido: migas, número y estado, seguimiento, artículos, envío, pago y desglose. Presentacional: recibe el
+ * pedido ya leído (instantánea congelada al comprar). `onCancel` solo se ofrece si el pedido aún se puede cancelar.
  */
-export function OrderDetailView({ order }: { order: OrderDetail }) {
+export function OrderDetailView({
+  order,
+  onCancel,
+}: {
+  order: OrderDetail;
+  onCancel?: () => void;
+}) {
   return (
     <div className="space-y-6">
       <Crumbs current={t("acct.orders.detail.number", { number: order.number })} />
@@ -69,6 +83,12 @@ export function OrderDetailView({ order }: { order: OrderDetail }) {
         </p>
       </header>
 
+      {order.timeline && order.timeline.length > 0 && (
+        <Section title={t("checkout.confirmation.timeline.title")}>
+          <OrderTimeline entries={order.timeline} />
+        </Section>
+      )}
+
       <Section title={t("acct.orders.detail.items")}>
         {order.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("acct.orders.detail.itemsEmpty")}</p>
@@ -81,6 +101,13 @@ export function OrderDetailView({ order }: { order: OrderDetail }) {
                   {line.variant && <p className="text-sm text-muted-foreground">{line.variant}</p>}
                   <p className="text-sm text-muted-foreground">
                     {t("acct.orders.detail.quantity", { n: line.quantity })}
+                    {line.unitPrice && (
+                      <>
+                        {" "}
+                        ·{" "}
+                        {t("acct.orders.detail.unitPrice", { price: displayMoney(line.unitPrice) })}
+                      </>
+                    )}
                   </p>
                 </div>
                 <p className="shrink-0 tabular-nums">{displayMoney(line.total)}</p>
@@ -97,6 +124,9 @@ export function OrderDetailView({ order }: { order: OrderDetail }) {
             {order.shipping.address && (
               <span className="block text-muted-foreground">{order.shipping.address}</span>
             )}
+            {order.shipping.schedule && (
+              <span className="block text-muted-foreground">{order.shipping.schedule}</span>
+            )}
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">{t("acct.orders.detail.shippingEmpty")}</p>
@@ -111,10 +141,50 @@ export function OrderDetailView({ order }: { order: OrderDetail }) {
         )}
       </Section>
 
-      <p className="flex items-baseline justify-between border-t border-border pt-4 font-medium">
-        <span>{t("acct.orders.detail.total")}</span>
-        <span className="tabular-nums">{displayMoney(order.total)}</span>
-      </p>
+      <dl className="space-y-1.5 border-t border-border pt-4 text-sm">
+        {order.subtotal && (
+          <div className="flex items-baseline justify-between">
+            <dt>{t("acct.orders.detail.subtotal")}</dt>
+            <dd className="tabular-nums">{displayMoney(order.subtotal)}</dd>
+          </div>
+        )}
+        {order.discount && order.discount.amount !== 0 && (
+          <div className="flex items-baseline justify-between">
+            <dt>
+              {t("acct.orders.detail.discount")}
+              {order.couponCode && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {t("acct.orders.detail.coupon", { code: order.couponCode })}
+                </span>
+              )}
+            </dt>
+            <dd className="tabular-nums">−{displayMoney(order.discount)}</dd>
+          </div>
+        )}
+        {order.shippingCost && (
+          <div className="flex items-baseline justify-between">
+            <dt>{t("acct.orders.detail.shippingCost")}</dt>
+            <dd className="tabular-nums">
+              {order.shippingCost.amount === 0
+                ? t("acct.orders.detail.shippingFree")
+                : displayMoney(order.shippingCost)}
+            </dd>
+          </div>
+        )}
+        <div className="flex items-baseline justify-between pt-1 text-base font-medium">
+          <dt>{t("acct.orders.detail.total")}</dt>
+          <dd className="tabular-nums">{displayMoney(order.total)}</dd>
+        </div>
+      </dl>
+
+      {order.canCancel && onCancel && (
+        <div className="border-t border-border pt-4">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {t("checkout.confirmation.cancel.action")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -140,12 +210,45 @@ export function OrderNotFound() {
   );
 }
 
+/** Marcador de carga: el detalle se lee de la base. */
+function DetailLoading() {
+  return (
+    <div aria-busy="true" className="space-y-3">
+      <p className="sr-only" role="status">
+        {t("acct.orders.loading")}
+      </p>
+      <Skeleton className="h-10" />
+      <Skeleton className="h-32" />
+    </div>
+  );
+}
+
 /**
- * `/cuenta/pedidos/:orderId`. PROVISIONAL: mientras los pedidos no existan (S10), CUALQUIER id muestra «Pedido no
- * encontrado». Nunca se pinta el id de la URL.
+ * `/cuenta/pedidos/:orderId`. Lee el pedido de la clienta (la RLS y el filtro por su id impiden ver uno ajeno): un pedido que
+ * no existe o no es suyo es «Pedido no encontrado». Nunca se pinta el id de la URL.
  */
 export function OrderDetailPage() {
-  // S10: aquí se leerá el pedido (por `useParams().orderId`, solo del dueño). Hoy no hay ninguno.
-  const order: OrderDetail | null = null;
-  return order ? <OrderDetailView order={order} /> : <OrderNotFound />;
+  const { orderId } = useParams<{ orderId: string }>();
+  const { profile } = useAuth();
+  const query = useOrderById(profile?.id, orderId);
+  const [cancelling, setCancelling] = useState(false);
+
+  if (query.isPending) return <DetailLoading />;
+  if (query.isError) {
+    return (
+      <ErrorState
+        title={t("acct.orders.error.title")}
+        description={t("acct.orders.error.description")}
+        onRetry={() => void query.refetch()}
+      />
+    );
+  }
+  const order = query.data;
+  if (!order) return <OrderNotFound />;
+  return (
+    <>
+      <OrderDetailView order={order} onCancel={() => setCancelling(true)} />
+      <CancelOrderDialog order={order} open={cancelling} onOpenChange={setCancelling} />
+    </>
+  );
 }

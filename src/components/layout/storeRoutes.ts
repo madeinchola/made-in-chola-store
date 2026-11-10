@@ -11,8 +11,10 @@ export const storeRoutes = {
   account: "/cuenta",
   admin: "/admin",
   cart: "/carrito",
-  /** Pago (S10). Hasta entonces es una pantalla provisional detrás de la sesión. */
+  /** Pago (S10): un solo formulario, detrás de la sesión. */
   checkout: "/checkout",
+  /** Confirmación y seguimiento de un pedido recién creado (S10). */
+  order: (number: string) => `/pedido/${encodeURIComponent(number)}`,
   about: "/nosotros",
   contact: "/contacto",
   privacy: "/legal/privacidad",

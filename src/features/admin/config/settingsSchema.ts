@@ -3,7 +3,7 @@ import { charLength, btrimSpaces, EMAIL_RE, HTTPS_URL_RE, INT_RE, PHONE_E164_RE 
 
 export type SettingType = "text" | "int" | "bool" | "url" | "email" | "phone_e164";
 export type SettingSection =
-  "business" | "social" | "pdp" | "inventory" | "customers" | "cart" | "shipping";
+  "business" | "social" | "pdp" | "inventory" | "customers" | "cart" | "shipping" | "orders";
 export type SettingControl = "input" | "textarea" | "number" | "select";
 
 export interface SettingDef {
@@ -75,6 +75,9 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   { key: "shipping_route_factor_pct", type: "int", section: "shipping", control: "number" },
   { key: "delivery_min_lead_hours", type: "int", section: "shipping", control: "number" },
   { key: "delivery_max_days_ahead", type: "int", section: "shipping", control: "number" },
+  // Pedidos (S10).
+  { key: "order_reminder_hours", type: "int", section: "orders", control: "number" },
+  { key: "open_orders_max", type: "int", section: "orders", control: "number" },
 ];
 
 export const SECTIONS: readonly SettingSection[] = [
@@ -85,6 +88,7 @@ export const SECTIONS: readonly SettingSection[] = [
   "customers",
   "cart",
   "shipping",
+  "orders",
 ];
 
 export const LOW_KEY = "stock_low_threshold";

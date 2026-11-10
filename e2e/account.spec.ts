@@ -540,7 +540,7 @@ test.describe("datos fiscales", () => {
 });
 
 test.describe("mis pedidos (estructura)", () => {
-  test("vacío con enlace a la tienda, sin consultar ninguna tabla; un pedido inexistente da «no encontrado» sin repetir el id de la URL", async ({
+  test("vacío con enlace a la tienda, consultando SOLO los pedidos de la propia clienta; un pedido inexistente da «no encontrado» sin repetir el id de la URL", async ({
     page,
   }) => {
     const user = await registerAndLogin();
@@ -549,7 +549,9 @@ test.describe("mis pedidos (estructura)", () => {
     await signIn(page, user);
     await page.goto("/cuenta/pedidos");
     await expect(page.getByText("Aún no tienes pedidos")).toBeVisible();
-    expect(calls).toEqual([]);
+    // S10: los pedidos son reales; la lista se pide siempre filtrada por la cuenta (aunque la RLS ya lo garantiza)
+    expect(calls.length).toBeGreaterThan(0);
+    for (const url of calls) expect(url).toContain(`profile_id=eq.${user.id}`);
     await page.getByRole("link", { name: "Ir a la tienda" }).click();
     await expect(page).toHaveURL(/\/tienda$/);
 

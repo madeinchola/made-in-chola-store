@@ -7,11 +7,13 @@ select plan(111);
 alter table public.stock_movements disable trigger user;
 alter table public.exchange_rates disable trigger user;
 alter table public.product_slug_history disable trigger user;
+alter table public.order_items disable trigger user;
 truncate public.products, public.categories, public.collections, public.news_banners, public.home_sections,
          public.exchange_rates restart identity cascade;
 alter table public.stock_movements enable trigger user;
 alter table public.exchange_rates enable trigger user;
 alter table public.product_slug_history enable trigger user;
+alter table public.order_items enable trigger user;
 
 insert into auth.users (id, email, raw_user_meta_data, aud, role) values
   ('c0000000-0000-0000-0000-0000000000c1', 'cliente.s2@test.com', '{"full_name":"Cliente S2"}', 'authenticated', 'authenticated'),
@@ -64,7 +66,7 @@ select throws_ok($$delete from public.exchange_rates where id = 1$$, '42501', nu
 select throws_ok($$truncate public.exchange_rates$$, '42501', null, 'el historial de tasas no se trunca');
 
 -- ── Ajustes de la tienda ───────────────────────────────────────────────────────────────────
-select is((select count(*)::int from public.store_settings), 26, 'los 26 ajustes iniciales existen (15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8)');
+select is((select count(*)::int from public.store_settings), 28, 'los 28 ajustes iniciales existen (15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8 + order_reminder_hours y open_orders_max de S10)');
 select is((select value #>> '{}' from public.store_settings where key = 'whatsapp_orders'), '+59167528677', 'WhatsApp de pedidos confirmado por el admin');
 select is((select value #>> '{}' from public.store_settings where key = 'social_youtube'), 'https://www.youtube.com/@madeinchola9876', 'YouTube cargado');
 select throws_ok($$update public.store_settings set value = '"71234567"' where key = 'whatsapp_orders'$$, '22023', null, 'teléfono sin código de país rechazado');

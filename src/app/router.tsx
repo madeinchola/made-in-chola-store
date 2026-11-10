@@ -4,7 +4,6 @@ import { HomePage } from "@/features/storefront/home/HomePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { RouteError } from "@/components/RouteError";
-import { t } from "@/i18n";
 import { RequireAdmin, RequireAuth } from "@/features/auth/guards";
 import { lazyPage } from "./lazyPage";
 import { UI_GUIDE_ENABLED } from "./uiGuide";
@@ -24,6 +23,9 @@ const security = () => import("@/features/account/security/SecurityPage");
 const orderDetail = () => import("@/features/account/orders/OrderDetailPage");
 // Bolsa: la página (y con ella sus líneas, el resumen y las sugerencias) no entra en la carga inicial.
 const cartPage = () => import("@/features/cart/CartPage");
+// Checkout y confirmación (S10): solo las descarga quien llega a pagar.
+const checkoutPage = () => import("@/features/checkout/CheckoutPage");
+const confirmationPage = () => import("@/features/checkout/OrderConfirmationPage");
 
 export const routes: RouteObject[] = [
   {
@@ -63,11 +65,12 @@ export const routes: RouteObject[] = [
       },
       // La bolsa de la cabecera enlaza aquí.
       { path: "carrito", element: lazyPage(cartPage, "CartPage") },
-      // Pago (S10): pantalla provisional detrás de la sesión. «Pagar» manda aquí con sesión y a /login sin ella.
+      // Pago (S10): detrás de la sesión (toda compra requiere cuenta). «Pagar» manda aquí con sesión y a /login sin ella.
       {
         element: <RequireAuth />,
         children: [
-          { path: "checkout", element: <PlaceholderPage title={t("cart.checkout.soonTitle")} /> },
+          { path: "checkout", element: lazyPage(checkoutPage, "CheckoutPage") },
+          { path: "pedido/:numero", element: lazyPage(confirmationPage, "OrderConfirmationPage") },
         ],
       },
       // Enlaces del pie del diseño: pantallas provisionales hasta que lleguen sus contenidos (nosotros/contacto con la

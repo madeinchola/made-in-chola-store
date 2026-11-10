@@ -290,14 +290,12 @@ test.describe("Pagar", () => {
     await expect(bagLines(page).first().getByRole("link", { name: pick.name })).toBeVisible();
     await expect(page.getByText("Juntamos tu bolsa de invitado con tu cuenta")).toBeVisible();
 
-    // con sesión «Pagar» lleva al pago (pantalla provisional hasta S10)
+    // con sesión «Pagar» lleva al pago (S10: el formulario único de checkout)
     const payNow = page.getByRole("link", { name: "Pagar" });
     await expect(payNow).toHaveAttribute("href", "/checkout");
     await payNow.click();
     await expect(page).toHaveURL(/\/checkout$/);
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Pago (próximamente)" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Finalizar compra" })).toBeVisible();
   });
 
   test("sin conexión se avisa, «Pagar» queda bloqueado explicando por qué, y al volver la red se recupera", async ({

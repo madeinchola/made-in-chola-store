@@ -41,6 +41,11 @@ export const adminConfig = {
         description:
           "Cómo se calcula la distancia de envío y con cuánta antelación se pueden programar las entregas. Las tarifas, zonas y franjas se editan en la sección Envíos.",
       },
+      orders: {
+        title: "Pedidos",
+        description:
+          "Los pedidos por WhatsApp y contra entrega no vencen: comprometen stock hasta que los confirmes o canceles. Estos dos ajustes evitan que se olviden o se acaparen.",
+      },
     },
     fields: {
       business_name: { label: "Nombre del negocio" },
@@ -119,6 +124,14 @@ export const adminConfig = {
       delivery_max_days_ahead: {
         label: "Días máximos hacia adelante para programar una entrega",
         hint: "Entre 1 y 180.",
+      },
+      order_reminder_hours: {
+        label: "Horas antes de recordarte un pedido sin confirmar",
+        hint: "Entre 1 y 720. Si un pedido por WhatsApp o contra entrega sigue sin confirmarse pasado este tiempo, se te avisa; el aviso se repite cada 24 horas hasta que lo confirmes o canceles.",
+      },
+      open_orders_max: {
+        label: "Pedidos sin confirmar que una clienta puede tener a la vez",
+        hint: "Entre 1 y 200. Cada pedido sin confirmar aparta stock; con este tope una sola cuenta no puede dejar sin inventario a la tienda. Al llegar al tope debe esperar a que confirmes o cancele alguno.",
       },
     },
     behavior: {

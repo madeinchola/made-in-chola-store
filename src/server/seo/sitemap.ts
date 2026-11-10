@@ -52,6 +52,8 @@ export function buildRobots(deps: SeoDeps, origin: string): string {
     "Disallow: /recuperar",
     "Disallow: /restablecer",
     "Disallow: /carrito",
+    "Disallow: /checkout",
+    "Disallow: /pedido",
     "Disallow: /buscar",
     "",
     `Sitemap: ${site}/sitemap.xml`,

@@ -6,11 +6,13 @@ select plan(75);
 alter table public.stock_movements disable trigger user;
 alter table public.exchange_rates disable trigger user;
 alter table public.product_slug_history disable trigger user;
+alter table public.order_items disable trigger user;
 truncate public.products, public.categories, public.collections, public.news_banners, public.home_sections,
          public.exchange_rates restart identity cascade;
 alter table public.stock_movements enable trigger user;
 alter table public.exchange_rates enable trigger user;
 alter table public.product_slug_history enable trigger user;
+alter table public.order_items enable trigger user;
 
 -- ── Fixture ────────────────────────────────────────────────────────────────────────────────
 -- Visibles: P1 Chaqueta Roja (100, rojo/azul · S/M) · P2 Sombrero Rojo (250) · P3 Cartera Azul (50, agotada)

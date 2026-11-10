@@ -515,7 +515,16 @@ describe("sitemap y robots", () => {
     const text = await response.text();
     expect(text).toContain("User-agent: *");
     expect(text).toContain("Allow: /\n");
-    for (const path of ["/admin", "/cuenta", "/login", "/registro", "/carrito", "/buscar"]) {
+    for (const path of [
+      "/admin",
+      "/cuenta",
+      "/login",
+      "/registro",
+      "/carrito",
+      "/checkout",
+      "/pedido",
+      "/buscar",
+    ]) {
       expect(text).toContain(`Disallow: ${path}\n`);
     }
     expect(text).not.toMatch(/Disallow: \/\s*$/m);

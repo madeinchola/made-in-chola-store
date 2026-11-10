@@ -165,15 +165,21 @@ describe("bolsa y pago", () => {
     expect(router.location.state).toEqual({ from: "/checkout" });
   });
 
-  it("/checkout con sesión es la pantalla provisional «Pago (próximamente)» con su h1 y sin indexar", () => {
+  it("/checkout con sesión carga la pantalla de pago (diferida) y no se indexa", async () => {
     renderAt("/checkout", asCustomer());
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Pago (próximamente)" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/disponible pronto/i)).toBeInTheDocument();
+    // es una pantalla diferida: antes de llegar el código se anuncia la carga
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando");
+    // sin productos en la bolsa muestra el estado vacío (no una pantalla de pago sin nada que pagar)
+    expect(await screen.findByText("Tu bolsa está vacía")).toBeInTheDocument();
     expect(document.head.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe(
-      "noindex,follow",
+      "noindex,nofollow",
     );
+  });
+
+  it("/pedido/:numero exige sesión: el visitante va a /login recordando a dónde volvía", () => {
+    const router = renderAt("/pedido/MIC-000123");
+    expect(router.location.pathname).toBe("/login");
+    expect(router.location.state).toEqual({ from: "/pedido/MIC-000123" });
   });
 });
 

@@ -8,6 +8,20 @@ select plan(29);
 delete from public.carts;
 delete from public.addresses;
 delete from public.tax_profiles;
+-- (S9/S10) los usos de descuentos y los pedidos referencian a profiles. Los pedidos son inmutables a propósito (guardas):
+-- solo una prueba hermética, DENTRO de su transacción, las desactiva un momento para vaciarlos (como con stock_movements).
+delete from public.discount_redemptions;
+delete from public.customer_group_members;
+alter table public.orders disable trigger user;
+alter table public.order_items disable trigger user;
+alter table public.order_status_history disable trigger user;
+delete from public.payments;
+delete from public.order_status_history;
+delete from public.order_items;
+delete from public.orders;
+alter table public.orders enable trigger user;
+alter table public.order_items enable trigger user;
+alter table public.order_status_history enable trigger user;
 delete from public.profiles;
 alter table public.audit_log disable trigger audit_log_no_change;
 delete from public.audit_log;

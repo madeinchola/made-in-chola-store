@@ -4,7 +4,9 @@ import { ErrorState } from "@/components/store/ErrorState";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { storeRoutes } from "@/components/layout/storeRoutes";
+import { useAuth } from "@/features/auth/useAuth";
 import { t } from "@/i18n";
+import { useOrders } from "./hooks";
 import { OrderListItem } from "./OrderListItem";
 import type { OrderSummary } from "./types";
 
@@ -16,8 +18,8 @@ interface OrdersViewProps {
 }
 
 /**
- * Estructura de «Mis pedidos» lista para recibir datos: carga, error con reintento, estado vacío y la lista. Es
- * presentacional: el Sprint 10 solo tiene que pasarle los pedidos que lea (y los estados de su consulta).
+ * «Mis pedidos»: carga, error con reintento, estado vacío y la lista. Es presentacional: recibe los pedidos ya leídos
+ * (y los estados de su consulta).
  */
 export function OrdersView({
   orders,
@@ -80,10 +82,16 @@ export function OrdersView({
   );
 }
 
-/** Aún no hay pedidos que leer (llegan con el Sprint 10): ninguna tabla se consulta. */
-const NO_ORDERS: readonly OrderSummary[] = [];
-
-/** `/cuenta/pedidos`. PROVISIONAL: siempre vacío hasta S10. */
+/** `/cuenta/pedidos`: los pedidos de la clienta, el más reciente primero (la RLS deja ver solo los propios). */
 export function OrdersPage() {
-  return <OrdersView orders={NO_ORDERS} />;
+  const { profile } = useAuth();
+  const query = useOrders(profile?.id);
+  return (
+    <OrdersView
+      orders={query.data ?? []}
+      isLoading={query.isPending}
+      isError={query.isError}
+      onRetry={() => void query.refetch()}
+    />
+  );
 }

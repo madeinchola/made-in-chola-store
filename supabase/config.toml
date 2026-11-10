@@ -28,3 +28,8 @@ verify_jwt = true
 # (verifica su JWT con Auth) o al invitado (token opaco) y aplica los topes de tasa de D-02.
 [functions.cart]
 verify_jwt = false
+
+# Checkout (S10): TODA compra requiere cuenta. La función verifica el JWT por sí misma con Auth (igual que `cart`) y aplica los
+# topes de tasa; las funciones SQL de pedidos solo las ejecuta service_role.
+[functions.checkout]
+verify_jwt = false

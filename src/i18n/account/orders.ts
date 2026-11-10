@@ -1,4 +1,4 @@
-/** Textos de «Mi cuenta» · Mis pedidos (estructura: el contenido real llega en el Sprint 10). */
+/** Textos de «Mi cuenta» · Mis pedidos (S10: pedidos reales, línea de tiempo y cancelación). */
 export const acctOrders = {
   title: "Mis pedidos",
   intro: "Aquí verás el historial de tus compras y el estado de cada pedido.",
@@ -17,6 +17,10 @@ export const acctOrders = {
     order: "Pedido {number}",
     placedOn: "Realizado el",
     total: "Total",
+  },
+  paymentMethod: {
+    whatsapp: "Pedido por WhatsApp",
+    cash_on_delivery: "Efectivo contra entrega",
   },
   status: {
     pending_payment: "Pendiente de pago",
@@ -39,6 +43,16 @@ export const acctOrders = {
     items: "Artículos",
     itemsEmpty: "Este pedido no tiene artículos.",
     quantity: "Cantidad: {n}",
+    unitPrice: "{price} c/u",
+    subtotal: "Subtotal",
+    discount: "Descuento",
+    shippingCost: "Envío",
+    shippingFree: "Gratis",
+    shippingHome: "Entrega a domicilio",
+    shippingPickup: "Recojo en tienda",
+    scheduled: "Fecha y franja: {date}, {range}",
+    coupon: "Cupón: {code}",
+    contact: "Contacto",
     shipping: "Envío",
     shippingEmpty: "Sin información de envío.",
     payment: "Pago",

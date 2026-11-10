@@ -167,7 +167,8 @@ export function fromCouponRow(row: Tables["coupons"]["Row"]): Coupon {
     id: row.id,
     discountId: row.discount_id,
     code: row.code,
-    codeNormalized: row.code_normalized,
+    // Columna generada (siempre con valor): el generador de tipos la marca nula.
+    codeNormalized: row.code_normalized ?? "",
     isActive: row.is_active,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
