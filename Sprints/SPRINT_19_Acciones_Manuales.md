@@ -146,6 +146,17 @@ Cada tarea lleva una etiqueta: **[S5]**, **[S7]**… = bloquea ese sprint; **[LA
 - [ ] **[S9 · seguridad · al terminar]** **Revoca el token de acceso de Supabase** que se pegó en el chat para este despliegue (Supabase → Account → Access Tokens → revocar) y, si hace falta volver a desplegar, crea uno nuevo y guárdalo **solo** en `.env.e2e` como `SUPABASE_ACCESS_TOKEN=…` (nunca en el chat). Va junto con la rotación de la contraseña de la base y de la clave `sb_secret_…` ya anotada arriba.
 - [ ] **[S9 · prueba real]** En tu teléfono: agregar prendas a la bolsa, escribir un cupón (con minúsculas y guiones, debe valer igual), ver el descuento y el total, quitar el cupón, probar un código que no existe y uno vencido; y en `/admin/descuentos` crear un cupón con el asistente, generar 10 códigos al azar, descargar el CSV y revisar «Redenciones».
 
+## O. Pedidos y checkout (Sprint 10)
+
+- [x] **[S10 · NUBE]** Migración `20261108000100_s10_pedidos.sql` aplicada (con ensayo previo en una transacción que se revierte; se editó y reaplicó tras la revisión independiente: es idempotente) y función `checkout` **desplegada** (`functions deploy checkout --use-api`, también tras la revisión).
+- [ ] **[S10 · decisión · PENDIENTES_ADMIN «Añadido en Sprint 10»]** Plantilla del mensaje de WhatsApp; política real de **contra entrega** (zonas, monto máximo, adelanto); criterios de la **lista negra**; si los pedidos sin confirmar deben **vencer** (hoy no vencen: te recuerda a las 24 h y hay un tope de 5 por clienta, ambos editables en Configuración → «Pedidos»).
+- [ ] **[S10 · decisión]** Los métodos de pago de ejemplo («WhatsApp» y «Efectivo contra entrega») están sembrados en `payment_methods` marcados como ejemplo. Antes de abrir la tienda revisa sus textos y topes; no hay pantalla para editarlos hasta S11/S12 (se cambian en la tabla).
+- [ ] **[S10 · demo]** La **demo de cierre de R2** (comprar → pedido → confirmar → preparar → entregar) necesita el panel de pedidos de S12, o que confirmes los pedidos a mano con `admin_transition_order`.
+- [ ] **[S10 · seguridad · al terminar]** Lo anotado en §N sigue vigente: **revoca el token de acceso de Supabase** pegado en el chat (se usó otra vez para desplegar `checkout`), rota la contraseña de la base y la clave `sb_secret_…`, y crea un token nuevo solo en `.env.e2e` si hace falta volver a desplegar.
+- [ ] **[S10 · datos de prueba]** La nube conserva clientas `@prueba.test`, productos de prueba y pedidos cancelados de las pruebas de integración y E2E (los pedidos son inmutables a propósito). La entrega vacía la base con `db reset --linked --no-seed`.
+- [ ] **[S10 · prueba real]** En tu teléfono: comprar por WhatsApp (que se abra la conversación con el mensaje armado; si el navegador la bloquea, usar el botón de la confirmación), ver el pedido en «Mis pedidos» y cancelarlo; probar contra entrega y un cambio de stock mientras se completa el formulario. Pasar el checkout por un lector de pantalla real y Lighthouse (lo automático solo pasa axe).
+- [ ] **[S10 · licencias]** Sin cambios de licencias en este sprint (no se agregó ninguna librería).
+
 ## Criterios de aceptación
 1. Cada tarea **[S5]** marcada antes de empezar el Sprint 5 (o acordado explícitamente que se avanza sin ella).
 2. Todas las **[LANZAMIENTO]** marcadas antes de S16.
