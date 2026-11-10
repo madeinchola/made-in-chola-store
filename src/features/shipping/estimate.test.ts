@@ -7,6 +7,7 @@ import {
   estimatedTotal,
   formatEta,
   freshestSlots,
+  quoteTotal,
   quoteView,
   scheduleView,
   shippingRow,
@@ -282,6 +283,70 @@ describe("shippingRow · la fila «Envío» del resumen", () => {
   ];
   it.each(cases)("%j → %j", (quote, expected) => {
     expect(shippingRow(quote)).toEqual(expected);
+  });
+});
+
+describe("shippingRow · con envío gratis (S9)", () => {
+  const ok = (cost: number): QuoteView => ({
+    kind: "ok",
+    cost,
+    currency: "BOB",
+    eta: null,
+    slots: [],
+  });
+  it("con una cotización válida dice «gratis» aunque el método cobre algo (el costo cotizado no se muestra)", () => {
+    expect(shippingRow(ok(15), true)).toEqual({ kind: "free" });
+    expect(shippingRow(ok(0), true)).toEqual({ kind: "free" });
+  });
+  it("sin envío gratis NADA cambia (por omisión o con `false`)", () => {
+    expect(shippingRow(ok(15))).toEqual({ kind: "cost", cost: 15 });
+    expect(shippingRow(ok(15), false)).toEqual({ kind: "cost", cost: 15 });
+    expect(shippingRow(ok(0), false)).toEqual({ kind: "free" });
+  });
+  it.each<[QuoteView, unknown]>([
+    [{ kind: "idle" }, { kind: "later" }],
+    [{ kind: "loading" }, { kind: "calculating" }],
+    [{ kind: "failed" }, { kind: "unavailable" }],
+    [
+      { kind: "rejected", error: errorView([{ code: "no_rate", field: "location" }]) },
+      { kind: "unavailable" },
+    ],
+  ])("sin cotización válida (%j) no se promete «gratis»: %j", (quote, expected) => {
+    expect(shippingRow(quote, true)).toEqual(expected);
+  });
+});
+
+describe("quoteTotal · el «Total estimado»", () => {
+  const ok = (cost: number): QuoteView => ({
+    kind: "ok",
+    cost,
+    currency: "BOB",
+    eta: null,
+    slots: [],
+  });
+  it("sin envío gratis suma el costo cotizado al total del servidor (85 + 15 = 100)", () => {
+    expect(quoteTotal(ok(15), 85, "BOB", false)).toBe(100);
+  });
+  it("con envío gratis el costo cotizado NO se suma: el total estimado es el del servidor (85, no 100)", () => {
+    expect(quoteTotal(ok(15), 85, "BOB", true)).toBe(85);
+    expect(quoteTotal(ok(0), 85, "BOB", true)).toBe(85);
+  });
+  it("conserva los centavos del total del servidor con envío gratis (1.234,56)", () => {
+    expect(quoteTotal(ok(15), 1234.56, "BOB", true)).toBe(1234.56);
+  });
+  it("sin envío gratis suma en la unidad menor (0,1 + 0,2 = 0,3)", () => {
+    expect(quoteTotal(ok(0.2), 0.1, "BOB", false)).toBe(0.3);
+  });
+  it.each<QuoteView>([{ kind: "idle" }, { kind: "loading" }, { kind: "failed" }])(
+    "sin cotización válida (%j) no hay total, con o sin envío gratis",
+    (quote) => {
+      expect(quoteTotal(quote, 85, "BOB", false)).toBeNull();
+      expect(quoteTotal(quote, 85, "BOB", true)).toBeNull();
+    },
+  );
+  it("un total que no es un número no se muestra (mejor ninguno que uno inventado), tampoco con envío gratis", () => {
+    expect(quoteTotal(ok(15), Number.NaN, "BOB", true)).toBeNull();
+    expect(quoteTotal(ok(15), Number.NaN, "BOB", false)).toBeNull();
   });
 });
 

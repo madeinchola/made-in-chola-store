@@ -306,11 +306,11 @@ select is(jsonb_build_object('currency', pg_temp.g('b1') #> '{cart,currency}', '
 select is((select jsonb_agg(k order by k collate "C") from jsonb_object_keys(pg_temp.g('b1')) k),
   '["applied","cart","outcome","requested","server_time","token_state"]'::jsonb, 'B1 contrato: claves de la respuesta de cart_set_item');
 select is((select jsonb_agg(k order by k collate "C") from jsonb_object_keys(pg_temp.g('b1') -> 'cart') k),
-  '["can_checkout","cart_id","currency","guarantee_days","limits","lines","reservation","reserve_on_add","status","totals","ttl_seconds"]'::jsonb,
-  'B1 contrato: claves del carrito');
+  '["can_checkout","cart_id","currency","discounts","guarantee_days","limits","lines","reservation","reserve_on_add","status","totals","ttl_seconds"]'::jsonb,
+  'B1 contrato: claves del carrito (S9 sumó «discounts»)');
 select is((select jsonb_agg(k order by k collate "C") from jsonb_object_keys(pg_temp.lin(pg_temp.g('b1'), 'f7000000-0000-0000-0001-000000000001')) k),
-  '["available","billable_qty","blocking","color_hex","color_name","current_price","image_path","line_total","name","price_at_add","price_locked_until","price_notice","product_id","qty","reservation_expires_at","reserved_qty","size_label","sku","slug","status","unit_price","variant_id"]'::jsonb,
-  'B1 contrato: claves de cada línea (22)');
+  '["available","billable_qty","blocking","color_hex","color_name","current_price","discount","discount_offers","final_total","image_path","line_total","name","price_at_add","price_locked_until","price_notice","product_id","qty","reservation_expires_at","reserved_qty","size_label","sku","slug","status","unit_price","variant_id"]'::jsonb,
+  'B1 contrato: claves de cada línea (25; S9 sumó «discount», «discount_offers» y «final_total»)');
 
 -- B2 repetir lo mismo no duplica nada
 select pg_temp.rec('b2', public.cart_set_item('a7000000-0000-0000-0000-000000000001', null, 'f7000000-0000-0000-0001-000000000001', 2));

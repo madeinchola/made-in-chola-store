@@ -21,6 +21,10 @@ export const LIMITS = {
   /** Carritos de invitado NUEVOS por red (IPv4 o /64): quien quisiera acaparar stock tendría que abrir muchos. */
   newCartPerIp: { max: 30, windowSeconds: 3600 },
   mergePerUser: { max: 20, windowSeconds: 600 },
+  // Cupones (S9): cada intento cuenta, acierte o no, para que probar códigos al azar sea inútil. Por persona (o carrito de
+  // invitado) y por red; las redes de operadora móvil comparten IP, por eso el tope por red es más holgado.
+  couponPerIdentity: { max: 12, windowSeconds: 600 },
+  couponPerIp: { max: 60, windowSeconds: 600 },
 } as const;
 
 export function generateCartToken(): string {
@@ -70,6 +74,15 @@ export const cartRequestSchema = z.discriminatedUnion("action", [
     })
     .strict(),
   z.object({ action: z.literal("merge"), cart_token: token }).strict(),
+  // Cupón (S9). El código se normaliza y se valida en la base; aquí solo se acota su tamaño.
+  z
+    .object({
+      action: z.literal("set_coupon"),
+      code: z.string().min(1).max(40),
+      cart_token: token.optional(),
+    })
+    .strict(),
+  z.object({ action: z.literal("remove_coupon"), cart_token: token.optional() }).strict(),
 ]);
 export type CartRequest = z.infer<typeof cartRequestSchema>;
 
@@ -128,6 +141,10 @@ export function planRpc(request: CartRequest, identity: CartIdentity): RpcPlan {
           p_expected_price: request.expected_price ?? null,
         },
       };
+    case "set_coupon":
+      return { fn: "cart_set_coupon", args: { ...owner, p_code: request.code } };
+    case "remove_coupon":
+      return { fn: "cart_remove_coupon", args: owner };
     case "merge":
       return {
         fn: "merge_guest_cart",

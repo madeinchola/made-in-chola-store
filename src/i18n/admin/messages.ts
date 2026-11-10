@@ -1,6 +1,7 @@
 import { adminAudit } from "./audit";
 import { adminCommon } from "./common";
 import { adminConfig } from "./config";
+import { adminDiscounts } from "./discounts";
 import { adminProducts } from "./products";
 import { adminShipping } from "./shipping";
 import { adminTaxonomy } from "./taxonomy";
@@ -16,6 +17,7 @@ export const adminMessages = {
   config: adminConfig,
   audit: adminAudit,
   shipping: adminShipping,
+  discounts: adminDiscounts,
 } as const;
 
 export type AdminMessages = typeof adminMessages;

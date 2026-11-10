@@ -197,6 +197,36 @@ export const routes: RouteObject[] = [
             ],
           },
           {
+            path: "descuentos",
+            element: lazyPage(
+              () => import("@/features/admin/discounts/DiscountsLayout"),
+              "DiscountsLayout",
+            ),
+            children: [
+              {
+                index: true,
+                element: lazyPage(
+                  () => import("@/features/admin/discounts/DiscountsPage"),
+                  "DiscountsPage",
+                ),
+              },
+              {
+                path: "redenciones",
+                element: lazyPage(
+                  () => import("@/features/admin/discounts/RedemptionsPage"),
+                  "RedemptionsPage",
+                ),
+              },
+              {
+                path: "grupos",
+                element: lazyPage(
+                  () => import("@/features/admin/discounts/GroupsPage"),
+                  "GroupsPage",
+                ),
+              },
+            ],
+          },
+          {
             path: "ajustes",
             element: lazyPage(() => import("@/features/admin/config/SettingsPage"), "SettingsPage"),
           },

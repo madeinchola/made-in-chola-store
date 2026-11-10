@@ -1,5 +1,11 @@
 import type { CartState } from "./cartStore";
-import type { CartLine } from "./types";
+import type {
+  CartCouponState,
+  CartDiscounts,
+  CartLine,
+  CartSnapshot,
+  DiscountOffer,
+} from "./types";
 
 /** Una línea tal como la ve la persona: con su cantidad pendiente ya aplicada (el servidor confirma después). */
 export interface DisplayLine extends CartLine {
@@ -64,3 +70,27 @@ export function reservationRemainingMs(state: CartState, deviceNow: number): num
   if (!Number.isFinite(target)) return null;
   return Math.max(0, target - (deviceNow + state.clockOffsetMs));
 }
+
+// ── Descuentos (S9) ────────────────────────────────────────────────────────────────────────
+// Una foto guardada ANTES de S9 (el espejo local de un invitado) no trae estos campos: se leen con valores por omisión.
+
+const NO_COUPON: CartCouponState = { status: "none", code: null, reason: null, missing: null };
+const NO_DISCOUNTS: CartDiscounts = {
+  applied: [],
+  rejected: [],
+  coupon: NO_COUPON,
+  free_shipping: false,
+};
+
+/** Los descuentos de la bolsa (sin ninguno si la foto es anterior a S9). */
+export const discountsOf = (snapshot: CartSnapshot | null | undefined): CartDiscounts =>
+  snapshot?.discounts ?? NO_DISCOUNTS;
+
+/** Lo que baja una línea (0 si no hay descuento). */
+export const lineDiscount = (line: CartLine): number => line.discount ?? 0;
+
+/** Lo que se paga por una línea ya con sus descuentos. */
+export const lineFinalTotal = (line: CartLine): number => line.final_total ?? line.line_total;
+
+/** Los descuentos de una línea, la oferta automática primero y luego el cupón. */
+export const lineOffers = (line: CartLine): DiscountOffer[] => line.discount_offers ?? [];

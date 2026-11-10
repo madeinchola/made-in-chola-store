@@ -10,8 +10,8 @@ import {
 } from "./destinationMemory";
 import {
   buildQuoteParams,
-  estimatedTotal,
   freshestSlots,
+  quoteTotal,
   quoteView,
   scheduleView,
   type QuoteView,
@@ -48,6 +48,11 @@ export interface ShippingEstimateInput {
   currency: string;
   /** ¿Hay algo que cobrar? (ver `canQuote`). */
   quotable: boolean;
+  /**
+   * El servidor dice que el envío es gratis (`discounts.free_shipping`, S9): el costo cotizado se muestra como «Envío gratis»
+   * y NO se suma al «Total estimado». Por omisión, no.
+   */
+  freeShipping?: boolean;
 }
 
 export interface ShippingEstimate {
@@ -62,7 +67,9 @@ export interface ShippingEstimate {
   scheduleCheck: ScheduleView;
   /** Franjas a ofrecer (las más recientes que se conocen). Vacías si la cotización no es válida. */
   slots: QuoteSlot[];
-  /** Total del servidor (sin envío) + envío del servidor; `null` si no hay un costo válido. */
+  /** El envío es gratis por un descuento (S9): la cotización es válida pero no cuesta nada a la clienta. */
+  freeShipping: boolean;
+  /** Total del servidor (sin envío) + envío del servidor (o solo el total, con envío gratis); `null` si no hay un costo válido. */
   total: number | null;
   setDestination(destination: Destination | null): void;
   setSchedule(schedule: ScheduleChoice | null): void;
@@ -83,6 +90,7 @@ export function useShippingEstimate({
   baseTotal = subtotal,
   currency,
   quotable,
+  freeShipping = false,
 }: ShippingEstimateInput): ShippingEstimate {
   const { status, session } = useAuth();
   const ready = status !== "loading";
@@ -108,7 +116,7 @@ export function useShippingEstimate({
   });
 
   const slots = quote.kind === "ok" ? freshestSlots(quote.slots, check.data) : [];
-  const total = quote.kind === "ok" ? estimatedTotal(baseTotal, quote.cost, currency) : null;
+  const total = quoteTotal(quote, baseTotal, currency, freeShipping);
 
   const setDestination = useCallback(
     (next: Destination | null) => {
@@ -139,6 +147,7 @@ export function useShippingEstimate({
     quote,
     scheduleCheck,
     slots,
+    freeShipping,
     total,
     setDestination,
     setSchedule,

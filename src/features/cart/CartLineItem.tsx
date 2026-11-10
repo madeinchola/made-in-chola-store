@@ -11,7 +11,7 @@ import { useCart } from "./cart-context";
 import { HEADING_FOCUS, NEIGHBOUR_FOCUS } from "./focus";
 import { formatCartMoney, limitReason, maxQtyFor, productHref } from "./format";
 import { LineNotice } from "./LineNotice";
-import type { DisplayLine } from "./selectors";
+import { lineDiscount, lineFinalTotal, lineOffers, type DisplayLine } from "./selectors";
 
 interface CartLineItemProps {
   line: DisplayLine;
@@ -24,6 +24,10 @@ interface CartLineItemProps {
  * talla, precio por unidad, total de la línea, cantidad con tope, «Quitar» y los avisos. Los importes salen TAL CUAL del
  * servidor (`unit_price`, `line_total`): aquí solo se les da formato. Mientras hay un cambio en camino (`syncing`) el
  * total se atenúa y aparece un indicador en un hueco reservado, así que nada se mueve.
+ *
+ * Descuentos (S9): si la línea tiene uno (`lineDiscount > 0`), el total muestra el importe original tachado y el final en
+ * negrita, y debajo se listan los descuentos de la línea. Un lector de pantalla oye UNA frase («Total de la línea: X, antes
+ * Y»): lo tachado no se anuncia por sí solo. Sin descuento, la línea es exactamente la de siempre.
  */
 export function CartLineItem({ line, variant = "page" }: CartLineItemProps) {
   const { state, store, setOpen } = useCart();
@@ -42,6 +46,8 @@ export function CartLineItem({ line, variant = "page" }: CartLineItemProps) {
   const showHint = !unavailable && atMax && maxQty > 0;
   const showImage = line.image_path !== null && !imageFailed;
   const priceDiffers = line.price_notice !== null && line.price_at_add !== line.unit_price;
+  const discounted = lineDiscount(line) > 0;
+  const offers = discounted ? lineOffers(line) : [];
   const variantParts = [
     line.color_name ? t("cart.line.color", { name: line.color_name }) : null,
     line.size_label ? t("cart.line.size", { label: line.size_label }) : null,
@@ -140,16 +146,50 @@ export function CartLineItem({ line, variant = "page" }: CartLineItemProps) {
                 {formatCartMoney(line.unit_price, currency)}
               </span>
             </p>
+            {offers.length > 0 && (
+              <div className={cn("space-y-0.5", line.syncing && "opacity-60")}>
+                {offers.map((offer) => (
+                  <p
+                    key={`${offer.discount_id}-${offer.coupon ? "cupon" : "oferta"}`}
+                    className="break-words text-sm text-success"
+                  >
+                    {t("cart.line.offer", {
+                      name: offer.name,
+                      amount: formatCartMoney(offer.amount, currency),
+                    })}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {/* Hueco reservado: el indicador aparece sin mover nada. */}
             <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center">
               {line.syncing && <Loader2 className="h-4 w-4 animate-spin" />}
             </span>
-            <p className={cn("font-medium tabular-nums", line.syncing && "opacity-60")}>
-              <span className="sr-only">{t("cart.line.total")} </span>
-              {formatCartMoney(line.line_total, currency)}
-            </p>
+            {discounted ? (
+              <p
+                className={cn("flex flex-col items-end tabular-nums", line.syncing && "opacity-60")}
+              >
+                <span className="sr-only">
+                  {t("cart.line.totalDiscounted", {
+                    final: formatCartMoney(lineFinalTotal(line), currency),
+                    original: formatCartMoney(line.line_total, currency),
+                  })}
+                </span>
+                <s aria-hidden="true" className="text-sm text-muted-foreground">
+                  {formatCartMoney(line.line_total, currency)}
+                </s>
+                <strong aria-hidden="true" className="font-semibold">
+                  {formatCartMoney(lineFinalTotal(line), currency)}
+                </strong>
+              </p>
+            ) : (
+              <p className={cn("font-medium tabular-nums", line.syncing && "opacity-60")}>
+                <span className="sr-only">{t("cart.line.total")} </span>
+                {formatCartMoney(line.line_total, currency)}
+              </p>
+            )}
             <span role="status" className="sr-only">
               {line.syncing ? t("cart.line.updating") : ""}
             </span>

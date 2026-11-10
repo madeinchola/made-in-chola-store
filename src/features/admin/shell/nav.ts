@@ -4,6 +4,7 @@ import {
   Layers,
   LayoutDashboard,
   ScrollText,
+  Percent,
   Settings,
   Shirt,
   Tags,
@@ -26,6 +27,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   { to: "/admin/colecciones", label: "admin.nav.collections", icon: Layers },
   { to: "/admin/monedas", label: "admin.nav.currencies", icon: Coins },
   { to: "/admin/envios", label: "admin.nav.shipping", icon: Truck },
+  { to: "/admin/descuentos", label: "admin.nav.discounts", icon: Percent },
   { to: "/admin/ajustes", label: "admin.nav.settings", icon: Settings },
   { to: "/admin/auditoria", label: "admin.nav.audit", icon: ScrollText },
 ];

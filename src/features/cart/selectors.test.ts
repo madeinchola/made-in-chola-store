@@ -20,6 +20,7 @@ const base: CartState = {
   clockOffsetMs: 0,
   mergeReport: null,
   reserving: false,
+  coupon: { busy: false, notice: null },
 };
 const withState = (patch: Partial<CartState>): CartState => ({ ...base, ...patch });
 

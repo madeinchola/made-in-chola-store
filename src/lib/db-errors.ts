@@ -28,6 +28,13 @@ const UNIQUE_MESSAGES: Record<string, string> = {
   shipping_methods_code_key: "Ya existe un método de envío con ese código.",
   delivery_slots_unique_start: "Ya hay una franja que empieza a esa hora ese día de la semana.",
   blocked_dates_unique_day: "Esa fecha ya está bloqueada.",
+  coupons_code_key:
+    "Ya existe un cupón con ese código (se comparan sin importar mayúsculas, espacios ni guiones).",
+  customer_groups_name_key: "Ya hay un grupo con ese nombre.",
+  customer_group_members_key: "Esa clienta ya está en el grupo.",
+  discount_targets_product_key: "Ese producto ya está en el descuento.",
+  discount_targets_category_key: "Esa categoría ya está en el descuento.",
+  discount_targets_collection_key: "Esa colección ya está en el descuento.",
 };
 
 const UNIQUE_FALLBACK = "Ya existe un registro con esos datos.";

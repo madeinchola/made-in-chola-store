@@ -99,6 +99,19 @@ Deno.serve(async (req) => {
         LIMITS.writePerIp.windowSeconds,
       );
     }
+    // Cada intento de cupón cuenta (acierte o no): sin esto se podrían probar códigos al azar sin límite.
+    if (request.action === "set_coupon") {
+      await enforceRateLimit(
+        `cart:coupon:${identityKey}`,
+        LIMITS.couponPerIdentity.max,
+        LIMITS.couponPerIdentity.windowSeconds,
+      );
+      await enforceRateLimit(
+        `cart:couponip:${ip}`,
+        LIMITS.couponPerIp.max,
+        LIMITS.couponPerIp.windowSeconds,
+      );
+    }
     if (request.action === "merge") {
       await enforceRateLimit(
         `cart:merge:${userId}`,

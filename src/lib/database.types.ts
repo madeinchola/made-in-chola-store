@@ -149,6 +149,26 @@ isOneToOne: false
       referencedColumns: ["code"]
     }
                   ]
+                },"coupons": {
+                  Row: {
+                    "id": string,"discount_id": string,"code": string,"code_normalized": string,"is_active": boolean,"starts_at": string | null,"ends_at": string | null,"usage_limit": number | null,"archived_at": string | null,"created_at": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"discount_id": string,"code": string,"code_normalized"?: never,"is_active"?: boolean,"starts_at"?: string | null,"ends_at"?: string | null,"usage_limit"?: number | null,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"discount_id"?: string,"code"?: string,"code_normalized"?: never,"is_active"?: boolean,"starts_at"?: string | null,"ends_at"?: string | null,"usage_limit"?: number | null,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "coupons_discount_id_fkey"
+      columns: ["discount_id"]
+isOneToOne: false
+      referencedRelation: "discounts"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"currencies": {
                   Row: {
                     "code": string,"created_at": string,"decimals": number,"enabled": boolean,"name": string,"symbol": string,"updated_at": string
@@ -159,6 +179,46 @@ isOneToOne: false
                   }
                   Update: {
                     "code"?: string,"created_at"?: string,"decimals"?: number,"enabled"?: boolean,"name"?: string,"symbol"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"customer_group_members": {
+                  Row: {
+                    "id": string,"group_id": string,"profile_id": string,"archived_at": string | null,"created_at": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"group_id": string,"profile_id": string,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"group_id"?: string,"profile_id"?: string,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "customer_group_members_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "customer_groups"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "customer_group_members_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"customer_groups": {
+                  Row: {
+                    "id": string,"name": string,"description": string | null,"archived_at": string | null,"created_at": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"name": string,"description"?: string | null,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"name"?: string,"description"?: string | null,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -200,6 +260,108 @@ isOneToOne: false
       columns: ["method_id"]
 isOneToOne: false
       referencedRelation: "shipping_methods"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"discount_redemptions": {
+                  Row: {
+                    "id": string,"discount_id": string,"coupon_id": string | null,"profile_id": string | null,"owner_type": string,"owner_id": string,"amount": number,"currency": string,"status": string,"created_at": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"discount_id": string,"coupon_id"?: string | null,"profile_id"?: string | null,"owner_type": string,"owner_id": string,"amount": number,"currency": string,"status"?: string,"created_at"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"discount_id"?: string,"coupon_id"?: string | null,"profile_id"?: string | null,"owner_type"?: string,"owner_id"?: string,"amount"?: number,"currency"?: string,"status"?: string,"created_at"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "discount_redemptions_discount_id_fkey"
+      columns: ["discount_id"]
+isOneToOne: false
+      referencedRelation: "discounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "discount_redemptions_coupon_id_fkey"
+      columns: ["coupon_id"]
+isOneToOne: false
+      referencedRelation: "coupons"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "discount_redemptions_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "discount_redemptions_currency_fkey"
+      columns: ["currency"]
+isOneToOne: false
+      referencedRelation: "currencies"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"discount_targets": {
+                  Row: {
+                    "id": string,"discount_id": string,"product_id": string | null,"category_id": string | null,"collection_id": string | null,"archived_at": string | null,"created_at": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"discount_id": string,"product_id"?: string | null,"category_id"?: string | null,"collection_id"?: string | null,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"discount_id"?: string,"product_id"?: string | null,"category_id"?: string | null,"collection_id"?: string | null,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "discount_targets_discount_id_fkey"
+      columns: ["discount_id"]
+isOneToOne: false
+      referencedRelation: "discounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "discount_targets_product_id_fkey"
+      columns: ["product_id"]
+isOneToOne: false
+      referencedRelation: "products"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "discount_targets_category_id_fkey"
+      columns: ["category_id"]
+isOneToOne: false
+      referencedRelation: "categories"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "discount_targets_collection_id_fkey"
+      columns: ["collection_id"]
+isOneToOne: false
+      referencedRelation: "collections"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"discounts": {
+                  Row: {
+                    "id": string,"name": string,"kind": string,"params": Json,"scope": string,"currency": string,"min_order_amount": number | null,"customer_group_id": string | null,"requires_coupon": boolean,"stackable_with_automatic": boolean,"exclude_sale_items": boolean,"usage_limit_total": number | null,"usage_limit_per_customer": number | null,"priority": number,"starts_at": string | null,"ends_at": string | null,"is_active": boolean,"archived_at": string | null,"created_at": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"name": string,"kind": string,"params": Json,"scope"?: string,"currency"?: string,"min_order_amount"?: number | null,"customer_group_id"?: string | null,"requires_coupon"?: boolean,"stackable_with_automatic"?: boolean,"exclude_sale_items"?: boolean,"usage_limit_total"?: number | null,"usage_limit_per_customer"?: number | null,"priority"?: number,"starts_at"?: string | null,"ends_at"?: string | null,"is_active"?: boolean,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"name"?: string,"kind"?: string,"params"?: Json,"scope"?: string,"currency"?: string,"min_order_amount"?: number | null,"customer_group_id"?: string | null,"requires_coupon"?: boolean,"stackable_with_automatic"?: boolean,"exclude_sale_items"?: boolean,"usage_limit_total"?: number | null,"usage_limit_per_customer"?: number | null,"priority"?: number,"starts_at"?: string | null,"ends_at"?: string | null,"is_active"?: boolean,"archived_at"?: string | null,"created_at"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "discounts_currency_fkey"
+      columns: ["currency"]
+isOneToOne: false
+      referencedRelation: "currencies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "discounts_customer_group_id_fkey"
+      columns: ["customer_group_id"]
+isOneToOne: false
+      referencedRelation: "customer_groups"
       referencedColumns: ["id"]
     }
                   ]
@@ -1198,6 +1360,13 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"discount_usage": {
+                  Row: {
+                    "amount": number | null,"customers": number | null,"discount_id": string | null,"used": number | null
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"public_categories": {
                   Row: {
                     "description": string | null,"id": string | null,"name": string | null,"parent_id": string | null,"slug": string | null,"sort_order": number | null
@@ -1802,6 +1971,9 @@ isOneToOne: false
                            },
 "admin_duplicate_product":
 { Args: { "p_new_code": string,"p_new_name": string,"p_product_id": string }; Returns: string
+                           },
+"admin_generate_coupon_codes":
+{ Args: { "p_count": number,"p_discount_id": string,"p_length"?: number,"p_prefix"?: string,"p_usage_limit"?: number }; Returns: (string)[]
                            },
 "admin_set_primary_location":
 { Args: { "p_id": string }; Returns: undefined

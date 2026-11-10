@@ -20,7 +20,8 @@ import { cartLoadFailed, pendingAdds } from "./viewState";
 
 /**
  * Contenido del cajón de la bolsa (se carga bajo demanda): avisos, líneas compactas, cuenta regresiva, subtotal y los
- * botones «Pagar» y «Ver bolsa». El subtotal es el del servidor, tal cual.
+ * botones «Pagar» y «Ver bolsa». El subtotal es el del servidor, tal cual. Con un descuento (S9) se agregan «Descuento» y
+ * «Total» (el del servidor, ya neto); el cupón se pone en la página de la bolsa, no aquí.
  */
 export function MiniCartContent() {
   const { state, lines, setOpen } = useCart();
@@ -100,6 +101,24 @@ export function MiniCartContent() {
               {formatCartMoney(snapshot.totals.subtotal, snapshot.currency)}
             </span>
           </p>
+          {/* Con un descuento (S9) las líneas ya muestran su total neto: sin estas filas el subtotal no cuadraría con lo que se ve
+              arriba. Los importes los calcula el servidor (`totals.total` ya viene neto): aquí solo se muestran. */}
+          {snapshot.totals.discount !== null && (
+            <div className={cn("space-y-1", syncing && "opacity-60")}>
+              <p className="flex items-baseline justify-between gap-4 text-sm">
+                <span>{t("cart.summary.discount")}</span>
+                <span className="tabular-nums">
+                  {formatCartMoney(-Math.abs(snapshot.totals.discount), snapshot.currency)}
+                </span>
+              </p>
+              <p className="flex items-baseline justify-between gap-4 font-medium">
+                <span>{t("cart.summary.total")}</span>
+                <span className="tabular-nums">
+                  {formatCartMoney(snapshot.totals.total, snapshot.currency)}
+                </span>
+              </p>
+            </div>
+          )}
           <LiveStatus message={syncing ? t("cart.summary.updating") : ""} />
           <div>
             <CheckoutButton />

@@ -479,3 +479,88 @@ describe("MiniCartDrawer · carga y foco con otra página detrás", () => {
     expect(screen.getByText("Título de la página")).not.toHaveFocus();
   });
 });
+
+describe("MiniCartDrawer · descuentos (S9)", () => {
+  /** Dos unidades de Bs 100 con un descuento de Bs 30 → se paga Bs 170 (números del «servidor»). */
+  const discounted = () =>
+    makeSnapshot(
+      [
+        makeLine("a", 2, {
+          name: "Falda",
+          unit_price: 100,
+          line_total: 200,
+          discount: 30,
+          final_total: 170,
+          discount_offers: [
+            {
+              discount_id: "d1",
+              name: "Oferta de temporada",
+              kind: "percent",
+              amount: 30,
+              coupon: false,
+            },
+          ],
+        }),
+      ],
+      {
+        totals: {
+          subtotal: 200,
+          item_count: 2,
+          line_count: 1,
+          shipping: null,
+          discount: 30,
+          total: 170,
+        },
+      },
+    );
+
+  it("las líneas compactas muestran el total tachado y el final, y el pie agrega «Descuento» y el total del servidor (ya neto)", async () => {
+    await setup(discounted());
+    const { dialog } = await openDrawer();
+    expect(within(dialog).getByText(/Total de la línea:/)).toHaveTextContent(
+      "Total de la línea: Bs 170,00, antes Bs 200,00",
+    );
+    expect(within(dialog).getByText("Oferta de temporada −Bs 30,00")).toBeInTheDocument();
+    expect(within(dialog).getByText("Subtotal").parentElement).toHaveTextContent("Bs 200,00");
+    expect(within(dialog).getByText("Descuento").parentElement).toHaveTextContent("-Bs 30,00");
+    expect(within(dialog).getByText("Total").parentElement).toHaveTextContent("Bs 170,00");
+  });
+
+  it("las filas del descuento se atenúan junto con el subtotal mientras hay un cambio sin confirmar", async () => {
+    const server = new FakeCartServer(discounted());
+    await setup(discounted(), { server });
+    const { user, dialog } = await openDrawer();
+    const resume = server.pause();
+    await user.click(within(dialog).getByRole("button", { name: /^Aumentar la cantidad de / }));
+    expect(within(dialog).getByText("Descuento").closest("div")).toHaveClass("opacity-60");
+    await act(async () => {
+      resume();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  });
+
+  it("sin descuento el pie es el de siempre (solo «Subtotal», sin «Descuento» ni «Total»)", async () => {
+    await setup(makeSnapshot([makeLine("a", 2)]));
+    const { dialog } = await openDrawer();
+    expect(within(dialog).getByText("Subtotal").parentElement).toHaveTextContent("Bs 200,00");
+    expect(within(dialog).queryByText("Descuento")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("Total")).not.toBeInTheDocument();
+  });
+
+  it("el cupón se pone en la bolsa, no en el cajón: el cajón no lleva el formulario", async () => {
+    await setup(discounted());
+    const { dialog } = await openDrawer();
+    expect(
+      within(dialog).queryByRole("textbox", { name: "Código de cupón" }),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("¿Tienes un cupón?")).not.toBeInTheDocument();
+  });
+
+  it("una foto vieja (sin campos S9) no rompe el cajón", async () => {
+    await setup(makeSnapshot([makeLine("a", 1)]));
+    const { dialog } = await openDrawer();
+    expect(within(dialog).getByText(/Total de la línea:/).parentElement).toHaveTextContent(
+      "Bs 100,00",
+    );
+  });
+});

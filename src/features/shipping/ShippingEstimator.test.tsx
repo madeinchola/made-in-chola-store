@@ -296,6 +296,102 @@ describe("estimador · el total estimado respeta el total del servidor (descuent
   });
 });
 
+describe("estimador · envío gratis por un descuento (S9)", () => {
+  /** Una bolsa de Bs 100 con un descuento de Bs 15 (total Bs 85) y, opcionalmente, envío gratis. */
+  const withFree = (free: boolean, shipping: number | null = null) => ({
+    totals: { subtotal: 100, item_count: 1, line_count: 1, shipping, discount: 15, total: 85 },
+    discounts: {
+      applied: [],
+      rejected: [],
+      coupon: { status: "none" as const, code: null, reason: null, missing: null },
+      free_shipping: free,
+    },
+  });
+
+  it("con cotización válida de Bs 15: la fila dice «Gratis», el estimador «Envío gratis», y el total estimado es el del servidor (85) SIN sumar el costo cotizado", async () => {
+    mockQuote.mockResolvedValue(quoteResult({ cost: 15 }));
+    seed();
+    await setup([makeLine("a", 1)], {}, withFree(true));
+    await waitFor(() => expect(rows()).toContain("EnvíoGratis"));
+    expect(rows()).toEqual([
+      "Subtotal (1 producto)Bs 100,00",
+      "EnvíoGratis",
+      "Descuento-Bs 15,00",
+      "Total estimadoBs 85,00", // 85 (y NO 85 + 15 = 100)
+    ]);
+    const [quote] = regions();
+    expect(quote).toHaveTextContent("Envío gratis");
+    expect(quote).not.toHaveTextContent("Envío estimado");
+    expect(quote).not.toHaveTextContent("Bs 15,00");
+    expect(quote).toHaveTextContent("Total estimado con envío: Bs 85,00");
+    expect(rows().some((row) => /^TotalBs/.test(row ?? ""))).toBe(false); // UN solo total a la vista
+    // el servidor sigue recibiendo el SUBTOTAL del pedido para sus reglas de tarifa
+    expect(mockQuote.mock.calls[0]![0]).toMatchObject({ orderAmount: 100 });
+  });
+
+  it("control: con la misma cotización y SIN envío gratis el costo sí se suma (85 + 15 = 100)", async () => {
+    mockQuote.mockResolvedValue(quoteResult({ cost: 15 }));
+    seed();
+    await setup([makeLine("a", 1)], {}, withFree(false));
+    await waitFor(() => expect(rows()).toContain("EnvíoBs 15,00"));
+    expect(rows()).toContain("Total estimadoBs 100,00");
+    expect(regions()[0]).toHaveTextContent("Envío estimado: Bs 15,00");
+    expect(summary()).not.toHaveTextContent("Gratis");
+    expect(summary()).not.toHaveTextContent("Tienes envío gratis");
+  });
+
+  it("con un costo cotizado de 0 y envío gratis: «Gratis» y el total del servidor", async () => {
+    mockQuote.mockResolvedValue(quoteResult({ cost: 0 }));
+    seed();
+    await setup([makeLine("a", 1)], {}, withFree(true));
+    await waitFor(() => expect(rows()).toContain("EnvíoGratis"));
+    expect(rows()).toContain("Total estimadoBs 85,00");
+    expect(regions()[0]).toHaveTextContent("Envío gratis");
+  });
+
+  it("sin destino elegido: la fila sigue diciendo «Se calcula al elegir tu dirección», con la nota «Tienes envío gratis» debajo, y no se pregunta al servidor", async () => {
+    await setup([makeLine("a", 1)], {}, withFree(true));
+    await flush();
+    expect(mockQuote).not.toHaveBeenCalled();
+    expect(rows()).toEqual([
+      "Subtotal (1 producto)Bs 100,00",
+      "EnvíoSe calcula al elegir tu direcciónTienes envío gratis",
+      "Descuento-Bs 15,00",
+      "TotalBs 85,00",
+    ]);
+    expect(screen.queryByText("Total estimado")).not.toBeInTheDocument();
+    expect(summary()).not.toHaveTextContent("Gratis");
+  });
+
+  it("mientras calcula: «Calculando…» sin nota ni «Gratis» (aún no se sabe)", async () => {
+    mockQuote.mockReturnValue(deferred().promise);
+    seed();
+    await setup([makeLine("a", 1)], {}, withFree(true));
+    expect(rows()).toContain("EnvíoCalculando…");
+    expect(summary()).not.toHaveTextContent("Tienes envío gratis");
+    expect(summary()).not.toHaveTextContent("Gratis");
+  });
+
+  it("si el servidor no puede cotizar (fuera de cobertura): «No se pudo estimar», sin prometer «Gratis» ni total estimado", async () => {
+    mockQuote.mockResolvedValue(rejectedQuote("out_of_coverage"));
+    seed();
+    await setup([makeLine("a", 1)], {}, withFree(true));
+    await waitFor(() => expect(rows()).toContain("EnvíoNo se pudo estimar"));
+    expect(summary()).not.toHaveTextContent("Gratis");
+    expect(summary()).not.toHaveTextContent("Tienes envío gratis");
+    expect(screen.queryByText("Total estimado")).not.toBeInTheDocument();
+  });
+
+  it("si la bolsa ya trae el envío del servidor se muestra tal cual: no se estima nada ni se pone la nota", async () => {
+    seed();
+    await setup([makeLine("a", 1)], {}, withFree(true, 20));
+    await flush();
+    expect(mockQuote).not.toHaveBeenCalled();
+    expect(rows()).toContain("EnvíoBs 20,00");
+    expect(summary()).not.toHaveTextContent("Tienes envío gratis");
+  });
+});
+
 describe("estimador · recotiza y nunca muestra una cotización vieja con datos nuevos", () => {
   it("cambia el SUBTOTAL: se pregunta de nuevo con el monto nuevo y mientras tanto no se ve el costo anterior", async () => {
     const second = deferred();

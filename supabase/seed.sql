@@ -222,3 +222,32 @@ begin
     cross join (values ('09:00'::time, '12:00'::time), ('14:00'::time, '18:00'::time)) as s(start_time, end_time);
 end;
 $seed_s8$;
+
+-- ── Descuentos (S9): cupones de EJEMPLO ─────────────────────────────────────────────────────
+-- TODO valor de aquí es PROVISIONAL: el dueño aún no define los cupones de lanzamiento (PENDIENTES_ADMIN §F). Son solo CUPONES con
+-- código (no se aplican solos) y NINGÚN envío gratis automático (decisión del dueño, 3.3: no habrá envío gratis por monto).
+-- «10 % OFF en tu primera compra» sale del diseño. Sin efecto si ya hay descuentos (se puede ejecutar de nuevo).
+do $seed_s9$
+declare
+  v_id uuid;
+begin
+  if exists (select 1 from public.discounts) then
+    return;
+  end if;
+
+  insert into public.discounts (name, kind, params, requires_coupon, priority)
+  values ('Cupón del 10 % (ejemplo)', 'percent', '{"percent": 10}', true, 100)
+  returning id into v_id;
+  insert into public.coupons (discount_id, code) values (v_id, 'EJEMPLO10');
+
+  insert into public.discounts (name, kind, params, requires_coupon, min_order_amount, priority)
+  values ('Bs 20 de descuento desde Bs 150 (ejemplo)', 'fixed', '{"amount": 20}', true, 150, 100)
+  returning id into v_id;
+  insert into public.coupons (discount_id, code) values (v_id, 'EJEMPLO20');
+
+  insert into public.discounts (name, kind, params, requires_coupon, usage_limit_per_customer, priority)
+  values ('10 % en tu primera compra (ejemplo)', 'first_purchase', '{"percent": 10}', true, 1, 100)
+  returning id into v_id;
+  insert into public.coupons (discount_id, code) values (v_id, 'BIENVENIDA10');
+end;
+$seed_s9$;

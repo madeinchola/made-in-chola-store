@@ -19,6 +19,17 @@ export const AUDIT_TABLES = [
   "home_sections",
   "home_section_items",
   "profiles",
+  "store_locations",
+  "shipping_methods",
+  "shipping_zones",
+  "shipping_rate_rules",
+  "delivery_slots",
+  "blocked_dates",
+  "discounts",
+  "coupons",
+  "discount_targets",
+  "customer_groups",
+  "customer_group_members",
 ] as const;
 
 export type AuditTable = (typeof AUDIT_TABLES)[number];

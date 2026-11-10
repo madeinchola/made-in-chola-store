@@ -34,7 +34,12 @@ export type VersionedTable =
   | "shipping_zones"
   | "shipping_rate_rules"
   | "delivery_slots"
-  | "blocked_dates";
+  | "blocked_dates"
+  | "discounts"
+  | "coupons"
+  | "discount_targets"
+  | "customer_groups"
+  | "customer_group_members";
 
 interface Outcome<T> {
   data: T | null;

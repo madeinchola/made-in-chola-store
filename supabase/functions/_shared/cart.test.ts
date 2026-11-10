@@ -12,6 +12,7 @@ import {
   hashCartToken,
   isCartToken,
   isWrite,
+  LIMITS,
   planRpc,
 } from "./cart.ts";
 import { HttpError } from "./errors.ts";
@@ -69,6 +70,11 @@ Deno.test("el esquema acepta cada acción bien formada", () => {
     { action: "accept_prices" },
     { action: "accept_prices", variant_id: VARIANT },
     { action: "merge", cart_token: token },
+    { action: "set_coupon", code: "VERANO-10" },
+    { action: "set_coupon", code: "verano 10", cart_token: token },
+    { action: "set_coupon", code: "x".repeat(40) },
+    { action: "remove_coupon" },
+    { action: "remove_coupon", cart_token: token },
   ]) {
     assert(cartRequestSchema.safeParse(body).success, `debería aceptar ${JSON.stringify(body)}`);
   }
@@ -371,5 +377,70 @@ Deno.test(
     assertNotEquals(f, await networkFingerprint("203.0.113.8", "clave-uno")); // otra red
     assertNotEquals(f, await networkFingerprint("203.0.113.7", "clave-dos")); // sin la clave no se reproduce
     assert(!f.includes("203"));
+  },
+);
+
+Deno.test(
+  "cupón: el esquema rechaza un código vacío, de más de 40 caracteres, de otro tipo o con campos de más",
+  () => {
+    for (const body of [
+      { action: "set_coupon" },
+      { action: "set_coupon", code: "" },
+      { action: "set_coupon", code: "x".repeat(41) },
+      { action: "set_coupon", code: 1234 },
+      { action: "set_coupon", code: ["A"] },
+      { action: "set_coupon", code: null },
+      { action: "set_coupon", code: "OK1", extra: true },
+      { action: "remove_coupon", code: "OK1" },
+      { action: "remove_coupon", extra: 1 },
+    ]) {
+      assert(
+        !cartRequestSchema.safeParse(body).success,
+        `debería rechazar ${JSON.stringify(body)}`,
+      );
+    }
+  },
+);
+
+Deno.test("cupón: planRpc manda el código a su función y el dueño igual que el resto", () => {
+  const user: CartIdentity = {
+    userId: USER,
+    tokenHash: "d".repeat(64),
+    mayCreate: false,
+    ipHash: null,
+  };
+  const guest: CartIdentity = {
+    userId: null,
+    tokenHash: "d".repeat(64),
+    mayCreate: false,
+    ipHash: null,
+  };
+  assertEquals(planRpc({ action: "set_coupon", code: "VERANO-10" }, user), {
+    fn: "cart_set_coupon",
+    args: { p_profile_id: USER, p_token_hash: null, p_code: "VERANO-10" },
+  });
+  assertEquals(planRpc({ action: "set_coupon", code: " ab 1 " }, guest), {
+    fn: "cart_set_coupon",
+    args: { p_profile_id: null, p_token_hash: "d".repeat(64), p_code: " ab 1 " },
+  });
+  assertEquals(planRpc({ action: "remove_coupon" }, user), {
+    fn: "cart_remove_coupon",
+    args: { p_profile_id: USER, p_token_hash: null },
+  });
+  assertEquals(planRpc({ action: "remove_coupon" }, guest).args.p_token_hash, "d".repeat(64));
+});
+
+Deno.test(
+  "cupón: poner y quitar son escrituras (topes de tasa de escritura) y los intentos tienen su propio tope",
+  () => {
+    assertEquals(isWrite({ action: "set_coupon", code: "AB1" }), true);
+    assertEquals(isWrite({ action: "remove_coupon" }), true);
+    // Fuerza bruta de códigos: pocos intentos por persona y una ventana larga (10 min).
+    assert(LIMITS.couponPerIdentity.max <= 20, "demasiados intentos de cupón por persona");
+    assert(LIMITS.couponPerIdentity.windowSeconds >= 300, "la ventana de intentos debe ser larga");
+    assert(
+      LIMITS.couponPerIp.max >= LIMITS.couponPerIdentity.max,
+      "el tope por red no puede ser menor que el de una persona",
+    );
   },
 );

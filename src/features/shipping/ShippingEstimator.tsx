@@ -39,7 +39,15 @@ function StatusRegion({ children, className }: { children?: ReactNode; className
   );
 }
 
-function QuoteMessage({ quote, total }: { quote: QuoteView; total: number | null }) {
+function QuoteMessage({
+  quote,
+  total,
+  freeShipping,
+}: {
+  quote: QuoteView;
+  total: number | null;
+  freeShipping: boolean;
+}) {
   switch (quote.kind) {
     case "idle":
       return null;
@@ -63,9 +71,13 @@ function QuoteMessage({ quote, total }: { quote: QuoteView; total: number | null
       return (
         <>
           <p className="font-medium">
-            {quote.cost === 0
-              ? t("shipping.estimator.free")
-              : t("shipping.estimator.cost", { cost: formatCartMoney(quote.cost, quote.currency) })}
+            {freeShipping
+              ? t("cart.summary.freeShippingEstimate")
+              : quote.cost === 0
+                ? t("shipping.estimator.free")
+                : t("shipping.estimator.cost", {
+                    cost: formatCartMoney(quote.cost, quote.currency),
+                  })}
           </p>
           {quote.eta && <p className="text-muted-foreground">{quote.eta}</p>}
           {total !== null && (
@@ -132,7 +144,8 @@ export function ShippingEstimator({
   const ids = useId();
   const titleId = `${ids}-title`;
   const panelId = `${ids}-slots`;
-  const { ready, userId, destination, quote, schedule, scheduleCheck, slots, total } = estimate;
+  const { ready, userId, destination, quote, schedule, scheduleCheck, slots, total, freeShipping } =
+    estimate;
 
   const [sheet, setSheet] = useState<{ opened: boolean; open: boolean; context: SheetContext }>({
     opened: false,
@@ -259,7 +272,7 @@ export function ShippingEstimator({
       )}
 
       <StatusRegion>
-        <QuoteMessage quote={quote} total={total} />
+        <QuoteMessage quote={quote} total={total} freeShipping={freeShipping} />
       </StatusRegion>
       {showRetry && (
         <Button type="button" variant="outline" className="min-h-11" onClick={retry}>

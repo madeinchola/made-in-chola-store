@@ -121,12 +121,22 @@ export class FakeCartServer {
         body: Extract<CartRequestBody, { action: "set_item" }>,
       ) => FunctionResult<CartResponse> | null)
     | null = null;
+  /** Para forzar la respuesta a un `set_coupon` (cualquier motivo de rechazo, un cupón guardado sin efecto…). */
+  onSetCoupon:
+    | ((
+        body: Extract<CartRequestBody, { action: "set_coupon" }>,
+      ) => FunctionResult<CartResponse> | null)
+    | null = null;
   /** Respuesta fija para TODAS las peticiones (p. ej. un error de red). */
   forced: FunctionResult<CartResponse> | null = null;
   /** Qué contesta a «merge» (tras iniciar sesión). */
   mergeResult: Partial<CartResponse> = { merged: true };
   /** Cuánto adelanta (+) o atrasa (−) el reloj del servidor respecto al del dispositivo, en ms. */
   clockOffsetMs = 0;
+  /** Cupones que conoce (clave: el código normalizado en mayúsculas y sin separadores). */
+  coupons: Record<string, { percent: number; min?: number }> = {};
+  /** El cupón guardado en la bolsa (normalizado). */
+  couponCode: string | null = null;
   /** Lo ya quitado: si se vuelve a agregar (deshacer), regresa con sus datos (nombre, precio…). */
   private known = new Map<string, CartLine>();
   private gate: Promise<void> | null = null;
@@ -168,7 +178,89 @@ export class FakeCartServer {
     const extra = this.snapshot
       ? { limits: this.snapshot.limits, currency: this.snapshot.currency }
       : {};
-    this.snapshot = makeSnapshot(lines, extra);
+    // Los descuentos de una foto anterior no sobreviven a un cambio: se rehacen aquí (o desaparecen si ya no hay cupón).
+    const plain = lines.map((line) => {
+      const copy = { ...line };
+      delete copy.discount;
+      delete copy.final_total;
+      delete copy.discount_offers;
+      return copy;
+    });
+    this.snapshot = this.withCoupon(makeSnapshot(plain, extra));
+  }
+
+  /** El servidor falso aplica un porcentaje por línea (redondeado a centavos) si hay cupón y llega al mínimo. */
+  private withCoupon(snapshot: CartSnapshot): CartSnapshot {
+    const def = this.couponCode ? this.coupons[this.couponCode] : undefined;
+    if (!def || !this.couponCode) return snapshot;
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const missing = def.min !== undefined ? round2(def.min - snapshot.totals.subtotal) : 0;
+    if (missing > 0) {
+      return {
+        ...snapshot,
+        discounts: {
+          applied: [],
+          rejected: [{ code: this.couponCode, reason: "min_not_reached", missing }],
+          coupon: { status: "rejected", code: this.couponCode, reason: "min_not_reached", missing },
+          free_shipping: false,
+        },
+      };
+    }
+    const lines = snapshot.lines.map((l) => {
+      const discount = round2((l.line_total * def.percent) / 100);
+      return {
+        ...l,
+        discount,
+        final_total: round2(l.line_total - discount),
+        discount_offers:
+          discount > 0
+            ? [
+                {
+                  discount_id: "d1",
+                  name: `Cupón ${this.couponCode}`,
+                  kind: "percent",
+                  amount: discount,
+                  coupon: true,
+                },
+              ]
+            : [],
+      };
+    });
+    const total = round2(lines.reduce((n, l) => n + (l.discount ?? 0), 0));
+    return {
+      ...snapshot,
+      lines,
+      totals: {
+        ...snapshot.totals,
+        discount: total > 0 ? total : null,
+        total: round2(snapshot.totals.subtotal - total),
+      },
+      discounts: {
+        applied: [
+          {
+            discount_id: "d1",
+            coupon_id: "c1",
+            name: `Cupón ${this.couponCode}`,
+            kind: "percent",
+            amount: total,
+            automatic: false,
+            free_shipping: false,
+          },
+        ],
+        rejected: [],
+        coupon: {
+          status: "applied",
+          code: this.couponCode,
+          reason: null,
+          missing: null,
+          discount_id: "d1",
+          coupon_id: "c1",
+          name: `Cupón ${this.couponCode}`,
+          kind: "percent",
+        },
+        free_shipping: false,
+      },
+    };
   }
 
   private handle(body: CartRequestBody): FunctionResult<CartResponse> {
@@ -217,6 +309,32 @@ export class FakeCartServer {
         return okResponse(this.snapshot, { outcome: "removed" });
       case "merge":
         return okResponse(this.snapshot, this.mergeResult);
+      case "set_coupon": {
+        const forcedCoupon = this.onSetCoupon?.(body);
+        if (forcedCoupon) return forcedCoupon;
+        const norm = body.code.toUpperCase().replace(/[\s_-]+/g, "");
+        if (!this.snapshot) return okResponse(null, { outcome: "no_cart" });
+        if (!this.coupons[norm]) {
+          return okResponse(this.snapshot, { outcome: "coupon_rejected", reason: "invalid_code" });
+        }
+        if (this.couponCode && this.couponCode !== norm) {
+          return okResponse(this.snapshot, {
+            outcome: "coupon_rejected",
+            reason: "coupon_already_applied",
+          });
+        }
+        this.couponCode = norm;
+        this.rebuild(this.lines());
+        const missing = this.snapshot?.discounts?.coupon.missing ?? null;
+        return okResponse(this.snapshot, {
+          outcome: "coupon_set",
+          ...(missing !== null ? { reason: "min_not_reached", missing } : {}),
+        });
+      }
+      case "remove_coupon":
+        this.couponCode = null;
+        this.rebuild(this.lines());
+        return okResponse(this.snapshot, { outcome: "coupon_removed" });
       case "set_item": {
         const forced = this.onSetItem?.(body);
         if (forced) return forced;

@@ -9,13 +9,19 @@ import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useCart } from "./cart-context";
 import { CheckoutButton } from "./CheckoutButton";
+import { CouponForm } from "./CouponForm";
 import { formatCartMoney } from "./format";
+import { discountsOf } from "./selectors";
 import type { CartSnapshot } from "./types";
 
 /**
  * Resumen y botón «Pagar». Los importes (`subtotal`, `shipping`, `discount`, `total`) salen del servidor y solo se
- * formatean; si hay cambios sin confirmar se atenúan y se indica que se están actualizando. El descuento es un PUNTO DE
- * EXTENSIÓN (hoy llega en `null`, S9): sin descuento no hay fila.
+ * formatean; si hay cambios sin confirmar se atenúan y se indica que se están actualizando.
+ *
+ * Descuentos (S9): con `totals.discount !== null` hay una fila «Descuento» y, debajo, el desglose de lo aplicado («Oferta:
+ * −Bs 15,00»; el envío gratis no entra: no baja el subtotal). `totals.total` YA viene neto y es la base del «Total estimado».
+ * Con envío gratis (`discounts.free_shipping`) la fila de envío dice «Gratis» en cuanto hay cotización válida (antes, una nota
+ * «Tienes envío gratis») y el costo cotizado NO se suma. El bloque del cupón (`CouponForm`) vive aquí, no en el cajón.
  *
  * Envío (S8): mientras el servidor no lo llene en la bolsa (`totals.shipping === null`, lo hará el checkout, S10) el
  * resumen lo ESTIMA con el estimador de envío: la fila dice el costo (o por qué no hay), y con un costo válido aparece un
@@ -57,6 +63,10 @@ function SummaryBody({
   className: string | undefined;
 }) {
   const { totals, currency } = snapshot;
+  const discounts = discountsOf(snapshot);
+  const freeShipping = discounts.free_shipping;
+  // El envío gratis no baja el subtotal: no es una línea del desglose del descuento.
+  const breakdown = discounts.applied.filter((entry) => !entry.free_shipping);
   // El servidor manda: si ya informa el envío de la bolsa se muestra tal cual y no se estima nada.
   const serverShipping = totals.shipping;
   const estimate = useShippingEstimate({
@@ -67,11 +77,15 @@ function SummaryBody({
     quotable:
       serverShipping === null &&
       canQuote({ lineCount: snapshot.lines.length, subtotal: totals.subtotal }),
+    freeShipping,
   });
+  const row = shippingRow(estimate.quote, freeShipping);
   const shippingCell =
     serverShipping !== null
       ? { text: formatCartMoney(serverShipping, currency), muted: false }
-      : describeShipping(shippingRow(estimate.quote), currency);
+      : describeShipping(row, currency);
+  // Sin destino elegido aún no hay cotización: el envío sigue «por calcular», pero se avisa que será gratis.
+  const freeShippingNote = serverShipping === null && freeShipping && row.kind === "later";
   // El rótulo cuenta lo que se COBRA (Σ `billable_qty`), no las unidades que hay en la bolsa (`totals.item_count`): una línea
   // agotada o con menos stock del pedido suma 0 (o menos) al importe, y «Subtotal (3 productos)» con un importe de 2 sería
   // engañoso. Es un conteo, no dinero. La cabecera SÍ cuenta todo lo que hay en la bolsa (`displayCount`): es otro número
@@ -106,20 +120,40 @@ function SummaryBody({
           </dt>
           <dd className="tabular-nums">{formatCartMoney(totals.subtotal, currency)}</dd>
         </div>
-        <div className={itemsRow}>
+        <div className={cn(itemsRow, freeShippingNote && "flex-wrap")}>
           <dt>{t("cart.summary.shipping")}</dt>
           <dd
             className={cn("text-right tabular-nums", shippingCell.muted && "text-muted-foreground")}
           >
             {shippingCell.text}
           </dd>
+          {freeShippingNote && (
+            <dd className="basis-full text-xs text-success">
+              {t("cart.summary.freeShippingNote")}
+            </dd>
+          )}
         </div>
         {totals.discount !== null && (
-          <div className={itemsRow}>
+          <div className={cn(itemsRow, breakdown.length > 0 && "flex-wrap")}>
             <dt>{t("cart.summary.discount")}</dt>
             <dd className="tabular-nums">
               {formatCartMoney(-Math.abs(totals.discount), currency)}
             </dd>
+            {breakdown.length > 0 && (
+              <dd className="basis-full space-y-0.5 text-xs text-muted-foreground">
+                {breakdown.map((entry) => (
+                  <p
+                    key={`${entry.discount_id}-${entry.coupon_id ?? "oferta"}`}
+                    className="break-words"
+                  >
+                    {t("cart.summary.discountLine", {
+                      name: entry.name,
+                      amount: formatCartMoney(entry.amount, currency),
+                    })}
+                  </p>
+                ))}
+              </dd>
+            )}
           </div>
         )}
         {/* UN solo total a la vista: con una estimación de envío, «Total» (la bolsa, sin envío) quedaría justo debajo de la
@@ -141,6 +175,8 @@ function SummaryBody({
       {estimate.total !== null && (
         <p className="text-xs text-muted-foreground">{t("cart.summary.estimateNote")}</p>
       )}
+
+      <CouponForm />
 
       {serverShipping === null && (
         // Con cambios sin confirmar la estimación aún es la del subtotal anterior: se atenúa y se marca ocupada, como las filas.

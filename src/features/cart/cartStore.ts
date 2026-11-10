@@ -1,7 +1,17 @@
 import type { FunctionResult } from "@/lib/functions";
 import { UNDO_DURATION_MS } from "./constants";
 import { type CartStorage, isPendingFresh } from "./storage";
-import type { CartLine, CartRequestBody, CartResponse, CartSnapshot, ItemResult } from "./types";
+import {
+  COUPON_REASONS,
+  type CartLine,
+  type CartRequestBody,
+  type CartResponse,
+  type CartSnapshot,
+  type CouponClientReason,
+  type CouponReason,
+  type ItemOutcome,
+  type ItemResult,
+} from "./types";
 
 export interface CartApi {
   request(body: CartRequestBody): Promise<FunctionResult<CartResponse>>;
@@ -15,6 +25,15 @@ export interface MergeReport {
   merged: number;
   adjusted: number;
   skipped: number;
+}
+
+/** Por qué NO se pudo poner un cupón (solo cuando el servidor lo rechazó sin guardarlo, o no se pudo preguntar). */
+export interface CouponNotice {
+  /** Lo que escribió la persona. */
+  code: string;
+  reason: CouponReason | CouponClientReason;
+  /** Con `min_not_reached`: cuánto falta (importe en la moneda de la bolsa). */
+  missing: number | null;
 }
 
 export interface CartState {
@@ -37,6 +56,12 @@ export interface CartState {
    * ese segundo aviso aparecía y desaparecía (parpadeo).
    */
   reserving: boolean;
+  /**
+   * Cupón (S9). `busy`: hay una petición de poner o quitar en camino. `notice`: el último rechazo que NO queda guardado en
+   * la bolsa (código inexistente, vencido, otro cupón ya puesto…). Un cupón guardado que hoy no baja nada (mínimo no
+   * alcanzado…) se lee de la foto: `snapshot.discounts.coupon`.
+   */
+  coupon: { busy: boolean; notice: CouponNotice | null };
 }
 
 export type CartEvent =
@@ -64,12 +89,34 @@ const INITIAL: CartState = {
   clockOffsetMs: 0,
   mergeReport: null,
   reserving: false,
+  coupon: { busy: false, notice: null },
 };
 
 const RETRY_BASE_MS = 2000;
 const RETRY_MAX_MS = 30_000;
 /** Reintentos seguidos ante un error del servidor (5xx, 408) antes de rendirse con ese cambio. */
 const MAX_TRANSIENT_RETRIES = 5;
+
+const ITEM_OUTCOMES: readonly ItemOutcome[] = [
+  "ok",
+  "adjusted",
+  "capped_variant",
+  "capped_units",
+  "removed",
+  "out_of_stock",
+  "unavailable",
+  "limit_lines",
+  "limit_units",
+  "token_retired",
+];
+const isItemOutcome = (value: unknown): value is ItemOutcome =>
+  typeof value === "string" && (ITEM_OUTCOMES as readonly string[]).includes(value);
+
+/** El motivo que manda el servidor; cualquier otra cosa se lee como un código inválido (nunca se inventa un motivo). */
+const asCouponReason = (value: unknown): CouponReason =>
+  typeof value === "string" && (COUPON_REASONS as readonly string[]).includes(value)
+    ? (value as CouponReason)
+    : "invalid_code";
 
 /** ¿Lo que llegó parece una respuesta del carrito? (un 200 con cuerpo vacío o raro no debe romper el almacén). */
 function isCartResponse(data: unknown): data is CartResponse {
@@ -104,6 +151,8 @@ export class CartStore {
   /** Peticiones de «reservar de nuevo» sin terminar (de cualquier época): `state.reserving` es `> 0`. */
   private reserveInFlight = 0;
   private lastExpiryRefreshed: string | null = null;
+  /** Lo que la persona escribió en el último intento de cupón (para decirle «ese código…» si se rechaza). */
+  private lastCouponTyped = "";
   private lastFetchAt = 0;
   private unsubscribeChannel: (() => void) | null = null;
   private readonly now: () => number;
@@ -375,6 +424,49 @@ export class CartStore {
     });
   }
 
+  /**
+   * Pone un cupón en la bolsa. El servidor decide: si lo acepta (o lo guarda aunque hoy no baje nada, p. ej. por el
+   * mínimo) la foto trae el descuento o el motivo; si lo rechaza deja un `coupon.notice`. NO se reintenta solo (cada
+   * intento cuenta para el tope contra la fuerza bruta de códigos).
+   */
+  applyCoupon(code: string): Promise<void> {
+    const typed = code.trim().slice(0, 40);
+    this.lastCouponTyped = typed;
+    if (typed === "") {
+      this.set({
+        coupon: { busy: false, notice: { code: "", reason: "invalid_code", missing: null } },
+      });
+      return Promise.resolve();
+    }
+    this.set({ coupon: { busy: true, notice: null } });
+    return this.enqueue(async (epoch) => {
+      const outcome = await this.send(epoch, { action: "set_coupon", code: typed });
+      if (outcome !== "ok" && this.epoch === epoch) {
+        // No se pudo preguntar (sin red, error del servidor, demasiados intentos): se dice, sin guardar nada.
+        const reason: CouponClientReason =
+          this.state.sync.code === "rate_limited" ? "rate_limited" : "unavailable";
+        this.set({ coupon: { busy: true, notice: { code: typed, reason, missing: null } } });
+      }
+    }).finally(() => {
+      if (this.state.coupon.busy) this.set({ coupon: { ...this.state.coupon, busy: false } });
+    });
+  }
+
+  /** Quita el cupón de la bolsa (idempotente). */
+  removeCoupon(): Promise<void> {
+    this.set({ coupon: { busy: true, notice: null } });
+    return this.enqueue(async (epoch) => {
+      await this.send(epoch, { action: "remove_coupon" });
+    }).finally(() => {
+      if (this.state.coupon.busy) this.set({ coupon: { ...this.state.coupon, busy: false } });
+    });
+  }
+
+  /** Cierra el aviso del último rechazo. */
+  dismissCouponNotice(): void {
+    if (this.state.coupon.notice) this.set({ coupon: { ...this.state.coupon, notice: null } });
+  }
+
   /** La retención venció: se reintenta UNA vez por vencimiento (si no, cada repintado repetiría la petición). */
   reservationExpired(): Promise<void> {
     const key = this.state.snapshot?.reservation.expires_at ?? "none";
@@ -553,7 +645,7 @@ export class CartStore {
     const snapshot = retired ? null : data.cart;
     const server = Date.parse(data.server_time);
     const results = { ...this.state.results };
-    if (variantId && data.outcome) {
+    if (variantId && isItemOutcome(data.outcome)) {
       if (data.outcome === "ok" || data.outcome === "removed") delete results[variantId];
       else
         results[variantId] = {
@@ -562,10 +654,26 @@ export class CartStore {
           applied: data.applied ?? 0,
         };
     }
+    // Cupón: un rechazo que no se guarda deja un aviso; poner o quitar uno con éxito lo borra.
+    let coupon = this.state.coupon;
+    if (data.outcome === "coupon_rejected" || data.outcome === "no_cart") {
+      coupon = {
+        ...coupon,
+        notice: {
+          code: this.lastCouponTyped,
+          // Sin bolsa en el servidor (sesión vencida, bolsa ya fusionada) NO es un código malo: no se culpa al código.
+          reason: data.outcome === "no_cart" ? "unavailable" : asCouponReason(data.reason),
+          missing: typeof data.missing === "number" ? data.missing : null,
+        },
+      };
+    } else if (data.outcome === "coupon_set" || data.outcome === "coupon_removed") {
+      coupon = { ...coupon, notice: null };
+    }
     this.set({
       snapshot,
       loaded: true,
       results,
+      coupon,
       sync: { state: "idle" },
       ...(Number.isFinite(server) ? { clockOffsetMs: server - this.now() } : {}),
     });

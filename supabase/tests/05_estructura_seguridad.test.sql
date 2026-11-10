@@ -28,8 +28,8 @@ select is(
 select is(
   (select coalesce(string_agg(c.relname, ', ' order by c.relname), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind in ('r', 'p') and has_any_column_privilege('authenticated', c.oid, 'insert')),
-  'addresses, blocked_dates, categories, collections, delivery_slots, exchange_rates, home_section_items, home_sections, news_banners, product_colors, product_images, product_prices, product_sizes, product_variants, products, shipping_methods, shipping_rate_rules, shipping_zones, store_locations, tax_profiles',
-  'lista blanca de tablas donde authenticated puede insertar columnas (el admin bajo RLS is_admin; addresses y tax_profiles: el cliente SOLO sobre lo suyo, S6; las 6 de envíos de S8, solo admin por RLS)');
+  'addresses, blocked_dates, categories, collections, coupons, customer_group_members, customer_groups, delivery_slots, discount_targets, discounts, exchange_rates, home_section_items, home_sections, news_banners, product_colors, product_images, product_prices, product_sizes, product_variants, products, shipping_methods, shipping_rate_rules, shipping_zones, store_locations, tax_profiles',
+  'lista blanca de tablas donde authenticated puede insertar columnas (el admin bajo RLS is_admin; addresses y tax_profiles: el cliente SOLO sobre lo suyo, S6; las 6 de envíos de S8 y las 5 de descuentos de S9 (descuentos, cupones, objetivos, grupos y miembros), solo admin por RLS)');
 
 -- 4. NINGÚN rol de la aplicación puede borrar ni truncar tablas (BR-CAT-03, BR-DAT-01): se archiva.
 --    Excepciones heredadas de S1: perfiles/auditoría/rate_limits (los gestiona service_role o están blindados).
@@ -53,8 +53,8 @@ select is(
 select is(
   (select coalesce(string_agg(c.relname, ', ' order by c.relname), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind in ('r', 'p') and has_table_privilege('authenticated', c.oid, 'select')),
-  'addresses, audit_log, blocked_dates, cart_items, cart_removed_items, carts, categories, collections, countries, currencies, delivery_bookings, delivery_slots, exchange_rates, home_section_items, home_sections, news_banners, notification_outbox, product_categories, product_collections, product_colors, product_images, product_prices, product_related, product_sizes, product_slug_history, product_variants, products, profiles, shipping_methods, shipping_rate_rules, shipping_zones, stock_movements, stock_reservations, store_locations, store_settings, tax_profiles',
-  'lista blanca de tablas legibles por authenticated (ampliar a propósito en cada sprint; las 7 de envíos de S8 las filtra la RLS: solo el admin ve filas)');
+  'addresses, audit_log, blocked_dates, cart_items, cart_removed_items, carts, categories, collections, countries, coupons, currencies, customer_group_members, customer_groups, delivery_bookings, delivery_slots, discount_redemptions, discount_targets, discounts, exchange_rates, home_section_items, home_sections, news_banners, notification_outbox, product_categories, product_collections, product_colors, product_images, product_prices, product_related, product_sizes, product_slug_history, product_variants, products, profiles, shipping_methods, shipping_rate_rules, shipping_zones, stock_movements, stock_reservations, store_locations, store_settings, tax_profiles',
+  'lista blanca de tablas legibles por authenticated (ampliar a propósito en cada sprint; las 7 de envíos de S8 y las 6 de descuentos de S9 las filtra la RLS: solo el admin ve filas)');
 
 -- 7. Columnas actualizables por authenticated: profiles = solo full_name; variantes = nunca el stock
 select is(
@@ -90,8 +90,8 @@ select is(
   (select coalesce(string_agg(p.proname, ', ' order by p.proname), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.prokind = 'f' and p.prorettype not in ('trigger'::regtype, 'event_trigger'::regtype)  -- las de event trigger (p. ej. rls_auto_enable de Supabase) no se llaman por la API
       and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
-  '_ship_params_valid, adjust_stock, admin_delete_product_price, admin_duplicate_product, admin_set_primary_location, admin_set_product_categories, admin_set_product_collections, admin_set_product_related, admin_set_stock, current_app_role, f_unaccent, healthcheck, home_media_ok, is_admin, is_safe_link, public_list_products, public_listing_facets, public_price_for, public_search_products, quote_shipping, slugify, stock_status, storage_path_ok',
-  'lista blanca de funciones ejecutables desde el navegador (S8: quote_shipping es lectura pública; admin_set_primary_location, solo admin; _ship_params_valid la evalúa el CHECK de las tarifas con los permisos de quien inserta)');
+  '_coupon_norm, _discount_params_valid, _ship_params_valid, adjust_stock, admin_delete_product_price, admin_duplicate_product, admin_generate_coupon_codes, admin_set_primary_location, admin_set_product_categories, admin_set_product_collections, admin_set_product_related, admin_set_stock, current_app_role, f_unaccent, healthcheck, home_media_ok, is_admin, is_safe_link, public_list_products, public_listing_facets, public_price_for, public_search_products, quote_shipping, slugify, stock_status, storage_path_ok',
+  'lista blanca de funciones ejecutables desde el navegador (S8: quote_shipping es lectura pública; admin_set_primary_location, solo admin; _ship_params_valid, _discount_params_valid y _coupon_norm las evalúa un CHECK o una columna generada con los permisos de quien inserta; admin_generate_coupon_codes exige ser admin adentro)');
 
 -- 10. Las funciones de reserva/stock/precio internos NO las ejecuta el navegador
 select is(

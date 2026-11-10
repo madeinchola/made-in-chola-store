@@ -56,6 +56,22 @@ export function estimatedTotal(
   }
 }
 
+/**
+ * El «Total estimado» de la bolsa. Con una cotización válida es `estimatedTotal` (total del servidor + envío). Con ENVÍO GRATIS
+ * (descuento de S9: `discounts.free_shipping`) el costo cotizado NO se suma: el total estimado es el total del servidor tal
+ * cual (ya con sus descuentos). Sin cotización válida no hay total estimado (`null`).
+ */
+export function quoteTotal(
+  quote: QuoteView,
+  baseTotal: number,
+  currency: string,
+  freeShipping: boolean,
+): number | null {
+  if (quote.kind !== "ok") return null;
+  if (freeShipping) return Number.isFinite(baseTotal) ? baseTotal : null;
+  return estimatedTotal(baseTotal, quote.cost, currency);
+}
+
 /** Qué puede hacer la clienta ante un error del servidor. */
 export type ErrorAction = "location" | "retry" | "schedule" | "none";
 
@@ -245,8 +261,11 @@ export type ShippingRow =
   | { kind: "free" }
   | { kind: "cost"; cost: number };
 
-/** La fila «Envío»: un importe SOLO cuando hay un costo válido del servidor; en cualquier otro caso, un texto. */
-export function shippingRow(quote: QuoteView): ShippingRow {
+/**
+ * La fila «Envío»: un importe SOLO cuando hay un costo válido del servidor; en cualquier otro caso, un texto. Con envío
+ * gratis (S9) y una cotización válida dice «Gratis» aunque el método cobre algo; sin cotización sigue como siempre.
+ */
+export function shippingRow(quote: QuoteView, freeShipping = false): ShippingRow {
   switch (quote.kind) {
     case "idle":
       return { kind: "later" };
@@ -256,6 +275,8 @@ export function shippingRow(quote: QuoteView): ShippingRow {
     case "rejected":
       return { kind: "unavailable" };
     case "ok":
-      return quote.cost === 0 ? { kind: "free" } : { kind: "cost", cost: quote.cost };
+      return freeShipping || quote.cost === 0
+        ? { kind: "free" }
+        : { kind: "cost", cost: quote.cost };
   }
 }

@@ -526,3 +526,139 @@ describe("CartPage · regiones vivas persistentes y foco", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Tu bolsa" })).toHaveFocus();
   });
 });
+
+describe("CartPage · descuentos y cupón (S9)", () => {
+  const rowsOf = () =>
+    Array.from(screen.getByRole("region", { name: "Resumen" }).querySelectorAll("dl > div")).map(
+      (row) => row.textContent,
+    );
+
+  /** Dos prendas de Bs 100 y un servidor que conoce el cupón VERANO10 (10 %). */
+  function twoItems() {
+    const lines = [makeLine("a", 1, { name: "Falda" }), makeLine("b", 1, { name: "Blusa" })];
+    const server = new FakeCartServer(makeSnapshot(lines));
+    server.coupons = { VERANO10: { percent: 10 } };
+    return { lines, server };
+  }
+
+  it("el resumen trae el bloque del cupón y la lista de líneas sigue siendo solo de productos", async () => {
+    await setup([makeLine("a", 2, { name: "Falda" }), makeLine("b", 1, { name: "Blusa" })]);
+    const summary = screen.getByRole("region", { name: "Resumen" });
+    expect(within(summary).getByRole("group", { name: "¿Tienes un cupón?" })).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Productos en tu bolsa" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+  });
+
+  it("aplicar un cupón desde la página: línea tachada, resumen con desglose y total neto, foco en la tarjeta del cupón y el anuncio en SU región (no en la de la página)", async () => {
+    const user = userEvent.setup();
+    const { lines, server } = twoItems();
+    await setup(lines, { server });
+    await user.type(screen.getByRole("textbox", { name: "Código de cupón" }), "verano10");
+    await user.click(screen.getByRole("button", { name: "Aplicar" }));
+    await flush();
+    // 10 % de Bs 100 = Bs 10 por línea → baja Bs 20 de Bs 200 → se paga Bs 180
+    const items = screen.getAllByRole("listitem");
+    expect(within(items[0]!).getByText(/Total de la línea:/)).toHaveTextContent(
+      "Total de la línea: Bs 90,00, antes Bs 100,00",
+    );
+    expect(within(items[1]!).getByText(/Total de la línea:/)).toHaveTextContent(
+      "Total de la línea: Bs 90,00, antes Bs 100,00",
+    );
+    expect(rowsOf()).toEqual([
+      "Subtotal (2 productos)Bs 200,00",
+      "EnvíoSe calcula al elegir tu dirección",
+      "Descuento-Bs 20,00Cupón VERANO10: −Bs 20,00",
+      "TotalBs 180,00",
+    ]);
+    expect(screen.getByText("Cupón VERANO10", { selector: "p" })).toHaveFocus();
+    expect(spokenStatus()).toBeEmptyDOMElement(); // la región de la página no habla del cupón
+    expect(screen.getByText("Cupón aplicado: Cupón VERANO10")).toBeInTheDocument();
+    // «Actualizando…» es de las cantidades pendientes, no del cupón
+    expect(screen.getByRole("region", { name: "Resumen" }).querySelector("dl")).not.toHaveClass(
+      "opacity-60",
+    );
+  });
+
+  it("una bolsa que ya llega con el cupón aplicado (la clienta vuelve a la página) lo muestra de entrada, con «Quitar» y sin el campo", async () => {
+    const line = makeLine("a", 2, {
+      name: "Falda",
+      discount: 20,
+      final_total: 180,
+      discount_offers: [
+        { discount_id: "d1", name: "Cupón VERANO10", kind: "percent", amount: 20, coupon: true },
+      ],
+    });
+    const snapshot = makeSnapshot([line], {
+      totals: {
+        subtotal: 200,
+        item_count: 2,
+        line_count: 1,
+        shipping: null,
+        discount: 20,
+        total: 180,
+      },
+      discounts: {
+        applied: [
+          {
+            discount_id: "d1",
+            coupon_id: "c1",
+            name: "Cupón VERANO10",
+            kind: "percent",
+            amount: 20,
+            automatic: false,
+            free_shipping: false,
+          },
+        ],
+        rejected: [],
+        coupon: {
+          status: "applied",
+          code: "VERANO10",
+          reason: null,
+          missing: null,
+          name: "Cupón VERANO10",
+        },
+        free_shipping: false,
+      },
+    });
+    await setup(null, { snapshot });
+    expect(screen.getByRole("button", { name: "Quitar el cupón VERANO10" })).toBeInTheDocument();
+    expect(screen.getByText("Ahorras Bs 20,00")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Código de cupón" })).not.toBeInTheDocument();
+    expect(rowsOf()).toContain("TotalBs 180,00");
+  });
+
+  it("un cambio de cantidad con cupón puesto rehace los importes de la línea y del resumen con lo que manda el servidor", async () => {
+    const user = userEvent.setup();
+    const lines = [makeLine("a", 1, { name: "Falda" })];
+    const server = new FakeCartServer(makeSnapshot(lines));
+    server.coupons = { VERANO10: { percent: 10 } };
+    await setup(lines, { server });
+    await user.type(screen.getByRole("textbox", { name: "Código de cupón" }), "verano10{Enter}");
+    await flush();
+    await user.click(screen.getByRole("button", { name: /^Aumentar la cantidad de / }));
+    await flush();
+    // 2 × Bs 100 = Bs 200 → 10 % = Bs 20 → Bs 180
+    expect(screen.getByText(/Total de la línea:/)).toHaveTextContent(
+      "Total de la línea: Bs 180,00, antes Bs 200,00",
+    );
+    expect(rowsOf()).toContain("TotalBs 180,00");
+    expect(rowsOf()).toContain("Descuento-Bs 20,00Cupón VERANO10: −Bs 20,00");
+  });
+
+  it("una foto vieja guardada antes de S9 (sin campos de descuento) se ve igual que siempre y no rompe", async () => {
+    await setup([makeLine("a", 1, { name: "Falda" })]);
+    expect(rowsOf()).toEqual([
+      "Subtotal (1 producto)Bs 100,00",
+      "EnvíoSe calcula al elegir tu dirección",
+      "TotalBs 100,00",
+    ]);
+    expect(document.querySelector("s")).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Código de cupón" })).toBeInTheDocument();
+  });
+
+  it("el resumen conserva su desplazamiento propio en pantallas grandes (el bloque del cupón no lo rompe)", async () => {
+    await setup([makeLine("a", 1)]);
+    const summary = screen.getByRole("region", { name: "Resumen" });
+    expect(summary).toHaveClass("lg:sticky", "lg:overflow-y-auto");
+  });
+});

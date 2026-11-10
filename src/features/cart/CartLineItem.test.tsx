@@ -308,3 +308,161 @@ describe("BagList · altas pendientes", () => {
     expect(screen.getByRole("link", { name: "Chaqueta nuevo" })).toBeInTheDocument();
   });
 });
+
+// ── Descuentos por línea (S9) ──────────────────────────────────────────────────────────────
+
+const AUTO_OFFER = {
+  discount_id: "d1",
+  name: "Oferta de temporada",
+  kind: "percent",
+  amount: 20,
+  coupon: false,
+};
+const COUPON_OFFER = {
+  discount_id: "d2",
+  name: "Cupón VERANO10",
+  kind: "percent",
+  amount: 10,
+  coupon: true,
+};
+/** 2 unidades de Bs 100 (Bs 200): una oferta de Bs 20 y un cupón de Bs 10 → baja Bs 30 y se paga Bs 170 (números del «servidor»). */
+const discountedLine = (extra: Parameters<typeof makeLine>[2] = {}) =>
+  makeLine("a", 2, {
+    unit_price: 100,
+    line_total: 200,
+    discount: 30,
+    final_total: 170,
+    discount_offers: [AUTO_OFFER, COUPON_OFFER],
+    ...extra,
+  });
+
+describe("CartLineItem · con descuento (S9)", () => {
+  it("el total muestra el importe original TACHADO y el final en NEGRITA", async () => {
+    await setup([discountedLine()]);
+    const total = screen.getByText(/Total de la línea:/).parentElement!;
+    const struck = total.querySelector("s")!;
+    const strong = total.querySelector("strong")!;
+    expect(struck).toHaveTextContent("Bs 200,00");
+    expect(strong).toHaveTextContent("Bs 170,00");
+    expect(struck).toHaveClass("text-muted-foreground");
+    expect(strong).toHaveClass("font-semibold");
+  });
+
+  it("un lector de pantalla oye UNA frase («Total de la línea: Bs 170,00, antes Bs 200,00») y lo visual queda oculto para no repetir", async () => {
+    await setup([discountedLine()]);
+    const spoken = screen.getByText(/Total de la línea:/);
+    expect(spoken).toHaveTextContent("Total de la línea: Bs 170,00, antes Bs 200,00");
+    expect(spoken).toHaveClass("sr-only");
+    const total = spoken.parentElement!;
+    expect(total.querySelector("s")).toHaveAttribute("aria-hidden", "true");
+    expect(total.querySelector("strong")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("lista los descuentos de la línea («{nombre} −{importe}»), la oferta automática primero y luego el cupón", async () => {
+    await setup([discountedLine()]);
+    const offers = screen.getAllByText(/ −Bs /).map((el) => el.textContent);
+    expect(offers).toEqual(["Oferta de temporada −Bs 20,00", "Cupón VERANO10 −Bs 10,00"]);
+  });
+
+  it("el importe final es el del servidor TAL CUAL, aunque no cuadre con original − descuento (nada se calcula aquí)", async () => {
+    await setup([discountedLine({ final_total: 169.99 })]);
+    expect(screen.getByText(/Total de la línea:/)).toHaveTextContent(
+      "Total de la línea: Bs 169,99, antes Bs 200,00",
+    );
+  });
+
+  /** Lo que ve quien NO tiene descuento: exactamente lo de siempre (sin tachado, sin negrita, sin lista). */
+  const expectPlain = () => {
+    const total = screen.getByText(/Total de la línea:/).parentElement!;
+    expect(total).toHaveTextContent("Total de la línea: Bs 200,00");
+    expect(total.querySelector("s")).toBeNull();
+    expect(total.querySelector("strong")).toBeNull();
+    expect(screen.queryByText(/ −Bs /)).not.toBeInTheDocument();
+    expect(total).toHaveClass("font-medium", "tabular-nums");
+  };
+
+  it("sin descuento (descuento 0, aunque haya ofertas listadas) NO cambia nada", async () => {
+    await setup([discountedLine({ discount: 0, final_total: 200 })]);
+    expectPlain();
+  });
+
+  it("sin descuento (foto vieja, sin ningún campo S9) NO cambia nada", async () => {
+    const line = discountedLine();
+    delete line.discount;
+    delete line.final_total;
+    delete line.discount_offers;
+    await setup([line]);
+    expectPlain();
+  });
+
+  it("una línea con descuento y otra sin él conviven en la misma bolsa", async () => {
+    await setup([discountedLine(), makeLine("b", 1)]);
+    const [first, second] = screen.getAllByRole("listitem");
+    expect(within(first!).getByText(/Total de la línea:/)).toHaveTextContent("antes Bs 200,00");
+    expect(within(second!).getByText(/Total de la línea:/).parentElement).toHaveTextContent(
+      "Bs 100,00",
+    );
+    expect(second!.querySelector("s")).toBeNull();
+  });
+
+  it("mientras hay un cambio en camino, el total y la lista de descuentos se atenúan", async () => {
+    const user = userEvent.setup();
+    const server = new FakeCartServer(makeSnapshot([discountedLine()]));
+    await setup([discountedLine()], server);
+    const resume = server.pause();
+    await user.click(plus());
+    const total = screen.getByText(/Total de la línea:/).parentElement!;
+    expect(total).toHaveClass("opacity-60");
+    expect(screen.getByText("Oferta de temporada −Bs 20,00").parentElement).toHaveClass(
+      "opacity-60",
+    );
+    await act(async () => {
+      resume();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  });
+
+  it("sin desbordes a 360 px: los importes se apilan a la derecha (no se alargan) y los nombres de los descuentos se parten", async () => {
+    await setup([
+      discountedLine({
+        discount_offers: [
+          { ...AUTO_OFFER, name: "Oferta especial de temporada de verano muy larga" },
+        ],
+      }),
+    ]);
+    const total = screen.getByText(/Total de la línea:/).parentElement!;
+    expect(total).toHaveClass("flex", "flex-col", "items-end");
+    expect(total.closest(".shrink-0")).not.toBeNull();
+    const offer = screen.getByText(/Oferta especial de temporada de verano muy larga −Bs 20,00/);
+    expect(offer).toHaveClass("break-words");
+    expect(offer.closest(".min-w-0")).not.toBeNull();
+  });
+
+  it("con cupón en el servidor, un cambio de cantidad rehace el descuento de la línea (1 → 2 unidades: Bs 200, baja Bs 20, se paga Bs 180)", async () => {
+    const user = userEvent.setup();
+    const server = new FakeCartServer(makeSnapshot([makeLine("a", 1)]));
+    server.coupons = { VERANO10: { percent: 10 } };
+    server.couponCode = "VERANO10";
+    await setup([makeLine("a", 1)], server);
+    expect(document.querySelector("s")).toBeNull(); // la foto inicial aún no trae descuento
+    await user.click(plus());
+    await flush();
+    expect(screen.getByText(/Total de la línea:/)).toHaveTextContent(
+      "Total de la línea: Bs 180,00, antes Bs 200,00",
+    );
+    expect(screen.getByText("Cupón VERANO10 −Bs 20,00")).toBeInTheDocument();
+  });
+
+  it("la versión compacta (cajón) muestra lo mismo", async () => {
+    renderWithCart(<BagList variant="compact" />, {
+      snapshot: makeSnapshot([discountedLine()]),
+    });
+    await flush();
+    const item = screen.getByRole("listitem");
+    expect(within(item).getByText(/Total de la línea:/)).toHaveTextContent(
+      "Total de la línea: Bs 170,00, antes Bs 200,00",
+    );
+    expect(within(item).getByText("Cupón VERANO10 −Bs 10,00")).toBeInTheDocument();
+    expect(item.querySelector("a")).toHaveClass("w-16");
+  });
+});

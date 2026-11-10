@@ -1359,3 +1359,277 @@ describe("caducidad del «Deshacer» (la decide el almacén)", () => {
     expect(timers.live().filter((t) => t.ms === 8000)).toHaveLength(0);
   });
 });
+
+describe("cupón (S9)", () => {
+  const withCoupon = (extra: Partial<CartSnapshot["discounts"] & object> = {}): CartSnapshot =>
+    snapshot([line("a", 2)], {
+      totals: {
+        subtotal: 200,
+        item_count: 2,
+        line_count: 1,
+        shipping: null,
+        discount: 20,
+        total: 180,
+      },
+      discounts: {
+        applied: [],
+        rejected: [],
+        coupon: { status: "applied", code: "VERANO10", reason: null, missing: null },
+        free_shipping: false,
+        ...extra,
+      },
+    });
+
+  async function loaded(identity: "user" | "guest" = "user") {
+    const h = setup(identity === "guest" ? { mirror: true } : {});
+    h.store.setIdentity(identity === "guest" ? { kind: "guest" } : { kind: "user", userId: "u1" });
+    await tick();
+    h.calls[0]?.resolve(ok(snapshot([line("a", 2)])));
+    await tick();
+    return h;
+  }
+
+  it("aplicar: manda el código tal cual lo escribió (sin espacios al borde) y la foto trae el descuento", async () => {
+    const { store, calls } = await loaded();
+    const done = store.applyCoupon("  verano-10 ");
+    expect(store.getState().coupon).toEqual({ busy: true, notice: null });
+    await tick();
+    expect(calls[1]?.body).toEqual({ action: "set_coupon", code: "verano-10" });
+    calls[1]?.resolve(ok(withCoupon(), { outcome: "coupon_set" }));
+    await done;
+    expect(store.getState().snapshot?.totals.discount).toBe(20);
+    expect(store.getState().coupon).toEqual({ busy: false, notice: null });
+  });
+
+  it("un código en blanco ni siquiera sale: avisa «inválido» al instante", async () => {
+    const { store, calls } = await loaded();
+    await store.applyCoupon("   ");
+    expect(calls).toHaveLength(1);
+    expect(store.getState().coupon.notice).toEqual({
+      code: "",
+      reason: "invalid_code",
+      missing: null,
+    });
+    expect(store.getState().coupon.busy).toBe(false);
+  });
+
+  it("un código larguísimo se recorta a 40 caracteres antes de salir", async () => {
+    const { store, calls } = await loaded();
+    void store.applyCoupon("x".repeat(100));
+    await tick();
+    expect((calls[1]?.body as { code: string }).code).toHaveLength(40);
+  });
+
+  it("rechazado (no se guarda): deja el aviso con lo que escribió, el motivo y lo que falta, y NO cambia la foto", async () => {
+    const { store, calls } = await loaded();
+    const before = store.getState().snapshot;
+    const done = store.applyCoupon("Nada");
+    await tick();
+    calls[1]?.resolve(ok(before, { outcome: "coupon_rejected", reason: "expired" }));
+    await done;
+    expect(store.getState().coupon).toEqual({
+      busy: false,
+      notice: { code: "Nada", reason: "expired", missing: null },
+    });
+    expect(store.getState().snapshot).toEqual(before);
+  });
+
+  it("rechazado por mínimo: el aviso lleva cuánto falta", async () => {
+    const { store, calls } = await loaded();
+    const done = store.applyCoupon("MIN500");
+    await tick();
+    calls[1]?.resolve(
+      ok(snapshot([line("a", 2)]), {
+        outcome: "coupon_rejected",
+        reason: "min_not_reached",
+        missing: 300,
+      }),
+    );
+    await done;
+    expect(store.getState().coupon.notice).toEqual({
+      code: "MIN500",
+      reason: "min_not_reached",
+      missing: 300,
+    });
+  });
+
+  it("un motivo raro del servidor nunca se inventa: se lee como «código inválido»", async () => {
+    const { store, calls } = await loaded();
+    const done = store.applyCoupon("X1");
+    await tick();
+    calls[1]?.resolve(
+      ok(snapshot([line("a", 2)]), { outcome: "coupon_rejected", reason: "inventado" }),
+    );
+    await done;
+    expect(store.getState().coupon.notice?.reason).toBe("invalid_code");
+  });
+
+  it("guardado aunque hoy no baje nada (mínimo): no hay aviso; el motivo se lee de la foto", async () => {
+    const { store, calls } = await loaded();
+    const done = store.applyCoupon("MIN500");
+    await tick();
+    calls[1]?.resolve(
+      ok(
+        withCoupon({
+          coupon: { status: "rejected", code: "MIN500", reason: "min_not_reached", missing: 300 },
+        }),
+        { outcome: "coupon_set", reason: "min_not_reached", missing: 300 },
+      ),
+    );
+    await done;
+    expect(store.getState().coupon.notice).toBeNull();
+    expect(store.getState().snapshot?.discounts?.coupon.reason).toBe("min_not_reached");
+  });
+
+  it("poner un cupón con éxito borra el aviso del intento anterior", async () => {
+    const { store, calls } = await loaded();
+    let done = store.applyCoupon("MAL");
+    await tick();
+    calls[1]?.resolve(
+      ok(snapshot([line("a", 2)]), { outcome: "coupon_rejected", reason: "invalid_code" }),
+    );
+    await done;
+    expect(store.getState().coupon.notice).not.toBeNull();
+    done = store.applyCoupon("BIEN");
+    expect(store.getState().coupon.notice).toBeNull(); // se limpia al empezar otro intento
+    await tick();
+    calls[2]?.resolve(ok(withCoupon(), { outcome: "coupon_set" }));
+    await done;
+    expect(store.getState().coupon.notice).toBeNull();
+  });
+
+  it("quitar: pide remove_coupon, borra el aviso y la foto vuelve sin descuento", async () => {
+    const { store, calls } = await loaded();
+    const done = store.removeCoupon();
+    expect(store.getState().coupon.busy).toBe(true);
+    await tick();
+    expect(calls[1]?.body).toEqual({ action: "remove_coupon" });
+    calls[1]?.resolve(ok(snapshot([line("a", 2)]), { outcome: "coupon_removed" }));
+    await done;
+    expect(store.getState().snapshot?.totals.discount).toBeNull();
+    expect(store.getState().coupon).toEqual({ busy: false, notice: null });
+  });
+
+  it("invitado: la petición lleva su token", async () => {
+    const { store, calls } = await loaded("guest");
+    void store.applyCoupon("VERANO10");
+    await tick();
+    const body = calls.at(-1)?.body as { action: string; cart_token?: string };
+    expect(body.action).toBe("set_coupon");
+    expect(body.cart_token).toBe(TOKEN);
+  });
+
+  it("sin red: avisa «unavailable», NO guarda nada y NO se reintenta solo (cada intento cuenta contra el tope)", async () => {
+    const { store, calls, timers } = await loaded();
+    const done = store.applyCoupon("VERANO10");
+    await tick();
+    calls[1]?.resolve(fail(0, "network"));
+    await done;
+    expect(store.getState().coupon).toEqual({
+      busy: false,
+      notice: { code: "VERANO10", reason: "unavailable", missing: null },
+    });
+    // el único reintento programado es el de la lectura de la bolsa (sin cambios pendientes): jamás vuelve a mandar el cupón
+    const before = calls.length;
+    while (timers.live().length > 0 && calls.length < before + 3) {
+      timers.runNext();
+      await tick();
+      for (const c of calls.slice(before)) c.resolve(ok(snapshot([line("a", 2)])));
+      await tick();
+    }
+    expect(calls.filter((c) => c.body.action === "set_coupon")).toHaveLength(1);
+  });
+
+  it("demasiados intentos (429): avisa «rate_limited»", async () => {
+    const { store, calls } = await loaded();
+    const done = store.applyCoupon("PRUEBA1");
+    await tick();
+    calls[1]?.resolve(fail(429, "rate_limited", 600));
+    await done;
+    expect(store.getState().coupon.notice).toEqual({
+      code: "PRUEBA1",
+      reason: "rate_limited",
+      missing: null,
+    });
+  });
+
+  it("error del servidor (500): «unavailable»", async () => {
+    const { store, calls } = await loaded();
+    const done = store.applyCoupon("PRUEBA1");
+    await tick();
+    calls[1]?.resolve(fail(500, "boom"));
+    await done;
+    expect(store.getState().coupon.notice?.reason).toBe("unavailable");
+  });
+
+  it("sin bolsa en el servidor (no_cart): avisa SIN culpar al código y no inventa un descuento", async () => {
+    const { store, calls } = await loaded();
+    const done = store.applyCoupon("VERANO10");
+    await tick();
+    calls[1]?.resolve(ok(null, { outcome: "no_cart", reason: null }));
+    await done;
+    expect(store.getState().coupon.notice?.reason).toBe("unavailable"); // antes: «ese código no es válido»
+    expect(store.getState().snapshot).toBeNull();
+  });
+
+  it("si la identidad cambia mientras vuela la petición, el aviso y el estado «ocupado» se descartan", async () => {
+    const { store, calls } = await loaded();
+    const done = store.applyCoupon("VERANO10");
+    await tick();
+    store.setIdentity({ kind: "user", userId: "u2" });
+    expect(store.getState().coupon).toEqual({ busy: false, notice: null });
+    calls[1]?.resolve(ok(withCoupon(), { outcome: "coupon_set" }));
+    await done;
+    expect(store.getState().coupon).toEqual({ busy: false, notice: null });
+    expect(store.getState().snapshot?.totals.discount ?? null).toBeNull(); // la respuesta tardía no contamina a la otra persona
+  });
+
+  it("cerrar el aviso lo borra", async () => {
+    const { store, calls } = await loaded();
+    const done = store.applyCoupon("MAL");
+    await tick();
+    calls[1]?.resolve(
+      ok(snapshot([line("a", 2)]), { outcome: "coupon_rejected", reason: "invalid_code" }),
+    );
+    await done;
+    store.dismissCouponNotice();
+    expect(store.getState().coupon.notice).toBeNull();
+    store.dismissCouponNotice(); // sin aviso: no hace nada
+    expect(store.getState().coupon.notice).toBeNull();
+  });
+
+  it("cerrar un aviso que no existe NO avisa a nadie (si no, cada repintado haría trabajo de más)", async () => {
+    const { store } = await loaded();
+    let notified = 0;
+    store.subscribe(() => notified++);
+    store.dismissCouponNotice();
+    expect(notified).toBe(0);
+  });
+
+  it("quitar el cupón borra el aviso AL EMPEZAR (no espera a la respuesta: sin red tampoco debe quedar un rechazo viejo)", async () => {
+    const { store, calls } = await loaded();
+    let done = store.applyCoupon("MAL");
+    await tick();
+    calls[1]?.resolve(
+      ok(snapshot([line("a", 2)]), { outcome: "coupon_rejected", reason: "expired" }),
+    );
+    await done;
+    expect(store.getState().coupon.notice?.reason).toBe("expired");
+    done = store.removeCoupon();
+    expect(store.getState().coupon.notice).toBeNull(); // ya, sin esperar la respuesta
+    await tick();
+    calls[2]?.resolve(fail(0, "network"));
+    await done;
+    expect(store.getState().coupon.notice).toBeNull();
+  });
+
+  it("las peticiones de cupón y de cantidades no se pisan: sale una a la vez", async () => {
+    const { store, calls, maxInFlight } = await loaded();
+    void store.applyCoupon("VERANO10");
+    store.setQty("a", 3);
+    await tick();
+    expect(maxInFlight()).toBe(1);
+    await drain(calls.slice(1), () => ok(withCoupon(), { outcome: "coupon_set" }));
+    expect(maxInFlight()).toBe(1);
+  });
+});
