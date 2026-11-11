@@ -9,9 +9,11 @@ import { accountRoutes } from "@/features/account/accountRoutes";
 import { CancelOrderDialog } from "@/features/account/orders/CancelOrderDialog";
 import { useOrderByNumber } from "@/features/account/orders/hooks";
 import { OrderDetailView } from "@/features/account/orders/OrderDetailPage";
-import { toDetail } from "@/features/account/orders/ordersMapping";
+import { isQrMethod, toDetail } from "@/features/account/orders/ordersMapping";
 import { useAuth } from "@/features/auth/useAuth";
 import { useStoreSettings } from "@/features/catalog/hooks";
+import { usePaymentView } from "@/features/payments/hooks";
+import { PaymentQrPanel } from "@/features/payments/PaymentQrPanel";
 import { usePageMeta } from "@/features/storefront/seo/usePageMeta";
 import { t, type MessageKey } from "@/i18n";
 import type { OrderSnapshot, PaymentInstruction } from "./types";
@@ -50,6 +52,10 @@ export function OrderConfirmationPage() {
   const created = nav?.order && nav.order.number === numero ? nav.order : null;
   const paymentMethod = row?.payment_method ?? created?.payment_method;
   const isWhatsApp = paymentMethod === "whatsapp";
+  const isQr = paymentMethod !== undefined && isQrMethod(paymentMethod);
+  // La pantalla de pago se pide YA (la misma consulta que usa el panel): hasta tenerla se muestra el esqueleto de toda la página.
+  // Si el panel llegara después, empujaría hacia abajo el detalle del pedido (desplazamiento de diseño).
+  const payment = usePaymentView(row && isQrMethod(row.payment_method) ? row.id : undefined);
   const storePhone = settings.data?.whatsapp_orders;
   const phone =
     nav?.instruction?.kind === "whatsapp"
@@ -80,9 +86,9 @@ export function OrderConfirmationPage() {
     if (detail) heading.current?.focus();
   }, [detail?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (query.isPending) {
+  if (query.isPending || (row && isQrMethod(row.payment_method) && payment.isPending)) {
     return (
-      <div className="container min-h-[100svh] space-y-4 py-8 lg:py-12" aria-busy="true">
+      <div className="container min-h-[100svh] max-w-3xl space-y-4 py-8 lg:py-12" aria-busy="true">
         <p role="status" className="sr-only">
           {t("checkout.loading")}
         </p>
@@ -131,7 +137,9 @@ export function OrderConfirmationPage() {
     justCreated || pending
       ? isWhatsApp
         ? t("checkout.confirmation.createdBody", { number: row.number })
-        : t("checkout.confirmation.codBody", { number: row.number })
+        : isQr
+          ? t("checkout.confirmation.qrBody", { number: row.number })
+          : t("checkout.confirmation.codBody", { number: row.number })
       : t(`checkout.confirmation.bodyByStatus.${row.status}` as MessageKey, {
           number: row.number,
         });
@@ -179,6 +187,8 @@ export function OrderConfirmationPage() {
           )}
         </div>
       )}
+
+      {isQr && <PaymentQrPanel orderId={row.id} />}
 
       <OrderDetailView order={detail} onCancel={() => setCancelling(true)} />
 

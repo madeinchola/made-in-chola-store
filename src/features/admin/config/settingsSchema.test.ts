@@ -23,7 +23,7 @@ const problem = (key: string, raw: string) => {
 };
 
 describe("definiciones", () => {
-  it("cubren exactamente las 28 claves sembradas en la base (15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8 + 2 de pedidos de S10), sin repetir", () => {
+  it("cubren exactamente las 30 claves sembradas en la base (15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8 + 2 de pedidos de S10 + 2 de pagos de S11), sin repetir", () => {
     expect(SETTING_DEFS.map((d) => d.key).sort()).toEqual(
       [
         "base_currency",
@@ -40,6 +40,8 @@ describe("definiciones", () => {
         "guest_cart_retention_days",
         "open_orders_max",
         "order_reminder_hours",
+        "payment_proofs_max",
+        "payment_reminder_hours",
         "pdp_assistance_text",
         "pdp_shipping_return_text",
         "price_guarantee_days",
@@ -96,6 +98,22 @@ describe("definiciones", () => {
       expect(settingProblem(def(key), "-1")).toBe("int");
       expect(def(key).section).toBe(section);
       expect(def(key).readOnly).toBeUndefined();
+    }
+  });
+  it("los ajustes de pagos con QR dicen los MISMOS rangos que la base (antes el panel dejaba pasar 0 o 50 y la base respondía con un error genérico)", () => {
+    for (const [key, min, max] of [
+      ["payment_reminder_hours", 0, 720],
+      ["payment_proofs_max", 1, 20],
+    ] as const) {
+      expect(def(key).section).toBe("orders");
+      expect(settingProblem(def(key), String(min))).toBeNull();
+      expect(settingProblem(def(key), String(max))).toBeNull();
+      expect(settingProblem(def(key), String(max + 1))).toBe("range");
+      if (min > 0) expect(settingProblem(def(key), String(min - 1))).toBe("range");
+      expect(settingProblem(def(key), "1,5")).toBe("int");
+      expect(settingProblem(def(key), "-1")).toBe("int");
+      expect(toJsonValue(def(key), String(max))).toBe(max);
+      expect(settingMessage("range", def(key))).toBe(`Escribe un número entre ${min} y ${max}.`);
     }
   });
   it("la moneda base y el tiempo de reserva son de solo lectura", () => {
@@ -247,7 +265,16 @@ describe("toJsonValue", () => {
 
 describe("settingMessage", () => {
   it("cada problema tiene un mensaje en español, sin claves sin traducir", () => {
-    for (const p of ["required", "too_long", "int", "url", "email", "phone", "option"] as const) {
+    for (const p of [
+      "required",
+      "too_long",
+      "int",
+      "range",
+      "url",
+      "email",
+      "phone",
+      "option",
+    ] as const) {
       const m = settingMessage(p);
       expect(m).not.toMatch(/^admin\./);
       expect(m.length).toBeGreaterThan(5);

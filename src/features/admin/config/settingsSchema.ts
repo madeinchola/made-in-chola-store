@@ -18,6 +18,8 @@ export interface SettingDef {
   options?: readonly string[];
   /** Obligatorio en la interfaz aunque la base acepte vacío (no es una regla de la base). */
   requiredUi?: true;
+  /** Rango [mínimo, máximo] que la base impone a un entero (su trigger lo rechaza fuera de él): el panel dice lo mismo. */
+  range?: readonly [min: number, max: number];
 }
 
 /** Ajustes que el panel muestra, por sección y en este orden. */
@@ -78,6 +80,16 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   // Pedidos (S10).
   { key: "order_reminder_hours", type: "int", section: "orders", control: "number" },
   { key: "open_orders_max", type: "int", section: "orders", control: "number" },
+  // Pagos con QR (S11).
+  // Los rangos son los de `store_settings_validate_s11()` en la base.
+  {
+    key: "payment_reminder_hours",
+    type: "int",
+    section: "orders",
+    control: "number",
+    range: [0, 720],
+  },
+  { key: "payment_proofs_max", type: "int", section: "orders", control: "number", range: [1, 20] },
 ];
 
 export const SECTIONS: readonly SettingSection[] = [
@@ -94,7 +106,8 @@ export const SECTIONS: readonly SettingSection[] = [
 export const LOW_KEY = "stock_low_threshold";
 export const CRITICAL_KEY = "stock_critical_threshold";
 
-export type SettingProblem = "required" | "too_long" | "int" | "url" | "email" | "phone" | "option";
+export type SettingProblem =
+  "required" | "too_long" | "int" | "range" | "url" | "email" | "phone" | "option";
 
 /**
  * Deja el texto como la base lo acepta: recorta espacios; el correo va en minúsculas (la base exige `lower(btrim())`); el
@@ -120,8 +133,12 @@ export function settingProblem(def: SettingDef, value: string): SettingProblem |
     case "text":
       if (def.requiredUi && value === "") return "required";
       return charLength(value) > 4000 ? "too_long" : null;
-    case "int":
-      return INT_RE.test(value) ? null : "int";
+    case "int": {
+      if (!INT_RE.test(value)) return "int";
+      if (def.range && (Number(value) < def.range[0] || Number(value) > def.range[1]))
+        return "range";
+      return null;
+    }
     case "url":
       if (value === "") return "required";
       return charLength(value) > 2048 || !HTTPS_URL_RE.test(value) ? "url" : null;
@@ -140,8 +157,12 @@ export function settingProblem(def: SettingDef, value: string): SettingProblem |
   }
 }
 
-export function settingMessage(problem: SettingProblem): string {
+export function settingMessage(problem: SettingProblem, def?: SettingDef): string {
   switch (problem) {
+    case "range":
+      return def?.range
+        ? t("admin.config.settings.errors.range", { min: def.range[0], max: def.range[1] })
+        : t("admin.config.settings.errors.int");
     case "required":
       return t("admin.config.settings.errors.required");
     case "too_long":

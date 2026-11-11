@@ -25,14 +25,30 @@ export interface ChargeContext {
 export type PaymentInstruction =
   | { kind: "whatsapp"; phone_e164: string | null }
   | { kind: "cash_on_delivery" }
+  // QR (S11): la pantalla trae el QR, la cuenta, el monto y la referencia con `customer_payment_view`; aquí no viaja nada.
+  | { kind: "manual_qr" }
+  | { kind: "qr_api" }
   | { kind: "fake"; reference: string };
 
 export type ProviderPaymentStatus = "pending" | "paid" | "failed" | "cancelled" | "refunded";
 
 export interface WebhookRequest {
   headers: Record<string, string>;
+  /** El cuerpo CRUDO, tal como llegó (la firma se calcula sobre estos bytes, no sobre un JSON re-serializado). */
   body: string;
 }
+
+/** Lo que un aviso de pago le dice al sistema, ya en términos internos. */
+export interface PaymentEvent {
+  eventId: string;
+  type: "paid" | "failed" | "disputed" | "refunded";
+  reference: string;
+  amount: number | null;
+  currency: string | null;
+  externalId: string | null;
+}
+export type ParsedWebhook =
+  { ok: true; event: PaymentEvent } | { ok: false; reason: string; status: 400 | 401 | 503 };
 export interface WebhookResult {
   handled: boolean;
   order_id?: string;
@@ -53,6 +69,14 @@ export interface RefundResult {
 export interface PaymentProvider {
   readonly id: string;
   createCharge(ctx: ChargeContext): Promise<PaymentInstruction>;
+  /**
+   * Verifica la firma y entiende un aviso de pago. Solo los proveedores que avisan por webhook lo implementan. Nunca lanza:
+   * un aviso malo es un resultado (`ok: false`) para que quede registrado.
+   */
+  parseWebhook?(
+    req: WebhookRequest,
+    ctx: { secret: string | null; nowSeconds: number },
+  ): Promise<ParsedWebhook>;
   handleWebhook(req: WebhookRequest): Promise<WebhookResult>;
   refund(req: RefundRequest): Promise<RefundResult>;
   /** Estado según el proveedor; los que no tienen proveedor externo devuelven el que ya conoce la base. */

@@ -1,4 +1,6 @@
 import { cashOnDeliveryProvider } from "./cash_on_delivery.ts";
+import { manualQrProvider } from "./manual_qr.ts";
+import { qrApiProvider } from "./qr_api.ts";
 import type { PaymentProvider } from "./types.ts";
 import { whatsappProvider } from "./whatsapp.ts";
 
@@ -22,6 +24,6 @@ export function createRegistry(providers: readonly PaymentProvider[]): PaymentRe
   };
 }
 
-/** Los proveedores de producción. S11 añadirá aquí el QR manual y CobraFácil; S18, las pasarelas internacionales. */
+/** Los proveedores de producción. Un adaptador de CobraFácil se suma aquí cuando exista; S18, las pasarelas internacionales. */
 export const defaultRegistry = (): PaymentRegistry =>
-  createRegistry([whatsappProvider, cashOnDeliveryProvider]);
+  createRegistry([whatsappProvider, cashOnDeliveryProvider, manualQrProvider, qrApiProvider]);

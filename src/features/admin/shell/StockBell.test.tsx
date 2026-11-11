@@ -40,5 +40,14 @@ describe("StockBell", () => {
     api.getStockAlertSummary.mockResolvedValue({ low: 100, critical: 0, out: 20, total: 120 });
     renderBell();
     expect(await screen.findByText("99+")).toBeInTheDocument();
+    // el nombre accesible incluye lo que se VE (WCAG 2.5.3 «la etiqueta en el nombre»)
+    expect(screen.getByRole("link", { name: /99\+ productos con stock bajo/ })).toBeInTheDocument();
+  });
+
+  it("hasta 99 el nombre accesible lleva el número exacto, que es el que se ve", async () => {
+    api.getStockAlertSummary.mockResolvedValue({ low: 40, critical: 2, out: 1, total: 43 });
+    renderBell();
+    expect(await screen.findByText("43")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /43 productos con stock bajo/ })).toBeInTheDocument();
   });
 });

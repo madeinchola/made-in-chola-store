@@ -176,6 +176,8 @@ export const checkout = {
     },
     createdBody:
       "Tu pedido {number} quedó registrado. Te confirmamos el pago y la entrega por WhatsApp.",
+    qrBody:
+      "Tu pedido {number} quedó registrado y reservado. Paga con el código QR de abajo y sube tu comprobante: te confirmamos en cuanto lo revisemos.",
     codBody:
       "Tu pedido {number} quedó registrado. Pagas en efectivo cuando lo recibas; te confirmamos la entrega.",
     sendWhatsApp: "Enviar el pedido por WhatsApp",

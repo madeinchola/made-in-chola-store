@@ -230,6 +230,36 @@ export const routes: RouteObject[] = [
             ],
           },
           {
+            path: "pagos",
+            element: lazyPage(
+              () => import("@/features/admin/payments/PaymentsLayout"),
+              "PaymentsLayout",
+            ),
+            children: [
+              {
+                index: true,
+                element: lazyPage(
+                  () => import("@/features/admin/payments/ReviewPage"),
+                  "ReviewPage",
+                ),
+              },
+              {
+                path: "lista",
+                element: lazyPage(
+                  () => import("@/features/admin/payments/PaymentsPage"),
+                  "PaymentsPage",
+                ),
+              },
+              {
+                path: "metodos",
+                element: lazyPage(
+                  () => import("@/features/admin/payments/MethodsPage"),
+                  "MethodsPage",
+                ),
+              },
+            ],
+          },
+          {
             path: "ajustes",
             element: lazyPage(() => import("@/features/admin/config/SettingsPage"), "SettingsPage"),
           },

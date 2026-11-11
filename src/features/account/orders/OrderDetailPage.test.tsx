@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { asCustomer, customerProfile, WithAuth } from "@/test/auth-test-utils";
 import { money } from "@/lib/money";
+import { parsePaymentView } from "@/features/payments/paymentsMapping";
 import { OrderDetailPage, OrderDetailView } from "./OrderDetailPage";
 import type { OrderRow } from "./ordersApi";
 import type { OrderDetail } from "./types";
@@ -14,6 +15,48 @@ vi.mock("./ordersApi", async (original) => ({
   ...(await original<typeof import("./ordersApi")>()),
   getOrderById,
 }));
+const getPaymentView = vi.hoisted(() => vi.fn());
+vi.mock("@/features/payments/paymentsApi", () => ({
+  getPaymentView,
+  qrImageUrl: (path: string) => `https://cdn.test/${path}`,
+  uploadProof: vi.fn(),
+  retryPayment: vi.fn(),
+  listOrderLines: vi.fn(),
+}));
+const PAYMENT_VIEW = {
+  outcome: "ok",
+  server_now: new Date().toISOString(),
+  order: {
+    id: "11111111-2222-4333-8444-666666666666",
+    number: "MIC-000124",
+    status: "pending_payment",
+    total: 255,
+    currency: "BOB",
+    payment_expires_at: null,
+  },
+  payment: {
+    id: "p-1",
+    status: "pending",
+    provider: "manual_qr",
+    method: "qr_manual",
+    reference: "MIC-000124",
+    amount: 255,
+    currency: "BOB",
+    expires_at: new Date(Date.now() + 86_400_000).toISOString(),
+    paid_at: null,
+    under_review: false,
+  },
+  method: {
+    code: "qr_manual",
+    name: "Pago con QR",
+    description: null,
+    account_details: "Banco Ejemplo",
+    qr_image_path: "qr/x.png",
+  },
+  proof: null,
+  can_upload: true,
+  can_retry: false,
+};
 
 const ORDER: OrderDetail = {
   id: "o-1",
@@ -36,6 +79,8 @@ const ORDER: OrderDetail = {
 };
 
 const UUID = "11111111-2222-4333-8444-555555555555";
+const parsedView = () => parsePaymentView(PAYMENT_VIEW);
+const UUID_QR = "11111111-2222-4333-8444-666666666666";
 
 const ROW: OrderRow = {
   id: UUID,
@@ -227,6 +272,50 @@ describe("OrderDetailPage (S10: pedido real)", () => {
       "/cuenta/pedidos",
     );
     expect(within(nav).getByText("Detalle del pedido")).toHaveAttribute("aria-current", "page");
+  });
+});
+
+describe("OrderDetailPage · pago con QR (S11)", () => {
+  const QR_ROW = {
+    ...ROW,
+    id: UUID_QR,
+    number: "MIC-000124",
+    payment_method: "qr_manual",
+    total: 255,
+  };
+  beforeEach(() => {
+    getOrderById.mockReset();
+    getPaymentView.mockReset();
+  });
+
+  it("un pedido por QR muestra la pantalla de pago ENCIMA del detalle, y las dos aparecen a la vez", async () => {
+    getOrderById.mockResolvedValue(QR_ROW);
+    getPaymentView.mockResolvedValue(parsedView());
+    renderAt(`/cuenta/pedidos/${UUID_QR}`);
+    expect(await screen.findByRole("heading", { name: "Paga con QR" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pedido MIC-000124" })).toBeInTheDocument();
+    expect(screen.getByText("Pago con QR", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("hasta tener el pago NO pinta el detalle (si llegara después, lo empujaría hacia abajo)", async () => {
+    getOrderById.mockResolvedValue(QR_ROW);
+    let finish: (value: unknown) => void = () => {};
+    getPaymentView.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    renderAt(`/cuenta/pedidos/${UUID_QR}`);
+    await waitFor(() => expect(getPaymentView).toHaveBeenCalledWith(UUID_QR));
+    expect(screen.queryByRole("heading", { name: "Pedido MIC-000124" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando tus pedidos…");
+    finish(parsedView());
+    expect(await screen.findByRole("heading", { name: "Pedido MIC-000124" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Paga con QR" })).toBeInTheDocument();
+  });
+
+  it("un pedido que NO es por QR no pide nada del pago", async () => {
+    getOrderById.mockResolvedValue(ROW);
+    renderAt(`/cuenta/pedidos/${UUID}`);
+    expect(await screen.findByRole("heading", { name: "Pedido MIC-000123" })).toBeInTheDocument();
+    expect(getPaymentView).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Paga con QR" })).not.toBeInTheDocument();
   });
 });
 

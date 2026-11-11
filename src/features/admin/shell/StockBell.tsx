@@ -7,7 +7,12 @@ import { useStockAlertSummary } from "../stock/hooks";
 export function StockBell() {
   const { data } = useStockAlertSummary();
   const total = data?.total ?? 0;
-  const label = total > 0 ? t("admin.bell.count", { count: total }) : t("admin.bell.none");
+  const label =
+    total > 99
+      ? t("admin.bell.countMany")
+      : total > 0
+        ? t("admin.bell.count", { count: total })
+        : t("admin.bell.none");
   return (
     <Link
       to="/admin/productos?estado=publicados&stock=alert"

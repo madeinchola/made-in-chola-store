@@ -1777,6 +1777,7 @@ export type Database = {
       }
       payment_methods: {
         Row: {
+          account_details: string | null
           archived_at: string | null
           blocked_for_blacklisted: boolean
           code: string
@@ -1788,11 +1789,13 @@ export type Database = {
           max_amount: number | null
           name: string
           provider: string
+          qr_image_path: string | null
           sort_order: number
           updated_at: string
           window_minutes: number | null
         }
         Insert: {
+          account_details?: string | null
           archived_at?: string | null
           blocked_for_blacklisted?: boolean
           code: string
@@ -1804,11 +1807,13 @@ export type Database = {
           max_amount?: number | null
           name: string
           provider: string
+          qr_image_path?: string | null
           sort_order?: number
           updated_at?: string
           window_minutes?: number | null
         }
         Update: {
+          account_details?: string | null
           archived_at?: string | null
           blocked_for_blacklisted?: boolean
           code?: string
@@ -1820,6 +1825,7 @@ export type Database = {
           max_amount?: number | null
           name?: string
           provider?: string
+          qr_image_path?: string | null
           sort_order?: number
           updated_at?: string
           window_minutes?: number | null
@@ -1841,40 +1847,202 @@ export type Database = {
           },
         ]
       }
+      payment_proofs: {
+        Row: {
+          created_at: string
+          duplicate_of: string | null
+          file_hash: string
+          file_path: string
+          id: string
+          mime: string
+          order_id: string
+          payment_id: string
+          profile_id: string
+          reason: string | null
+          received_amount: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          size_bytes: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          duplicate_of?: string | null
+          file_hash: string
+          file_path: string
+          id?: string
+          mime: string
+          order_id: string
+          payment_id: string
+          profile_id: string
+          reason?: string | null
+          received_amount?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          size_bytes: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          duplicate_of?: string | null
+          file_hash?: string
+          file_path?: string
+          id?: string
+          mime?: string
+          order_id?: string
+          payment_id?: string
+          profile_id?: string
+          reason?: string | null
+          received_amount?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          size_bytes?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_proofs_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "payment_proofs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_proofs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_proofs_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_proofs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_proofs_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_reviews: {
+        Row: {
+          detail: Json
+          id: string
+          note: string | null
+          opened_at: string
+          payment_id: string
+          reason: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          detail?: Json
+          id?: string
+          note?: string | null
+          opened_at?: string
+          payment_id: string
+          reason: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          detail?: Json
+          id?: string
+          note?: string | null
+          opened_at?: string
+          payment_id?: string
+          reason?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_reviews_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_reviews_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
+          attempt: number
           created_at: string
           currency: string
+          expires_at: string | null
+          external_id: string | null
           id: string
           method: string
           order_id: string
+          paid_at: string | null
           provider: string
           provider_ref: string | null
+          received_amount: number | null
+          reference: string | null
+          reminder_sent_at: string | null
           status: string
           updated_at: string
         }
         Insert: {
           amount: number
+          attempt?: number
           created_at?: string
           currency: string
+          expires_at?: string | null
+          external_id?: string | null
           id?: string
           method: string
           order_id: string
+          paid_at?: string | null
           provider: string
           provider_ref?: string | null
+          received_amount?: number | null
+          reference?: string | null
+          reminder_sent_at?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           amount?: number
+          attempt?: number
           created_at?: string
           currency?: string
+          expires_at?: string | null
+          external_id?: string | null
           id?: string
           method?: string
           order_id?: string
+          paid_at?: string | null
           provider?: string
           provider_ref?: string | null
+          received_amount?: number | null
+          reference?: string | null
+          reminder_sent_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -3195,6 +3363,56 @@ export type Database = {
           },
         ]
       }
+      webhook_events: {
+        Row: {
+          attempts: number
+          error: string | null
+          event_id: string | null
+          id: number
+          outcome: string | null
+          payload: Json
+          payment_id: string | null
+          processed_at: string | null
+          provider: string
+          received_at: string
+          signature_valid: boolean
+        }
+        Insert: {
+          attempts?: number
+          error?: string | null
+          event_id?: string | null
+          id?: never
+          outcome?: string | null
+          payload?: Json
+          payment_id?: string | null
+          processed_at?: string | null
+          provider: string
+          received_at?: string
+          signature_valid: boolean
+        }
+        Update: {
+          attempts?: number
+          error?: string | null
+          event_id?: string | null
+          id?: never
+          outcome?: string | null
+          payload?: Json
+          payment_id?: string | null
+          processed_at?: string | null
+          provider?: string
+          received_at?: string
+          signature_valid?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       admin_product_list: {
@@ -4236,12 +4454,26 @@ export type Database = {
       _next_order_number: { Args: { p_prefix?: string }; Returns: string }
       _order_json: { Args: { p_order_id: string }; Returns: Json }
       _order_notify: {
-        Args: { p_audience: string; p_order_id: string; p_type: string }
+        Args: {
+          p_audience: string
+          p_extra?: Json
+          p_order_id: string
+          p_suffix?: string
+          p_type: string
+        }
         Returns: undefined
       }
       _order_transition_ok: {
         Args: { p_actor_kind: string; p_from: string; p_to: string }
         Returns: boolean
+      }
+      _payment_alert: {
+        Args: { p_dedupe: string; p_payload: Json; p_type: string }
+        Returns: undefined
+      }
+      _payment_open_review: {
+        Args: { p_detail: Json; p_payment_id: string; p_reason: string }
+        Returns: string
       }
       _ship_norm: { Args: { p_text: string }; Returns: string }
       _ship_params_valid: {
@@ -4265,6 +4497,14 @@ export type Database = {
         }
         Returns: number
       }
+      admin_confirm_payment_manual: {
+        Args: {
+          p_note?: string
+          p_payment_id: string
+          p_received_amount?: number
+        }
+        Returns: Json
+      }
       admin_delete_product_price: {
         Args: { p_country?: string; p_currency: string; p_product_id: string }
         Returns: undefined
@@ -4282,6 +4522,19 @@ export type Database = {
           p_usage_limit?: number
         }
         Returns: string[]
+      }
+      admin_resolve_review: {
+        Args: { p_note: string; p_review_id: string }
+        Returns: Json
+      }
+      admin_review_proof: {
+        Args: {
+          p_decision: string
+          p_proof_id: string
+          p_reason?: string
+          p_received_amount?: number
+        }
+        Returns: Json
       }
       admin_set_primary_location: { Args: { p_id: string }; Returns: undefined }
       admin_set_product_categories: {
@@ -4431,6 +4684,7 @@ export type Database = {
       }
       current_app_role: { Args: never; Returns: string }
       current_rate: { Args: { p_from: string; p_to: string }; Returns: number }
+      customer_payment_view: { Args: { p_order_id: string }; Returns: Json }
       deactivate_profile: {
         Args: { p_anonymize?: boolean; p_id: string }
         Returns: undefined
@@ -4462,6 +4716,7 @@ export type Database = {
         }
         Returns: number
       }
+      expire_pending_payments: { Args: never; Returns: number }
       expire_reservations: { Args: never; Returns: number }
       expire_unconfirmed_orders: { Args: never; Returns: number }
       f_unaccent: { Args: { p_text: string }; Returns: string }
@@ -4478,6 +4733,40 @@ export type Database = {
       is_safe_link: { Args: { p_url: string }; Returns: boolean }
       merge_guest_cart: {
         Args: { p_profile_id: string; p_token_hash: string }
+        Returns: Json
+      }
+      payment_apply_event: {
+        Args: {
+          p_actor?: string
+          p_amount: number
+          p_currency: string
+          p_event_id: string
+          p_external_id?: string
+          p_payload?: Json
+          p_provider: string
+          p_reference: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      payment_log_invalid_event: {
+        Args: { p_payload?: Json; p_provider: string; p_reason: string }
+        Returns: undefined
+      }
+      payment_proof_path_ok: { Args: { p_name: string }; Returns: boolean }
+      payment_proof_register: {
+        Args: {
+          p_hash: string
+          p_mime: string
+          p_path: string
+          p_payment_id: string
+          p_profile_id: string
+          p_size: number
+        }
+        Returns: Json
+      }
+      payment_retry: {
+        Args: { p_order_id: string; p_profile_id: string }
         Returns: Json
       }
       price_for: {
@@ -4560,6 +4849,7 @@ export type Database = {
         }
         Returns: number
       }
+      remind_expiring_payments: { Args: never; Returns: number }
       remind_pending_orders: { Args: never; Returns: number }
       reserve_delivery_slot: {
         Args: {

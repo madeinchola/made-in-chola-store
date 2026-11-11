@@ -129,6 +129,14 @@ export const adminConfig = {
         label: "Horas antes de recordarte un pedido sin confirmar",
         hint: "Entre 1 y 720. Si un pedido por WhatsApp o contra entrega sigue sin confirmarse pasado este tiempo, se te avisa; el aviso se repite cada 24 horas hasta que lo confirmes o canceles.",
       },
+      payment_reminder_hours: {
+        label: "Horas antes de vencer en que se le recuerda a la clienta que le falta pagar",
+        hint: "Entre 0 y 720. 0 = sin recordatorio. Por ejemplo, con 6 se le avisa 6 horas antes de que venza el tiempo para pagar con QR.",
+      },
+      payment_proofs_max: {
+        label: "Comprobantes que una clienta puede subir por intento de pago",
+        hint: "Entre 1 y 20. Evita que se sature tu bandeja de revisión con archivos sin fin.",
+      },
       open_orders_max: {
         label: "Pedidos sin confirmar que una clienta puede tener a la vez",
         hint: "Entre 1 y 200. Cada pedido sin confirmar aparta stock; con este tope una sola cuenta no puede dejar sin inventario a la tienda. Al llegar al tope debe esperar a que confirmes o cancele alguno.",
@@ -148,6 +156,7 @@ export const adminConfig = {
       required: "Este dato es obligatorio.",
       tooLong: "El texto es demasiado largo (máximo 4000 caracteres).",
       int: "Escribe un número entero de 0 o más (hasta 9 dígitos).",
+      range: "Escribe un número entre {min} y {max}.",
       url: "Escribe un enlace completo que empiece con https:// y sin espacios.",
       email: "Escribe un correo válido, por ejemplo info@tutienda.com.",
       phone: "Escribe el teléfono con código de país, por ejemplo +59171234567.",

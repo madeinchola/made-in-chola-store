@@ -18,9 +18,12 @@ const ctx = (settings: Record<string, string | null> = {}): ChargeContext => ({
   setting: (key) => Promise.resolve(settings[key] ?? null),
 });
 
-Deno.test("el registro de producción trae WhatsApp y contra entrega, y nada más", () => {
-  assertEquals(defaultRegistry().ids(), ["cash_on_delivery", "whatsapp"]);
-});
+Deno.test(
+  "el registro de producción trae WhatsApp, contra entrega y los dos QR (S11), y nada más",
+  () => {
+    assertEquals(defaultRegistry().ids(), ["cash_on_delivery", "manual_qr", "qr_api", "whatsapp"]);
+  },
+);
 
 Deno.test("el proveedor falso NO está en el registro de producción", () => {
   assertEquals(defaultRegistry().get("fake"), null);

@@ -39,7 +39,8 @@ export type VersionedTable =
   | "coupons"
   | "discount_targets"
   | "customer_groups"
-  | "customer_group_members";
+  | "customer_group_members"
+  | "payment_methods";
 
 interface Outcome<T> {
   data: T | null;

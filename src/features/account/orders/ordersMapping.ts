@@ -33,7 +33,13 @@ export const variantLabel = (color: string | null, size: string | null): string 
 const PAYMENT_LABELS: Record<string, MessageKey> = {
   whatsapp: "acct.orders.paymentMethod.whatsapp",
   cash_on_delivery: "acct.orders.paymentMethod.cash_on_delivery",
+  qr_manual: "acct.orders.paymentMethod.qr_manual",
+  qr_auto: "acct.orders.paymentMethod.qr_auto",
 };
+
+/** Los métodos que NO se pagan con QR (se confirman por WhatsApp o al recibir). Cualquier otro lleva la pantalla de pago. */
+const OFFLINE_METHODS: readonly string[] = ["whatsapp", "cash_on_delivery"];
+export const isQrMethod = (code: string): boolean => !OFFLINE_METHODS.includes(code);
 
 /** El nombre del método de pago para mostrar; un método que no se conoce se muestra con su código (no se inventa uno). */
 export function paymentLabel(code: string): string {
@@ -83,7 +89,7 @@ export function toDetail(row: OrderRow): OrderDetail {
           schedule: scheduleLabel(row.delivery_slot),
         }
       : null,
-    payment: { label: paymentLabel(row.payment_method) },
+    payment: { label: paymentLabel(row.payment_method), method: row.payment_method },
     subtotal: amount(row.subtotal, row.currency),
     discount: amount(row.discount_total, row.currency),
     // Lo que cuesta de verdad el envío: el costo menos el descuento de envío (envío gratis = 0).

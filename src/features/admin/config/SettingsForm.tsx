@@ -84,7 +84,7 @@ export function SettingsForm({ rows, onReload }: SettingsFormProps) {
     const errors: Record<string, string> = {};
     for (const d of changedDefs) {
       const p = settingProblem(d, normalized(d));
-      if (p) errors[d.key] = settingMessage(p);
+      if (p) errors[d.key] = settingMessage(p, d);
     }
     // El orden entre umbrales solo se juzga si ambos son válidos por separado y alguno de los dos cambió.
     const low = defs.find((d) => d.key === LOW_KEY);

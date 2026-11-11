@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { asCustomer, WithAuth } from "@/test/auth-test-utils";
+import { parsePaymentView } from "@/features/payments/paymentsMapping";
 import { makeOrder, makeRow } from "./checkout-test-utils";
 import { OrderConfirmationPage } from "./OrderConfirmationPage";
 
@@ -14,6 +15,49 @@ vi.mock("@/features/account/orders/ordersApi", async (original) => ({
 }));
 const api = vi.hoisted(() => ({ cancelOrder: vi.fn() }));
 vi.mock("./checkoutApi", () => api);
+const payments = vi.hoisted(() => ({
+  getPaymentView: vi.fn(),
+  qrImageUrl: (path: string) => `https://cdn.test/${path}`,
+  uploadProof: vi.fn(),
+  retryPayment: vi.fn(),
+  listOrderLines: vi.fn(),
+}));
+vi.mock("@/features/payments/paymentsApi", () => payments);
+const qrView = () =>
+  parsePaymentView({
+    outcome: "ok",
+    server_now: new Date().toISOString(),
+    order: {
+      id: "11111111-2222-4333-8444-555555555555",
+      number: "MIC-000123",
+      status: "pending_payment",
+      total: 215,
+      currency: "BOB",
+      payment_expires_at: null,
+    },
+    payment: {
+      id: "p-1",
+      status: "pending",
+      provider: "manual_qr",
+      method: "qr_manual",
+      reference: "MIC-000123",
+      amount: 215,
+      currency: "BOB",
+      expires_at: new Date(Date.now() + 86_400_000).toISOString(),
+      paid_at: null,
+      under_review: false,
+    },
+    method: {
+      code: "qr_manual",
+      name: "Pago con QR",
+      description: null,
+      account_details: "Banco Ejemplo",
+      qr_image_path: "qr/x.png",
+    },
+    proof: null,
+    can_upload: true,
+    can_retry: false,
+  });
 const settings = vi.hoisted(() => ({
   data: { whatsapp_orders: "+59167528677" } as Record<string, string> | undefined,
 }));
@@ -213,6 +257,44 @@ describe("OrderConfirmationPage", () => {
     await screen.findByRole("heading", { level: 1, name: "Pedido cancelado" });
     expect(screen.getByRole("status")).toHaveTextContent("fue cancelado");
     expect(screen.getByRole("status")).not.toHaveTextContent("Te confirmamos el pago");
+  });
+
+  it("S11 · un pedido por QR dice que se paga con el código de abajo y muestra la pantalla de pago; no ofrece WhatsApp", async () => {
+    orders.getOrderByNumber.mockResolvedValue(makeRow({ payment_method: "qr_manual" }));
+    payments.getPaymentView.mockResolvedValue(qrView());
+    renderAt({ justCreated: true, instruction: { kind: "manual_qr" } });
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Paga con QR" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Paga con el código QR de abajo y sube tu comprobante/),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("payment-reference")).toHaveTextContent("MIC-000123");
+    expect(screen.queryByRole("link", { name: /WhatsApp/ })).not.toBeInTheDocument();
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it("S11 · hasta tener el pago NO pinta el pedido (si el panel llegara después empujaría el detalle: CLS)", async () => {
+    orders.getOrderByNumber.mockResolvedValue(makeRow({ payment_method: "qr_manual" }));
+    let finish: (value: unknown) => void = () => {};
+    payments.getPaymentView.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    renderAt({ justCreated: true, instruction: { kind: "manual_qr" } });
+    await vi.waitFor(() => expect(payments.getPaymentView).toHaveBeenCalled());
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByText("Resumen del pedido")).not.toBeInTheDocument();
+    finish(qrView());
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "¡Recibimos tu pedido!" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Paga con QR" })).toBeInTheDocument();
+  });
+
+  it("S11 · un pedido por WhatsApp o contra entrega no pide nada del pago", async () => {
+    orders.getOrderByNumber.mockResolvedValue(makeRow({ payment_method: "cash_on_delivery" }));
+    renderAt({ justCreated: true, instruction: { kind: "cash_on_delivery" } });
+    await screen.findByRole("heading", { level: 1 });
+    expect(payments.getPaymentView).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Paga con QR" })).not.toBeInTheDocument();
   });
 
   it("permite cancelar mientras está pendiente (abre la confirmación)", async () => {

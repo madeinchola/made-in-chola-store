@@ -10,6 +10,7 @@ export const adminCommon = {
     currencies: "Monedas",
     shipping: "Envíos",
     discounts: "Descuentos",
+    payments: "Pagos",
     settings: "Ajustes",
     audit: "Auditoría",
     storefront: "Ver tienda",
@@ -86,6 +87,8 @@ export const adminCommon = {
     label: "Alertas de stock",
     none: "Sin alertas de stock",
     count: "{count} productos con stock bajo o agotado",
+    // Con más de 99 el aviso muestra «99+»: el nombre accesible debe incluir lo que se ve (WCAG 2.5.3).
+    countMany: "99+ productos con stock bajo o agotado",
     open: "Ver productos con stock bajo",
   },
   dashboard: {

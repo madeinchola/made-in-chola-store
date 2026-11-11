@@ -46,7 +46,7 @@ export interface OrderDetail extends OrderSummary {
   items: readonly OrderLine[];
   /** Método y dirección de envío ya listos para mostrar. */
   shipping: { label: string; address: string | null; schedule?: string | null } | null;
-  payment: { label: string } | null;
+  payment: { label: string; method?: string } | null;
   /** Desglose (S10). Opcionales: los pedidos de ejemplo de las pruebas antiguas no los traen. */
   subtotal?: Money;
   discount?: Money;

@@ -21,6 +21,8 @@ export const acctOrders = {
   paymentMethod: {
     whatsapp: "Pedido por WhatsApp",
     cash_on_delivery: "Efectivo contra entrega",
+    qr_manual: "Pago con QR",
+    qr_auto: "Pago con QR",
   },
   status: {
     pending_payment: "Pendiente de pago",

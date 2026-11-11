@@ -31,7 +31,9 @@ update public.store_settings set value = '130'  where key = 'shipping_route_fact
 update public.store_settings set value = '24'   where key = 'delivery_min_lead_hours';
 update public.store_settings set value = '30'   where key = 'delivery_max_days_ahead';
 update public.store_settings set value = '7'    where key = 'price_guarantee_days';
-update public.payment_methods set is_active = true, max_amount = null, window_minutes = null, archived_at = null where country = 'BO';
+-- (S11) los métodos QR tienen su propia ventana y exigen imagen: solo se restablecen los de WhatsApp y contra entrega.
+update public.payment_methods set is_active = true, max_amount = null, window_minutes = null, archived_at = null
+ where country = 'BO' and code in ('whatsapp', 'cash_on_delivery');
 
 -- ── Ayudas (objetos temporales: viven y mueren con la transacción) ────────────────────────────
 create function pg_temp.u(n int) returns uuid language sql as $$ select ('a1000000-0000-0000-0000-0000000000' || lpad(n::text, 2, '0'))::uuid $$;
@@ -209,8 +211,8 @@ select is((select string_agg(a.s || '>' || b.s, ', ' order by a.s || '>' || b.s 
   'transiciones: el admin tiene EXACTAMENTE estas 9');
 select is((select string_agg(a.s || '>' || b.s, ', ' order by a.s || '>' || b.s collate "C") from t_st a, t_st b where public._order_transition_ok(a.s, b.s, 'customer')),
   'paid>cancelled, pending_payment>cancelled', 'transiciones: la clienta solo cancela, y solo pendiente o pagado');
-select is((select string_agg(a.s || '>' || b.s, ', ') from t_st a, t_st b where public._order_transition_ok(a.s, b.s, 'system')),
-  'pending_payment>cancelled', 'transiciones: el sistema solo vence pedidos sin pagar');
+select is((select string_agg(a.s || '>' || b.s, ', ' order by a.s || '>' || b.s collate "C") from t_st a, t_st b where public._order_transition_ok(a.s, b.s, 'system')),
+  'pending_payment>cancelled, pending_payment>paid', 'transiciones: el sistema vence pedidos sin pagar y (S11) confirma los que se pagan; nada más');
 select is((select count(*)::int from t_st a, t_st b where public._order_transition_ok(a.s, b.s, 'otro')), 0, 'transiciones: un actor desconocido no puede nada');
 select is(public._order_transition_ok('preparing', 'cancelled', 'customer'), false, 'transiciones: la clienta NO cancela desde «preparing» (BR-ORD-02)');
 select is(public._order_transition_ok('preparing', 'cancelled', 'admin'), true, 'transiciones: el admin sí');
@@ -846,7 +848,7 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"ad100000-0000-0000-0000-00000000000d","role":"authenticated"}', true);
 select is((select count(*)::int from public.orders where profile_id in ('a1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000002')), 2, 'RLS: el admin ve los pedidos de todas');
-select is((select count(*)::int from public.payment_methods where country = 'BO'), 2, 'RLS: el admin lee la configuración de pagos');
+select is((select count(*)::int from public.payment_methods where country = 'BO'), 4, 'RLS: el admin lee la configuración de pagos (WhatsApp, contra entrega y los dos QR de S11)');
 select is(public.admin_transition_order((select id from public.orders where profile_id = 'a1000000-0000-0000-0000-000000000003'), 'paid', 'Confirmado por el admin') ->> 'ok', 'true', 'RLS: el admin avanza un pedido con admin_transition_order');
 select throws_ok($$select actor_id from public.order_status_history$$, '42501', null, 'RLS: ni el admin lee actor_id desde el navegador (el panel S12 lo leerá por una función de administración)');
 reset role;
@@ -862,7 +864,7 @@ select is((select count(*)::int from unnest(array[
     and not has_function_privilege('authenticated', f, 'execute')), 4, 'permisos: las 4 funciones del servidor las ejecuta SOLO service_role');
 select is((select count(*)::int from unnest(array[
   'public._checkout_compute(uuid,uuid,uuid,uuid,text,uuid,date,text,int,boolean)', 'public._next_order_number(text)', 'public._order_json(uuid)',
-  'public._order_notify(uuid,text,text)', 'public._order_transition_ok(text,text,text)', 'public.expire_unconfirmed_orders()',
+  'public._order_notify(uuid,text,text,text,jsonb)', 'public._order_transition_ok(text,text,text)', 'public.expire_unconfirmed_orders()',
   'public.remind_pending_orders()']) f
   where has_function_privilege('anon', f, 'execute') or has_function_privilege('authenticated', f, 'execute') or has_function_privilege('service_role', f, 'execute')), 0, 'permisos: las 7 internas no las ejecuta NADIE fuera (ni service_role)');
 select is(has_column_privilege('authenticated', 'public.order_items', 'cost_unit', 'select'), false, 'permisos: authenticated NO lee order_items.cost_unit (el costo del negocio)');

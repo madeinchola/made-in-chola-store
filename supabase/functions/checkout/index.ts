@@ -1,4 +1,3 @@
-import { bearerToken, jwtClaims } from "../_shared/auth.ts";
 import {
   type CheckoutRequest,
   checkoutRequestSchema,
@@ -14,24 +13,12 @@ import { completeCharge } from "../_shared/payments/charge.ts";
 import { defaultRegistry } from "../_shared/payments/registry.ts";
 import type { PaymentInstruction } from "../_shared/payments/types.ts";
 import { clientIp, enforceRateLimit } from "../_shared/rate-limit.ts";
-import { serviceClient, userClient } from "../_shared/supabase.ts";
+import { requireUserId } from "../_shared/session.ts";
+import { serviceClient } from "../_shared/supabase.ts";
 import { parseBodyLimited } from "../_shared/validate.ts";
 
 const allowedOrigins = getAllowedOrigins();
 const registry = defaultRegistry();
-
-/** Toda compra requiere cuenta (BR-ACC-01): sin sesión válida no hay checkout. */
-async function requireUserId(req: Request): Promise<string> {
-  const bearer = bearerToken(req);
-  if (!bearer || jwtClaims(bearer)?.role !== "authenticated") {
-    throw new HttpError(401, "login_required", "Inicia sesión para continuar");
-  }
-  const { data, error } = await userClient(req).auth.getUser();
-  if (error || !data.user) {
-    throw new HttpError(401, "invalid_session", "Tu sesión venció. Inicia sesión de nuevo.");
-  }
-  return data.user.id;
-}
 
 async function readSetting(key: string): Promise<string | null> {
   const { data } = await serviceClient()

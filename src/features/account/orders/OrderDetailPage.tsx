@@ -19,6 +19,9 @@ import { accountRoutes } from "../accountRoutes";
 import { CancelOrderDialog } from "./CancelOrderDialog";
 import { displayDate, displayMoney } from "./format";
 import { useOrderById } from "./hooks";
+import { usePaymentView } from "@/features/payments/hooks";
+import { PaymentQrPanel } from "@/features/payments/PaymentQrPanel";
+import { isQrMethod } from "./ordersMapping";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderTimeline } from "./OrderTimeline";
 import type { OrderDetail } from "./types";
@@ -213,7 +216,7 @@ export function OrderNotFound() {
 /** Marcador de carga: el detalle se lee de la base. */
 function DetailLoading() {
   return (
-    <div aria-busy="true" className="space-y-3">
+    <div aria-busy="true" className="min-h-[100svh] space-y-3">
       <p className="sr-only" role="status">
         {t("acct.orders.loading")}
       </p>
@@ -232,8 +235,15 @@ export function OrderDetailPage() {
   const { profile } = useAuth();
   const query = useOrderById(profile?.id, orderId);
   const [cancelling, setCancelling] = useState(false);
+  // La pantalla de pago se pide YA: si llegara después del detalle lo empujaría hacia abajo (desplazamiento de diseño).
+  const method = query.data?.payment?.method;
+  const payment = usePaymentView(
+    query.data && method && isQrMethod(method) ? query.data.id : undefined,
+  );
 
-  if (query.isPending) return <DetailLoading />;
+  if (query.isPending || (query.data && method && isQrMethod(method) && payment.isPending)) {
+    return <DetailLoading />;
+  }
   if (query.isError) {
     return (
       <ErrorState
@@ -247,6 +257,11 @@ export function OrderDetailPage() {
   if (!order) return <OrderNotFound />;
   return (
     <>
+      {order.payment?.method && isQrMethod(order.payment.method) && (
+        <div className="mb-6">
+          <PaymentQrPanel orderId={order.id} />
+        </div>
+      )}
       <OrderDetailView order={order} onCancel={() => setCancelling(true)} />
       <CancelOrderDialog order={order} open={cancelling} onOpenChange={setCancelling} />
     </>

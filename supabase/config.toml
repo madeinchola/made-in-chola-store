@@ -33,3 +33,14 @@ verify_jwt = false
 # topes de tasa; las funciones SQL de pedidos solo las ejecuta service_role.
 [functions.checkout]
 verify_jwt = false
+
+# Pagos (S11). `payments` y `payment-reconcile` verifican el JWT con Auth (y esta última exige ser admin); `payment-webhook` lo
+# llama un servidor externo: lo que lo autentica es la FIRMA HMAC del aviso.
+[functions.payments]
+verify_jwt = false
+
+[functions.payment-webhook]
+verify_jwt = false
+
+[functions.payment-reconcile]
+verify_jwt = false
