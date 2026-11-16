@@ -134,7 +134,7 @@ Operación completa de pedidos, reembolsos, lista negra, eventos de estado fiabl
 - **Regresión E2E completa de todos los sprints:** no se corrió (solo lo que S12 toca: checkout, pagos y el panel de pagos). Siguen abiertos los 2 fallos antiguos de `layout.spec` (cabecera).
 - **Concurrencia de las pruebas antiguas contra tráfico real:** las suites 01–13 deshabilitan disparadores y bloquean tablas dentro de su transacción; no correrlas con tráfico real.
 - **Decisiones del dueño** (política de devoluciones, criterios de la lista negra, quién asume cada costo, alta rápida sin cuenta, franja y pin en el pedido manual) y **revisión contable de los reembolsos**: SPRINT_19 §Q y PENDIENTES_ADMIN «Añadido en Sprint 12».
-- **Para S13:** los avisos de estado deben esperar al menos la ventana de «deshacer» (5 minutos).
+- **Para S13:** los avisos de estado deben esperar al menos la ventana de «deshacer» (5 minutos). *(Cumplido en S13.)*
 - **Escala:** «atención requerida» recorre los pedidos activos en cada consulta (tope de 500 filas); con miles de pedidos conviene materializarla (S14/S16).
 - **Seguridad (SPRINT_19):** revocar el token de acceso pegado en el chat y rotar la contraseña de la base y la clave `sb_secret_…`.
 - **NO subido:** los cambios de S12 están en el árbol de trabajo, sin commit ni push (se hace cuando el dueño lo pida).

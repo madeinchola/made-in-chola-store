@@ -98,7 +98,7 @@ Configurables: `returns_enabled` está **apagado** hasta que la tienda redacte s
 
 ## Deshacer (con límite)
 
-`admin_undo_transition` deshace **solo** el último paso del flujo normal que no mueve stock, cupones ni dinero (preparando, enviado, entregado, completado), si lo hizo un administrador y está dentro de `order_undo_window_minutes` (5). Queda en el historial como un cambio más (nada se borra). Una cancelación **no** se deshace. **Obligación para S13:** el envío de los avisos de estado debe esperar al menos esa ventana, o se avisaría de algo que se deshizo.
+`admin_undo_transition` deshace **solo** el último paso del flujo normal que no mueve stock, cupones ni dinero (preparando, enviado, entregado, completado), si lo hizo un administrador y está dentro de `order_undo_window_minutes` (5). Queda en el historial como un cambio más (nada se borra). Una cancelación **no** se deshace. **Cumplido en S13:** los avisos de empacado, enviado, entregado y completado **esperan esa ventana**; si se deshace el paso, el aviso se cancela y su clave queda libre (ver `docs/notificaciones.md`).
 
 ## Matriz de transiciones (revisión con el dueño)
 

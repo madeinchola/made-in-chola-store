@@ -121,7 +121,7 @@ Un cobro `qr_api` suelto (no puede existir mientras el método esté oculto y ap
 5. **Comprobantes falsos.** Se detecta la reutilización **exacta** del archivo (huella) y los archivos que no son lo que dicen ser; una captura distinta de un pago ajeno o inventada solo la detecta el administrador al mirarla y al compararla con su banco.
 6. **Archivos huérfanos.** Un archivo subido que nunca llega a registrarse (la clienta cierra la pestaña) queda en el bucket: está acotado (`2 × payment_proofs_max` por pedido) y es privado, pero no hay limpieza automática (Supabase solo permite borrar por su API).
 7. **Eventos fuera de orden** (un pago que llega antes de que exista el cobro) se registran como `unknown_reference` y se alertan; no se reprocesan solos: el administrador lo confirma a mano.
-8. **Los recordatorios y los avisos solo se encolan** (`notification_outbox`): nadie los envía hasta S13.
+8. **~~Los recordatorios y los avisos solo se encolan~~ — resuelto en S13** (`docs/notificaciones.md`): el worker los entrega; hasta que se conecte el proveedor de correo esperan en la cola. Un aviso de firma inválida ahora **alerta** al equipo (una vez por hora y proveedor).
 9. **Stock retenido 24 h** por pedido sin pagar (decisión del dueño). Con 5 pedidos abiertos por clienta (S10) el efecto está acotado, pero no es cero.
 10. **Tipo de cambio:** el monto del cobro es el total del pedido en su moneda (BOB), fijado al crear; solo existe BOB.
 11. **El panel no tiene paginación en «Por revisar»** (los 200 más antiguos) ni exporta; **la lista de pagos** sí pagina de a 25.

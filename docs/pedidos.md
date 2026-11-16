@@ -98,7 +98,7 @@ Tras crear el pedido pide al **proveedor de pago** la instrucción para completa
 ## Límites conocidos y decisiones abiertas
 
 1. **~~No hay panel de pedidos para el admin~~ — resuelto en S12** (`/admin/pedidos`, ver `docs/operacion-pedidos.md`). Antes de S12, un pedido de WhatsApp o contra entrega solo se confirma o cancela con `admin_transition_order` (SQL/RPC). La **demo de cierre de R2** con el dueño necesita ese panel, o que se confirme a mano.
-2. **Las notificaciones solo se encolan** (`notification_outbox`): nadie las envía hasta S13.
+2. **~~Las notificaciones solo se encolan~~ — resuelto en S13:** un worker las entrega (ver `docs/notificaciones.md`). Hoy el proveedor de correo está en «ninguno» hasta que el dueño lo conecte: los avisos esperan en la cola sin perderse.
 3. **El teléfono y el correo del formulario solo viajan al pedido**: no actualizan el perfil (decisión del sprint; queda como opción futura).
 4. **Contra entrega:** la política real (zonas y montos máximos) y los criterios de la lista negra los define el dueño (PENDIENTES_ADMIN). Los métodos de pago y sus topes se editan hoy en la tabla `payment_methods`; **no hay pantalla de administración** para ello hasta S11/S12.
 5. **Tipo de cambio:** solo existe BOB; el pedido ya congela moneda y tipo de cambio (`exchange_rate`), pero un pedido en otra moneda no se ha ejercitado.
