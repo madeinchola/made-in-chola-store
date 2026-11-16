@@ -173,6 +173,21 @@ Cada tarea lleva una etiqueta: **[S5]**, **[S7]**… = bloquea ese sprint; **[LA
 - [ ] **[S11 · prueba real]** En tu teléfono: comprar con QR, pagar de verdad un monto bajo desde tu banco, subir la captura del comprobante, y desde `/admin/pagos` aprobarlo; ver que la pantalla de la clienta se actualiza sola. Probar también un comprobante rechazado, un pedido que vence (dejar pasar el plazo o bajarlo a 1 minuto en el método) y «Volver a pedir». Pasar la pantalla de pago por un lector de pantalla real y Lighthouse (lo automático solo pasa axe).
 - [ ] **[S11 · licencias]** Sin cambios de licencias en este sprint (no se agregó ninguna librería).
 
+## Q. Operación de pedidos (Sprint 12)
+
+- [x] **[S12 · NUBE]** Migración `20261111000100_s12_operacion_pedidos.sql` aplicada a la nube (con ensayo previo en una transacción que se revierte; se editó y reaplicó tras las pruebas de integración y la autorrevisión: es idempotente) y tipos de la base regenerados (`src/lib/database.types.ts`). **No hubo despliegue de funciones Edge** (S12 no añade ninguna). La migración **no está registrada** en `supabase_migrations.schema_migrations` (igual que las de S10 y S11, que se aplicaron a mano): un `db push` futuro las volverá a aplicar, y son idempotentes.
+- [ ] **[S12 · decisión · PENDIENTES_ADMIN §D]** **Política de devoluciones.** Las devoluciones están **apagadas** (`returns_enabled = false` en Configuración). Cuando la tienda la redacte: plazo (hoy 7 días desde la entrega), productos que no se devuelven y si lo devuelto vuelve al stock solo o tras inspección. Después, enciende `returns_enabled`.
+- [ ] **[S12 · decisión · PENDIENTES_ADMIN §C]** **Criterios de la lista negra:** cuándo entra una cuenta y cuándo sale. El sistema **sugiere** bloquear tras un rechazo de contra entrega (y dice cuántos rechazos previos tenía la clienta) pero no bloquea solo.
+- [ ] **[S12 · decisión · PENDIENTES_ADMIN §B]** **Incidencias:** quién asume cada costo (tienda, clienta, transportista o nadie) por tipo de caso. Hoy se anota caso por caso.
+- [ ] **[S12 · revisión con el dueño]** **Matriz de transiciones y permisos.** El administrador ahora puede: enviado → cancelado (rechazo en la entrega, paquete perdido), y entregado/completado → reembolsado (devolución total). Un pedido entregado o completado **no** se cancela ni se reabre. Léela en `docs/operacion-pedidos.md` y dime si falta alguna.
+- [ ] **[S12 · revisión contable]** **Cómo se registran los reembolsos** (importe, envío devuelto, retención, forma, referencia y quién): que lo revise quien lleva la contabilidad antes del lanzamiento. Y qué pasa con el excedente de un **pago duplicado** (S-06): sigue devolviéndose desde el banco y resolviéndose en *Pagos*; no entra en «lo pagado» del pedido.
+- [ ] **[S12 · tarea tuya]** **Probar con tu equipo (sesión de usabilidad):** que quien atiende WhatsApp cree un pedido manual, lo avance hasta completado, edite uno, cancele y reembolse otro, registre una contra entrega rechazada y mire *Atención requerida*; cronometra las tareas y anota lo que cuesta encontrar. El sprint lo pide y una prueba automática no lo sustituye.
+- [ ] **[S12 · decisión]** **Alta rápida de clienta sin cuenta** en el pedido manual (no se hizo) y **franja de entrega + pin de mapa** en esa pantalla (la función ya los soporta; la pantalla todavía no los ofrece). Dime cuáles quieres.
+- [ ] **[S12 · S13]** Cuando S13 envíe los avisos, deberá **esperar al menos los 5 minutos de «deshacer»** (`order_undo_window_minutes`) antes de avisar un cambio de estado.
+- [ ] **[S12 · datos de prueba]** La nube conserva clientas `@prueba.test`, productos de prueba, pedidos (inmutables), reembolsos, notas, incidencias y entradas de lista negra levantadas de las pruebas de S12. La entrega vacía la base con `db reset --linked --no-seed` (ensáyalo antes de entregar).
+- [ ] **[S12 · seguridad · al terminar]** Lo anotado en §N, §O y §P sigue vigente: **revoca el token de acceso de Supabase** pegado en el chat, rota la contraseña de la base y la clave `sb_secret_…`.
+- [ ] **[S12 · licencias]** Sin cambios de licencias en este sprint (no se agregó ninguna librería).
+
 ## Criterios de aceptación
 1. Cada tarea **[S5]** marcada antes de empezar el Sprint 5 (o acordado explícitamente que se avanza sin ella).
 2. Todas las **[LANZAMIENTO]** marcadas antes de S16.

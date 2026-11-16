@@ -97,7 +97,7 @@ Tras crear el pedido pide al **proveedor de pago** la instrucción para completa
 
 ## Límites conocidos y decisiones abiertas
 
-1. **No hay panel de pedidos para el admin (S12).** Mientras tanto un pedido de WhatsApp o contra entrega solo se confirma o cancela con `admin_transition_order` (SQL/RPC). La **demo de cierre de R2** con el dueño necesita ese panel, o que se confirme a mano.
+1. **~~No hay panel de pedidos para el admin~~ — resuelto en S12** (`/admin/pedidos`, ver `docs/operacion-pedidos.md`). Antes de S12, un pedido de WhatsApp o contra entrega solo se confirma o cancela con `admin_transition_order` (SQL/RPC). La **demo de cierre de R2** con el dueño necesita ese panel, o que se confirme a mano.
 2. **Las notificaciones solo se encolan** (`notification_outbox`): nadie las envía hasta S13.
 3. **El teléfono y el correo del formulario solo viajan al pedido**: no actualizan el perfil (decisión del sprint; queda como opción futura).
 4. **Contra entrega:** la política real (zonas y montos máximos) y los criterios de la lista negra los define el dueño (PENDIENTES_ADMIN). Los métodos de pago y sus topes se editan hoy en la tabla `payment_methods`; **no hay pantalla de administración** para ello hasta S11/S12.
@@ -107,7 +107,7 @@ Tras crear el pedido pide al **proveedor de pago** la instrucción para completa
 8. **Franjas:** la franja se reserva al crear el pedido y se libera al cancelar; no hay «mover» una entrega a otra franja (S12).
 9. **Rendimiento:** probado con 100 intentos simultáneos sobre 10 unidades; no se ha medido con miles de pedidos al día ni con la bolsa de 30 líneas más grande permitida.
 10. **Obligaciones que dejó S9, cumplidas:** `_customer_order_count` cuenta los pedidos no cancelados; los usos de descuentos se **liberan** al cancelar o vencer; «primera compra» se serializa por clienta; el desglose por línea queda en el pedido.
-11. **S12 debe dar una vía de lectura de administración** para `order_items.cost_unit`, `order_status_history.reason`/`actor_id` (ver «Seguridad»): hoy solo `service_role` y las funciones los leen.
+11. **Vía de lectura de administración** para `order_status_history.reason`/`actor_id`: **resuelta en S12** con `admin_order_history` (el navegador sigue sin leer esas columnas). `order_items.cost_unit` sigue sin función de lectura para el administrador (el margen y la utilidad son de S14).
 12. **Verificación de contactos (BR-ACC-03):** los avisos van al correo/teléfono de la cuenta, pero una cuenta con un correo AJENO sin verificar sigue pudiendo recibir los avisos de sus propios pedidos; el riesgo residual se cierra al exigir correo verificado para comprar o enviar (S13).
 13. **Límites de tasa por red:** crear pedidos admite 60 cada 10 minutos por IP. Con IP compartida (datos móviles, una oficina) o en una campaña, personas distintas pueden toparse con un 429: medirlo antes del lanzamiento.
 14. **«Mis pedidos»** lista los últimos 100 pedidos sin paginar.
