@@ -202,7 +202,7 @@ describe("guards de /admin", () => {
     ).toBeInTheDocument();
   });
   it("admin también accede a sub-rutas", async () => {
-    renderAt("/admin/pedidos", asAdmin());
+    renderAt("/admin/informes", asAdmin());
     expect(await screen.findByText(/disponible pronto/i)).toBeInTheDocument();
   });
   it("mientras la sesión carga NO redirige ni muestra el panel (evita parpadeo y fuga)", () => {

@@ -1,5 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import {
+  ClipboardList,
   Coins,
   CreditCard,
   Layers,
@@ -29,6 +30,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   { to: "/admin/monedas", label: "admin.nav.currencies", icon: Coins },
   { to: "/admin/envios", label: "admin.nav.shipping", icon: Truck },
   { to: "/admin/descuentos", label: "admin.nav.discounts", icon: Percent },
+  { to: "/admin/pedidos", label: "admin.nav.orders", icon: ClipboardList },
   { to: "/admin/pagos", label: "admin.nav.payments", icon: CreditCard },
   { to: "/admin/ajustes", label: "admin.nav.settings", icon: Settings },
   { to: "/admin/auditoria", label: "admin.nav.audit", icon: ScrollText },

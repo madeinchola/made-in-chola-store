@@ -260,6 +260,62 @@ export const routes: RouteObject[] = [
             ],
           },
           {
+            path: "pedidos",
+            children: [
+              {
+                // El marco con pestañas envuelve la bandeja, «atención», incidencias y lista negra.
+                element: lazyPage(
+                  () => import("@/features/admin/orders/OrdersLayout"),
+                  "OrdersLayout",
+                ),
+                children: [
+                  {
+                    index: true,
+                    element: lazyPage(
+                      () => import("@/features/admin/orders/OrdersPage"),
+                      "OrdersPage",
+                    ),
+                  },
+                  {
+                    path: "atencion",
+                    element: lazyPage(
+                      () => import("@/features/admin/orders/AttentionPage"),
+                      "AttentionPage",
+                    ),
+                  },
+                  {
+                    path: "incidencias",
+                    element: lazyPage(
+                      () => import("@/features/admin/orders/IncidentsPage"),
+                      "IncidentsPage",
+                    ),
+                  },
+                  {
+                    path: "lista-negra",
+                    element: lazyPage(
+                      () => import("@/features/admin/orders/BlacklistPage"),
+                      "BlacklistPage",
+                    ),
+                  },
+                ],
+              },
+              {
+                path: "nuevo",
+                element: lazyPage(
+                  () => import("@/features/admin/orders/ManualOrderPage"),
+                  "ManualOrderPage",
+                ),
+              },
+              {
+                path: ":id",
+                element: lazyPage(
+                  () => import("@/features/admin/orders/OrderDetailPage"),
+                  "OrderDetailPage",
+                ),
+              },
+            ],
+          },
+          {
             path: "ajustes",
             element: lazyPage(() => import("@/features/admin/config/SettingsPage"), "SettingsPage"),
           },

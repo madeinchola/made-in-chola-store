@@ -34,7 +34,7 @@ begin
     'shipping_cost', 0, 'shipping_discount', 0, 'total', p_total, 'tax_included', true, 'contact_name', 'X',
     'contact_phone', '+59171234567', 'shipping_method', '{}'::jsonb, 'payment_method', p_method, 'payment_provider', p_provider,
     'payment_expires_at', case when p_exp is null then null else now() + p_exp end, 'discounts', '[]'::jsonb,
-    'idempotency_key', 'key-s11-' || p_n, 'created_at', now(), 'updated_at', now()));
+    'idempotency_key', 'key-s11-' || p_n, 'channel', 'web', 'edit_count', 0, 'created_at', now(), 'updated_at', now()));
   insert into public.payments (order_id, provider, method, status, amount, currency)
   values (pg_temp.o(p_n), p_provider, p_method, 'pending', p_total, 'BOB');
 end $$;

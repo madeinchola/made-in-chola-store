@@ -8,7 +8,7 @@
 --           PF 5,00 [5] · PG 50,00 [20]    envío a domicilio PLANO 15,00 dentro de 25 km del taller (La Paz) · recojo gratis
 --           franjas: S1 10:00–12:00 cupo 1 · S2 14:00–16:00 cupo 5, todos los días; el día de prueba es hoy + 5
 begin;
-select plan(367);
+select plan(368);
 
 -- HERMÉTICO: la nube puede traer datos de ejemplo y pedidos de otras corridas; esta prueba parte de cero dentro de su transacción.
 -- (`audit_log` y `stock_movements` son inmutables y persisten: todo se cuenta como DIFERENCIA o por ids de ESTA prueba.)
@@ -132,7 +132,7 @@ begin
     'shipping_cost', 0, 'shipping_discount', 0, 'total', 100, 'tax_included', true, 'contact_name', 'X',
     'contact_phone', '+59171234567', 'shipping_method', '{}'::jsonb, 'payment_method', 'whatsapp',
     'payment_provider', 'whatsapp', 'discounts', '[]'::jsonb, 'idempotency_key', 'key-direct-1',
-    'created_at', now(), 'updated_at', now()) || p);
+    'channel', 'web', 'edit_count', 0, 'created_at', now(), 'updated_at', now()) || p);
 end $$;
 
 insert into auth.users (id, email, raw_user_meta_data, aud, role)
@@ -204,11 +204,11 @@ select throws_ok($$select pg_temp.ins('{"number":"MIC-900002","status":"cancelle
 select throws_ok($$select pg_temp.ins('{"number":"MIC-900002"}')$$, '23505', null, 'tabla: la misma llave de la misma clienta no se repite');
 select throws_ok($$select pg_temp.ins('{"idempotency_key":"key-direct-3"}')$$, '23505', null, 'tabla: el número de pedido es único');
 
--- Transiciones válidas: 9 del admin, 2 de la clienta, 1 del sistema (BR-ORD-01/02)
+-- Transiciones válidas: 12 del admin (9 de S10 + 3 de S12), 2 de la clienta, 1 del sistema (BR-ORD-01/02)
 create temp table t_st as select unnest(array['pending_payment', 'paid', 'preparing', 'shipped', 'delivered', 'completed', 'cancelled', 'refunded']) as s;
 select is((select string_agg(a.s || '>' || b.s, ', ' order by a.s || '>' || b.s collate "C") from t_st a, t_st b where public._order_transition_ok(a.s, b.s, 'admin')),
-  'cancelled>refunded, delivered>completed, paid>cancelled, paid>preparing, pending_payment>cancelled, pending_payment>paid, preparing>cancelled, preparing>shipped, shipped>delivered',
-  'transiciones: el admin tiene EXACTAMENTE estas 9');
+  'cancelled>refunded, completed>refunded, delivered>completed, delivered>refunded, paid>cancelled, paid>preparing, pending_payment>cancelled, pending_payment>paid, preparing>cancelled, preparing>shipped, shipped>cancelled, shipped>delivered',
+  'transiciones: el admin tiene EXACTAMENTE estas 12 (S12 suma enviado→cancelado, entregado→reembolsado y completado→reembolsado)');
 select is((select string_agg(a.s || '>' || b.s, ', ' order by a.s || '>' || b.s collate "C") from t_st a, t_st b where public._order_transition_ok(a.s, b.s, 'customer')),
   'paid>cancelled, pending_payment>cancelled', 'transiciones: la clienta solo cancela, y solo pendiente o pagado');
 select is((select string_agg(a.s || '>' || b.s, ', ' order by a.s || '>' || b.s collate "C") from t_st a, t_st b where public._order_transition_ok(a.s, b.s, 'system')),
@@ -319,7 +319,10 @@ select throws_ok($$update public.orders set status = 'paid' where number = (sele
 select throws_ok($$update public.orders set contact_name = 'Otra' where number = (select n from t_exp)$$, '42501', null, 'guarda: la instantánea de contacto no se edita');
 select throws_ok($$delete from public.orders where number = (select n from t_exp)$$, '42501', null, 'guarda: los pedidos no se borran');
 select throws_ok($$truncate public.orders$$, '0A000', null, 'guarda: los pedidos no se vacían (la base lo impide: las líneas los referencian)');
-select throws_ok($$truncate public.order_items$$, '42501', null, 'guarda: las líneas no se vacían');
+-- S12: los reembolsos y las devoluciones referencian las líneas, así que Postgres ya rechaza el TRUNCATE simple (0A000) antes de llegar al
+-- disparador; con CASCADE sí llega a la guarda del libro (42501).
+select throws_ok($$truncate public.order_items$$, '0A000', null, 'guarda: las líneas no se vacían (las referencian los reembolsos)');
+select throws_ok($$truncate public.order_items cascade$$, '42501', null, 'guarda: ni en cascada (la guarda del libro lo rechaza)');
 select throws_ok($$truncate public.order_status_history$$, '42501', null, 'guarda: el historial no se vacía');
 select throws_ok($$insert into public.payment_methods (country, code, provider, name) values ('BO', 'qr_falso', 'stripe', 'QR')$$, '23514', null, 'pagos: un método con un proveedor que no existe se rechaza (dejaría pedidos sin forma de completarse)');
 select lives_ok($t$do $x$ begin
@@ -872,8 +875,8 @@ select is(has_column_privilege('authenticated', 'public.order_items', 'product_n
 select is(has_column_privilege('authenticated', 'public.order_status_history', 'reason', 'select'), false, 'permisos: authenticated NO lee order_status_history.reason');
 select is(has_column_privilege('authenticated', 'public.order_status_history', 'to_status', 'select'), true, 'permisos: …pero sí el estado');
 select is(has_column_privilege('service_role', 'public.order_items', 'cost_unit', 'select'), true, 'permisos: el servidor sí puede leer el costo (informes de margen, S14)');
-select is(has_function_privilege('authenticated', 'public.admin_transition_order(uuid,text,text)', 'execute'), true, 'permisos: authenticated ejecuta admin_transition_order (adentro se exige ser admin)');
-select is(has_function_privilege('anon', 'public.admin_transition_order(uuid,text,text)', 'execute'), false, 'permisos: anon no');
+select is(has_function_privilege('authenticated', 'public.admin_transition_order(uuid,text,text,text)', 'execute'), true, 'permisos: authenticated ejecuta admin_transition_order (adentro se exige ser admin)');
+select is(has_function_privilege('anon', 'public.admin_transition_order(uuid,text,text,text)', 'execute'), false, 'permisos: anon no');
 select is((select string_agg(t, ', ' order by t) from unnest(array['orders', 'order_items', 'order_status_history', 'payments', 'order_counters']) t
   where has_table_privilege('service_role', 'public.' || t, 'insert') or has_table_privilege('service_role', 'public.' || t, 'update')
      or has_table_privilege('service_role', 'public.' || t, 'delete')), null, 'permisos: service_role no escribe directo en ninguna tabla de pedidos (solo las funciones)');

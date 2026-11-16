@@ -30,6 +30,17 @@ export const AUDIT_TABLES = [
   "discount_targets",
   "customer_groups",
   "customer_group_members",
+  "orders",
+  "payments",
+  "payment_methods",
+  "payment_proofs",
+  "payment_reviews",
+  "refunds",
+  "refund_items",
+  "order_returns",
+  "order_return_items",
+  "order_incidents",
+  "blacklist_entries",
 ] as const;
 
 export type AuditTable = (typeof AUDIT_TABLES)[number];

@@ -29,7 +29,16 @@ describe("crumbsFor", () => {
     expect(crumbsFor("/admin/productos/abc-123")[1]?.to).toBe("/admin/productos/abc-123");
   });
   it("una sección desconocida no inventa migas", () => {
-    expect(crumbsFor("/admin/pedidos")).toEqual([]);
+    expect(crumbsFor("/admin/informes")).toEqual([]);
+  });
+  it("Pedidos (S12) tiene su miga y sus pantallas cuelgan de ella", () => {
+    expect(crumbsFor("/admin/pedidos")).toEqual([
+      { key: "admin.nav.orders", to: "/admin/pedidos" },
+    ]);
+    expect(crumbsFor("/admin/pedidos/atencion")).toEqual([
+      { key: "admin.nav.orders", to: "/admin/pedidos" },
+    ]);
+    expect(crumbsFor("/admin/pedidos/0119a75f")).toHaveLength(1);
   });
   it("las demás secciones no heredan la miga de detalle de productos", () => {
     expect(crumbsFor("/admin/categorias/algo")).toHaveLength(1);
@@ -76,6 +85,7 @@ describe("pageTitleKey (título de la pestaña)", () => {
     expect(pageTitleKey("/admin/productos/abc")).toBe("admin.products.edit.crumb");
   });
   it("una ruta desconocida cae al resumen (nunca queda sin título)", () => {
-    expect(pageTitleKey("/admin/pedidos")).toBe("admin.nav.dashboard");
+    expect(pageTitleKey("/admin/informes")).toBe("admin.nav.dashboard");
+    expect(pageTitleKey("/admin/pedidos/lista-negra")).toBe("admin.nav.orders");
   });
 });

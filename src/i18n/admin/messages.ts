@@ -2,6 +2,7 @@ import { adminAudit } from "./audit";
 import { adminCommon } from "./common";
 import { adminConfig } from "./config";
 import { adminDiscounts } from "./discounts";
+import { adminOrders } from "./orders";
 import { adminPayments } from "./payments";
 import { adminProducts } from "./products";
 import { adminShipping } from "./shipping";
@@ -19,6 +20,7 @@ export const adminMessages = {
   audit: adminAudit,
   shipping: adminShipping,
   discounts: adminDiscounts,
+  orders: adminOrders,
   payments: adminPayments,
 } as const;
 

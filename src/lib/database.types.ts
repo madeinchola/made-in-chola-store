@@ -160,6 +160,83 @@ export type Database = {
         }
         Relationships: []
       }
+      blacklist_entries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          kind: string
+          lift_reason: string | null
+          lifted_at: string | null
+          lifted_by: string | null
+          phone_e164: string | null
+          profile_id: string | null
+          reason: string
+          source_order_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          kind: string
+          lift_reason?: string | null
+          lifted_at?: string | null
+          lifted_by?: string | null
+          phone_e164?: string | null
+          profile_id?: string | null
+          reason: string
+          source_order_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          lift_reason?: string | null
+          lifted_at?: string | null
+          lifted_by?: string | null
+          phone_e164?: string | null
+          profile_id?: string | null
+          reason?: string
+          source_order_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blacklist_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blacklist_entries_lifted_by_fkey"
+            columns: ["lifted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blacklist_entries_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blacklist_entries_source_order_id_fkey"
+            columns: ["source_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocked_dates: {
         Row: {
           archived_at: string | null
@@ -1426,6 +1503,124 @@ export type Database = {
         }
         Relationships: []
       }
+      order_edits: {
+        Row: {
+          actor_id: string | null
+          after: Json
+          before: Json
+          created_at: string
+          diff: Json
+          id: number
+          order_id: string
+          reason: string
+        }
+        Insert: {
+          actor_id?: string | null
+          after: Json
+          before: Json
+          created_at?: string
+          diff: Json
+          id?: never
+          order_id: string
+          reason: string
+        }
+        Update: {
+          actor_id?: string | null
+          after?: Json
+          before?: Json
+          created_at?: string
+          diff?: Json
+          id?: never
+          order_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_edits_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_edits_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_incidents: {
+        Row: {
+          cost_assumed: number
+          cost_borne_by: string
+          description: string | null
+          id: string
+          opened_at: string
+          opened_by: string | null
+          order_id: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          cost_assumed?: number
+          cost_borne_by?: string
+          description?: string | null
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          order_id: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          cost_assumed?: number
+          cost_borne_by?: string
+          description?: string | null
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          order_id?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_incidents_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_incidents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_incidents_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           color_hex: string | null
@@ -1560,6 +1755,154 @@ export type Database = {
           },
         ]
       }
+      order_notes: {
+        Row: {
+          author_id: string | null
+          body: string
+          created_at: string
+          id: number
+          order_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          created_at?: string
+          id?: never
+          order_id: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          created_at?: string
+          id?: never
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_return_items: {
+        Row: {
+          id: string
+          order_item_id: string
+          qty: number
+          reason_code: string
+          restock: string
+          restocked_at: string | null
+          return_id: string
+        }
+        Insert: {
+          id?: string
+          order_item_id: string
+          qty: number
+          reason_code: string
+          restock: string
+          restocked_at?: string | null
+          return_id: string
+        }
+        Update: {
+          id?: string
+          order_item_id?: string
+          qty?: number
+          reason_code?: string
+          restock?: string
+          restocked_at?: string | null
+          return_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_return_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "order_returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_returns: {
+        Row: {
+          close_note: string | null
+          closed_at: string | null
+          closed_by: string | null
+          id: string
+          opened_at: string
+          opened_by: string | null
+          order_id: string
+          outside_window: boolean
+          override_reason: string | null
+          reason: string
+          status: string
+        }
+        Insert: {
+          close_note?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          order_id: string
+          outside_window?: boolean
+          override_reason?: string | null
+          reason: string
+          status?: string
+        }
+        Update: {
+          close_note?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          order_id?: string
+          outside_window?: boolean
+          override_reason?: string | null
+          reason?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_returns_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_returns_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_returns_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_status_history: {
         Row: {
           actor_id: string | null
@@ -1608,6 +1951,7 @@ export type Database = {
           cancelled_at: string | null
           cancelled_by: string | null
           cart_id: string | null
+          channel: string
           contact_email: string | null
           contact_name: string
           contact_phone: string
@@ -1618,6 +1962,8 @@ export type Database = {
           delivery_slot: Json | null
           discount_total: number
           discounts: Json
+          edit_count: number
+          edited_at: string | null
           exchange_rate: number
           id: string
           idempotency_key: string
@@ -1646,6 +1992,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           cart_id?: string | null
+          channel?: string
           contact_email?: string | null
           contact_name: string
           contact_phone: string
@@ -1656,6 +2003,8 @@ export type Database = {
           delivery_slot?: Json | null
           discount_total?: number
           discounts?: Json
+          edit_count?: number
+          edited_at?: string | null
           exchange_rate?: number
           id?: string
           idempotency_key: string
@@ -1684,6 +2033,7 @@ export type Database = {
           cancelled_at?: string | null
           cancelled_by?: string | null
           cart_id?: string | null
+          channel?: string
           contact_email?: string | null
           contact_name?: string
           contact_phone?: string
@@ -1694,6 +2044,8 @@ export type Database = {
           delivery_slot?: Json | null
           discount_total?: number
           discounts?: Json
+          edit_count?: number
+          edited_at?: string | null
           exchange_rate?: number
           id?: string
           idempotency_key?: string
@@ -1992,6 +2344,8 @@ export type Database = {
         Row: {
           amount: number
           attempt: number
+          collected_at: string | null
+          collected_by: string | null
           created_at: string
           currency: string
           expires_at: string | null
@@ -2011,6 +2365,8 @@ export type Database = {
         Insert: {
           amount: number
           attempt?: number
+          collected_at?: string | null
+          collected_by?: string | null
           created_at?: string
           currency: string
           expires_at?: string | null
@@ -2030,6 +2386,8 @@ export type Database = {
         Update: {
           amount?: number
           attempt?: number
+          collected_at?: string | null
+          collected_by?: string | null
           created_at?: string
           currency?: string
           expires_at?: string | null
@@ -2047,6 +2405,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_collected_by_fkey"
+            columns: ["collected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_currency_fkey"
             columns: ["currency"]
@@ -2919,6 +3284,170 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      refund_items: {
+        Row: {
+          amount: number
+          id: string
+          order_item_id: string
+          qty: number
+          refund_id: string
+        }
+        Insert: {
+          amount: number
+          id?: string
+          order_item_id: string
+          qty: number
+          refund_id: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          order_item_id?: string
+          qty?: number
+          refund_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_items_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_items_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refunds: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          decision_note: string | null
+          deduction: number
+          destination: string | null
+          external_ref: string | null
+          id: string
+          idempotency_key: string
+          kind: string
+          method: string
+          order_id: string
+          payment_id: string | null
+          processed_at: string | null
+          processed_by: string | null
+          reason: string
+          request_hash: string | null
+          requested_by: string | null
+          return_id: string | null
+          shipping_amount: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          decision_note?: string | null
+          deduction?: number
+          destination?: string | null
+          external_ref?: string | null
+          id?: string
+          idempotency_key: string
+          kind: string
+          method?: string
+          order_id: string
+          payment_id?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          reason: string
+          request_hash?: string | null
+          requested_by?: string | null
+          return_id?: string | null
+          shipping_amount?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          decision_note?: string | null
+          deduction?: number
+          destination?: string | null
+          external_ref?: string | null
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          method?: string
+          order_id?: string
+          payment_id?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          reason?: string
+          request_hash?: string | null
+          requested_by?: string | null
+          return_id?: string | null
+          shipping_amount?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "refunds_currency_fkey"
+            columns: ["currency"]
+            isOneToOne: false
+            referencedRelation: "public_currencies"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "order_returns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shipping_methods: {
         Row: {
@@ -4367,6 +4896,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      _attention_rows: {
+        Args: never
+        Returns: {
+          detail: Json
+          kind: string
+          order_id: string
+          since: string
+        }[]
+      }
       _cart_free_for: {
         Args: { p_cart_id: string; p_variant_id: string }
         Returns: number
@@ -4452,6 +4990,8 @@ export type Database = {
         Returns: number[]
       }
       _next_order_number: { Args: { p_prefix?: string }; Returns: string }
+      _order_address_clean: { Args: { p_addr: Json }; Returns: Json }
+      _order_balance: { Args: { p_order_id: string }; Returns: number }
       _order_json: { Args: { p_order_id: string }; Returns: Json }
       _order_notify: {
         Args: {
@@ -4463,6 +5003,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      _order_paid_amount: { Args: { p_order_id: string }; Returns: number }
+      _order_refunded_amount: {
+        Args: { p_only_processed?: boolean; p_order_id: string }
+        Returns: number
+      }
+      _order_stock_free: { Args: { p_variant_id: string }; Returns: number }
       _order_transition_ok: {
         Args: { p_actor_kind: string; p_from: string; p_to: string }
         Returns: boolean
@@ -4473,6 +5019,21 @@ export type Database = {
       }
       _payment_open_review: {
         Args: { p_detail: Json; p_payment_id: string; p_reason: string }
+        Returns: string
+      }
+      _refund_compute: {
+        Args: {
+          p_all: boolean
+          p_amount: number
+          p_deduction: number
+          p_include_shipping: boolean
+          p_items: Json
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      _refund_settle: {
+        Args: { p_actor: string; p_order_id: string }
         Returns: string
       }
       _ship_norm: { Args: { p_text: string }; Returns: string }
@@ -4497,11 +5058,71 @@ export type Database = {
         }
         Returns: number
       }
+      admin_add_order_note: {
+        Args: { p_body: string; p_order_id: string }
+        Returns: Json
+      }
+      admin_attention_orders: { Args: never; Returns: Json }
+      admin_attention_summary: { Args: never; Returns: Json }
+      admin_blacklist_add: {
+        Args: {
+          p_email: string
+          p_include_contacts?: boolean
+          p_kind: string
+          p_order_id?: string
+          p_phone: string
+          p_profile_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      admin_blacklist_lift: {
+        Args: { p_entry_id: string; p_reason: string }
+        Returns: Json
+      }
+      admin_blacklist_matches: { Args: { p_order_id: string }; Returns: Json }
+      admin_cod_collect: {
+        Args: { p_amount?: number; p_note?: string; p_order_id: string }
+        Returns: Json
+      }
+      admin_cod_reject: {
+        Args: {
+          p_blacklist?: boolean
+          p_blacklist_reason?: string
+          p_cost?: number
+          p_note?: string
+          p_order_id: string
+        }
+        Returns: Json
+      }
       admin_confirm_payment_manual: {
         Args: {
           p_note?: string
           p_payment_id: string
           p_received_amount?: number
+        }
+        Returns: Json
+      }
+      admin_create_manual_order: {
+        Args: {
+          p_address: Json
+          p_channel: string
+          p_contact_email: string
+          p_contact_name: string
+          p_contact_phone: string
+          p_delivery_date: string
+          p_discount: number
+          p_discount_reason: string
+          p_dry_run?: boolean
+          p_idempotency_key: string
+          p_items: Json
+          p_mark_paid?: boolean
+          p_note: string
+          p_payment_method: string
+          p_profile_id: string
+          p_shipping_cost: number
+          p_shipping_method: string
+          p_slot_id: string
         }
         Returns: Json
       }
@@ -4513,6 +5134,20 @@ export type Database = {
         Args: { p_new_code: string; p_new_name: string; p_product_id: string }
         Returns: string
       }
+      admin_edit_order: {
+        Args: {
+          p_address: Json
+          p_contact: Json
+          p_dry_run?: boolean
+          p_expected_updated_at: string
+          p_extra_discount: number
+          p_items: Json
+          p_order_id: string
+          p_reason: string
+          p_shipping_cost: number
+        }
+        Returns: Json
+      }
       admin_generate_coupon_codes: {
         Args: {
           p_count: number
@@ -4523,8 +5158,75 @@ export type Database = {
         }
         Returns: string[]
       }
+      admin_incident_open: {
+        Args: {
+          p_borne_by?: string
+          p_cost?: number
+          p_description: string
+          p_order_id: string
+          p_type: string
+        }
+        Returns: Json
+      }
+      admin_incident_update: {
+        Args: {
+          p_borne_by?: string
+          p_cost?: number
+          p_id: string
+          p_resolution?: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      admin_order_history: { Args: { p_order_id: string }; Returns: Json }
+      admin_orders_status_counts: { Args: never; Returns: Json }
+      admin_process_refund: {
+        Args: { p_external_ref?: string; p_note?: string; p_refund_id: string }
+        Returns: Json
+      }
+      admin_refund_order: {
+        Args: {
+          p_amount: number
+          p_cancel: boolean
+          p_deduction: number
+          p_destination: string
+          p_dry_run?: boolean
+          p_external_ref: string
+          p_idempotency_key: string
+          p_include_shipping: boolean
+          p_items: Json
+          p_mark_processed: boolean
+          p_method: string
+          p_mode: string
+          p_order_id: string
+          p_reason: string
+          p_return_id: string
+        }
+        Returns: Json
+      }
+      admin_reject_refund: {
+        Args: { p_note: string; p_refund_id: string }
+        Returns: Json
+      }
       admin_resolve_review: {
         Args: { p_note: string; p_review_id: string }
+        Returns: Json
+      }
+      admin_return_close: {
+        Args: { p_resolutions?: Json; p_return_id: string }
+        Returns: Json
+      }
+      admin_return_open: {
+        Args: {
+          p_items: Json
+          p_order_id: string
+          p_override_reason?: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      admin_return_reject: {
+        Args: { p_note: string; p_return_id: string }
         Returns: Json
       }
       admin_review_proof: {
@@ -4560,7 +5262,16 @@ export type Database = {
         Returns: number
       }
       admin_transition_order: {
-        Args: { p_order_id: string; p_reason?: string; p_to: string }
+        Args: {
+          p_expected_from?: string
+          p_order_id: string
+          p_reason?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      admin_undo_transition: {
+        Args: { p_expected_status?: string; p_order_id: string }
         Returns: Json
       }
       apply_discounts: {
@@ -4730,6 +5441,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_blacklisted: {
+        Args: { p_email?: string; p_phone?: string; p_profile_id: string }
+        Returns: boolean
+      }
       is_safe_link: { Args: { p_url: string }; Returns: boolean }
       merge_guest_cart: {
         Args: { p_profile_id: string; p_token_hash: string }

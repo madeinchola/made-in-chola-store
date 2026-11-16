@@ -10,6 +10,7 @@ export const adminCommon = {
     currencies: "Monedas",
     shipping: "Envíos",
     discounts: "Descuentos",
+    orders: "Pedidos",
     payments: "Pagos",
     settings: "Ajustes",
     audit: "Auditoría",
