@@ -8,6 +8,7 @@ export const acctLayout = {
     tax: "Datos fiscales",
     orders: "Mis pedidos",
     security: "Seguridad",
+    notifications: "Notificaciones",
   },
   greeting: "Hola, {name}",
 } as const;

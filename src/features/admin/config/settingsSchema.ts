@@ -80,6 +80,28 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   // Pedidos (S10).
   { key: "order_reminder_hours", type: "int", section: "orders", control: "number" },
   { key: "open_orders_max", type: "int", section: "orders", control: "number" },
+  // Operación de pedidos (S12). Los rangos son los de `store_settings_validate_s12()` en la base.
+  {
+    key: "returns_enabled",
+    type: "bool",
+    section: "orders",
+    control: "select",
+    options: ["true", "false"],
+  },
+  {
+    key: "return_window_days",
+    type: "int",
+    section: "orders",
+    control: "number",
+    range: [1, 365],
+  },
+  {
+    key: "order_undo_window_minutes",
+    type: "int",
+    section: "orders",
+    control: "number",
+    range: [1, 60],
+  },
   // Pagos con QR (S11).
   // Los rangos son los de `store_settings_validate_s11()` en la base.
   {

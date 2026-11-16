@@ -4,7 +4,14 @@ import { t, type MessageKey } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { accountRoutes, type AccountSection } from "./accountRoutes";
 
-const SECTIONS: AccountSection[] = ["profile", "addresses", "tax", "orders", "security"];
+const SECTIONS: AccountSection[] = [
+  "profile",
+  "addresses",
+  "tax",
+  "orders",
+  "notifications",
+  "security",
+];
 
 /**
  * Marco de «Mi cuenta»: título, saludo y navegación entre secciones (lista horizontal desplazable en móvil, columna

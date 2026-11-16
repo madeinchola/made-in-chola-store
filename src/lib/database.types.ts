@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       addresses: {
@@ -1454,37 +1429,171 @@ export type Database = {
           attempts: number
           channel: string
           created_at: string
+          created_by: string | null
           dedupe_key: string
           id: number
+          last_error: string | null
+          locked_at: string | null
+          locked_by: string | null
           next_retry_at: string
+          order_id: string | null
           payload: Json
+          profile_id: string | null
+          provider: string | null
+          provider_message_id: string | null
           recipient: string | null
+          rendered_body: string | null
+          rendered_subject: string | null
+          resent_of: number | null
+          sent_at: string | null
+          sent_by: string | null
           status: string
+          template: string | null
           type: string
+          updated_at: string
         }
         Insert: {
           attempts?: number
           channel: string
           created_at?: string
+          created_by?: string | null
           dedupe_key: string
           id?: never
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
           next_retry_at?: string
+          order_id?: string | null
           payload?: Json
+          profile_id?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
           recipient?: string | null
+          rendered_body?: string | null
+          rendered_subject?: string | null
+          resent_of?: number | null
+          sent_at?: string | null
+          sent_by?: string | null
           status?: string
+          template?: string | null
           type: string
+          updated_at?: string
         }
         Update: {
           attempts?: number
           channel?: string
           created_at?: string
+          created_by?: string | null
           dedupe_key?: string
           id?: never
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
           next_retry_at?: string
+          order_id?: string | null
           payload?: Json
+          profile_id?: string | null
+          provider?: string | null
+          provider_message_id?: string | null
           recipient?: string | null
+          rendered_body?: string | null
+          rendered_subject?: string | null
+          resent_of?: number | null
+          sent_at?: string | null
+          sent_by?: string | null
           status?: string
+          template?: string | null
           type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          id: string | null
+          marketing_consent_at: string | null
+          marketing_email: boolean
+          marketing_whatsapp: boolean
+          preferred_channel: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string | null
+          marketing_consent_at?: string | null
+          marketing_email?: boolean
+          marketing_whatsapp?: boolean
+          preferred_channel?: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string | null
+          marketing_consent_at?: string | null
+          marketing_email?: boolean
+          marketing_whatsapp?: boolean
+          preferred_channel?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_templates: {
+        Row: {
+          active: boolean
+          audience: string
+          body: string
+          channel: string
+          created_at: string
+          cta_label: string | null
+          id: number
+          is_default: boolean
+          key: string
+          locale: string
+          subject: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          audience: string
+          body: string
+          channel: string
+          created_at?: string
+          cta_label?: string | null
+          id?: never
+          is_default?: boolean
+          key: string
+          locale?: string
+          subject?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          audience?: string
+          body?: string
+          channel?: string
+          created_at?: string
+          cta_label?: string | null
+          id?: never
+          is_default?: boolean
+          key?: string
+          locale?: string
+          subject?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -4989,7 +5098,45 @@ export type Database = {
         }
         Returns: number[]
       }
+      _enqueue_notification_ex: {
+        Args: {
+          p_channel: string
+          p_dedupe_key: string
+          p_not_before?: string
+          p_order_id?: string
+          p_payload: Json
+          p_profile_id?: string
+          p_recipient: string
+          p_type: string
+        }
+        Returns: number
+      }
       _next_order_number: { Args: { p_prefix?: string }; Returns: string }
+      _notification_settle: {
+        Args: {
+          p_body?: string
+          p_error: string
+          p_id: number
+          p_message_id: string
+          p_outcome: string
+          p_provider: string
+          p_retry_after: number
+          p_subject?: string
+        }
+        Returns: string
+      }
+      _notification_stale_reason: {
+        Args: { n: Database["public"]["Tables"]["notification_outbox"]["Row"] }
+        Returns: string
+      }
+      _notification_status_rank: { Args: { p_status: string }; Returns: number }
+      _notify_target: {
+        Args: { p_profile_id: string }
+        Returns: {
+          channel: string
+          recipient: string
+        }[]
+      }
       _order_address_clean: { Args: { p_addr: Json }; Returns: Json }
       _order_balance: { Args: { p_order_id: string }; Returns: number }
       _order_json: { Args: { p_order_id: string }; Returns: Json }
@@ -5178,6 +5325,11 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_notification_cancel: { Args: { p_id: number }; Returns: Json }
+      admin_notification_counts: { Args: never; Returns: Json }
+      admin_notification_health: { Args: never; Returns: Json }
+      admin_notification_mark_sent: { Args: { p_id: number }; Returns: Json }
+      admin_notification_resend: { Args: { p_id: number }; Returns: Json }
       admin_order_history: { Args: { p_order_id: string }; Returns: Json }
       admin_orders_status_counts: { Args: never; Returns: Json }
       admin_process_refund: {
@@ -5274,6 +5426,7 @@ export type Database = {
         Args: { p_expected_status?: string; p_order_id: string }
         Returns: Json
       }
+      alert_recipients: { Args: never; Returns: string[] }
       apply_discounts: {
         Args: {
           p_cart_id: string
@@ -5376,6 +5529,61 @@ export type Database = {
         }
         Returns: Json
       }
+      claim_notifications: {
+        Args: {
+          p_channels?: string[]
+          p_ids?: number[]
+          p_limit: number
+          p_worker: string
+        }
+        Returns: {
+          attempts: number
+          channel: string
+          created_at: string
+          created_by: string | null
+          dedupe_key: string
+          id: number
+          last_error: string | null
+          locked_at: string | null
+          locked_by: string | null
+          next_retry_at: string
+          order_id: string | null
+          payload: Json
+          profile_id: string | null
+          provider: string | null
+          provider_message_id: string | null
+          recipient: string | null
+          rendered_body: string | null
+          rendered_subject: string | null
+          resent_of: number | null
+          sent_at: string | null
+          sent_by: string | null
+          status: string
+          template: string | null
+          type: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "notification_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      complete_notification: {
+        Args: {
+          p_body?: string
+          p_error?: string
+          p_id: number
+          p_message_id?: string
+          p_outcome: string
+          p_provider?: string
+          p_retry_after_seconds?: number
+          p_subject?: string
+          p_worker: string
+        }
+        Returns: string
+      }
       create_order: {
         Args: {
           p_address_id: string
@@ -5450,6 +5658,11 @@ export type Database = {
         Args: { p_profile_id: string; p_token_hash: string }
         Returns: Json
       }
+      notification_backoff_seconds: {
+        Args: { p_attempts: number; p_base?: number }
+        Returns: number
+      }
+      notify_worker_kick: { Args: never; Returns: string }
       payment_apply_event: {
         Args: {
           p_actor?: string
@@ -5602,6 +5815,10 @@ export type Database = {
         Args: { p_default: number; p_key: string }
         Returns: number
       }
+      setting_text: {
+        Args: { p_default: string; p_key: string }
+        Returns: string
+      }
       slugify: { Args: { p_text: string }; Returns: string }
       stock_status: {
         Args: { p_available: number; p_critical: number; p_low: number }
@@ -5749,9 +5966,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

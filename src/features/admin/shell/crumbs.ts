@@ -14,6 +14,7 @@ const SECTION_CRUMBS: Record<string, MessageKey> = {
   descuentos: "admin.nav.discounts",
   pedidos: "admin.nav.orders",
   pagos: "admin.nav.payments",
+  notificaciones: "admin.nav.notifications",
   ajustes: "admin.nav.settings",
   auditoria: "admin.nav.audit",
 };

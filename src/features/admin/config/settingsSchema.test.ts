@@ -23,7 +23,7 @@ const problem = (key: string, raw: string) => {
 };
 
 describe("definiciones", () => {
-  it("cubren exactamente las 30 claves sembradas en la base (15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8 + 2 de pedidos de S10 + 2 de pagos de S11), sin repetir", () => {
+  it("cubren exactamente las 33 claves que el panel muestra (S12: returns_enabled, return_window_days y order_undo_window_minutes; las 30 anteriores: 15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8 + 2 de pedidos de S10 + 2 de pagos de S11), sin repetir", () => {
     expect(SETTING_DEFS.map((d) => d.key).sort()).toEqual(
       [
         "base_currency",
@@ -40,6 +40,7 @@ describe("definiciones", () => {
         "guest_cart_retention_days",
         "open_orders_max",
         "order_reminder_hours",
+        "order_undo_window_minutes",
         "payment_proofs_max",
         "payment_reminder_hours",
         "pdp_assistance_text",
@@ -47,6 +48,8 @@ describe("definiciones", () => {
         "price_guarantee_days",
         "reservation_ttl_minutes",
         "reserve_on_add_to_cart",
+        "return_window_days",
+        "returns_enabled",
         "shipping_route_factor_pct",
         "social_facebook",
         "social_instagram",
@@ -369,5 +372,24 @@ describe("tax_id_validation (rigor de NIT/CI, S6)", () => {
     expect(problem("tax_id_validation", "otro")).toBe("option");
     expect(problem("tax_id_validation", "")).toBe("option");
     expect(problem("tax_id_validation", "STRICT")).toBe("option");
+  });
+});
+
+describe("ajustes de la operación de pedidos (S12)", () => {
+  it("los rangos son los de la base (store_settings_validate_s12)", () => {
+    for (const [key, ok, bad] of [
+      ["return_window_days", ["1", "7", "365"], ["0", "366", "abc", ""]],
+      ["order_undo_window_minutes", ["1", "5", "60"], ["0", "61", "-1", "1.5"]],
+    ] as const) {
+      for (const value of ok) expect(problem(key, value), `${key}=${value}`).toBeNull();
+      for (const value of bad) expect(problem(key, value), `${key}=${value}`).not.toBeNull();
+    }
+  });
+
+  it("las devoluciones son un Sí/No que se guarda como true/false REALES", () => {
+    const d = def("returns_enabled");
+    expect(toJsonValue(d, "true")).toBe(true);
+    expect(toJsonValue(d, "false")).toBe(false);
+    expect(settingProblem(d, "quizás")).toBe("option");
   });
 });

@@ -20,6 +20,8 @@ const addresses = () => import("@/features/account/addresses/AddressesPage");
 const taxProfiles = () => import("@/features/account/tax/TaxProfilesPage");
 const orders = () => import("@/features/account/orders/OrdersPage");
 const security = () => import("@/features/account/security/SecurityPage");
+const notificationPreferences = () =>
+  import("@/features/account/notifications/NotificationPreferencesPage");
 const orderDetail = () => import("@/features/account/orders/OrderDetailPage");
 // Bolsa: la página (y con ella sus líneas, el resumen y las sugerencias) no entra en la carga inicial.
 const cartPage = () => import("@/features/cart/CartPage");
@@ -49,6 +51,10 @@ export const routes: RouteObject[] = [
               { path: "datos-fiscales", element: lazyPage(taxProfiles, "TaxProfilesPage") },
               { path: "pedidos", element: lazyPage(orders, "OrdersPage") },
               { path: "pedidos/:orderId", element: lazyPage(orderDetail, "OrderDetailPage") },
+              {
+                path: "notificaciones",
+                element: lazyPage(notificationPreferences, "NotificationPreferencesPage"),
+              },
               { path: "seguridad", element: lazyPage(security, "SecurityPage") },
             ],
           },
@@ -311,6 +317,37 @@ export const routes: RouteObject[] = [
                 element: lazyPage(
                   () => import("@/features/admin/orders/OrderDetailPage"),
                   "OrderDetailPage",
+                ),
+              },
+            ],
+          },
+          {
+            path: "notificaciones",
+            // El marco con pestañas envuelve el registro, las plantillas y los ajustes del envío.
+            element: lazyPage(
+              () => import("@/features/admin/notifications/NotificationsLayout"),
+              "NotificationsLayout",
+            ),
+            children: [
+              {
+                index: true,
+                element: lazyPage(
+                  () => import("@/features/admin/notifications/LogPage"),
+                  "LogPage",
+                ),
+              },
+              {
+                path: "plantillas",
+                element: lazyPage(
+                  () => import("@/features/admin/notifications/TemplatesPage"),
+                  "TemplatesPage",
+                ),
+              },
+              {
+                path: "envio",
+                element: lazyPage(
+                  () => import("@/features/admin/notifications/SettingsPage"),
+                  "SettingsPage",
                 ),
               },
             ],

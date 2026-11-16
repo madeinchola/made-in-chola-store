@@ -12,6 +12,7 @@ export const adminCommon = {
     discounts: "Descuentos",
     orders: "Pedidos",
     payments: "Pagos",
+    notifications: "Notificaciones",
     settings: "Ajustes",
     audit: "Auditoría",
     storefront: "Ver tienda",

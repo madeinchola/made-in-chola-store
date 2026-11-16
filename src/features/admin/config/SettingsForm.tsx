@@ -201,7 +201,7 @@ export function SettingsForm({ rows, onReload }: SettingsFormProps) {
             <Select {...common}>
               {(def.options ?? []).map((o) => (
                 <option key={o} value={o}>
-                  {behaviorText(o)}
+                  {behaviorText(o, def.key)}
                 </option>
               ))}
             </Select>

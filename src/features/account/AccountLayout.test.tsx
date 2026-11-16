@@ -17,6 +17,7 @@ function renderAt(path: string, auth: AuthContextValue = asCustomer()) {
             <Route path="datos-fiscales" element={<p>contenido fiscal</p>} />
             <Route path="pedidos" element={<p>contenido de pedidos</p>} />
             <Route path="pedidos/:orderId" element={<p>detalle de pedido</p>} />
+            <Route path="notificaciones" element={<p>contenido de notificaciones</p>} />
             <Route path="seguridad" element={<p>contenido de seguridad</p>} />
           </Route>
         </Routes>
@@ -41,7 +42,7 @@ describe("AccountLayout", () => {
     expect(screen.queryByText(/^Hola/)).not.toBeInTheDocument();
   });
 
-  it("la navegación tiene las 5 secciones, en este orden y con estas rutas", () => {
+  it("la navegación tiene las 6 secciones, en este orden y con estas rutas", () => {
     renderAt("/cuenta");
     const links = within(nav()).getAllByRole("link");
     expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
@@ -49,6 +50,7 @@ describe("AccountLayout", () => {
       ["Direcciones", "/cuenta/direcciones"],
       ["Datos fiscales", "/cuenta/datos-fiscales"],
       ["Mis pedidos", "/cuenta/pedidos"],
+      ["Notificaciones", "/cuenta/notificaciones"],
       ["Seguridad", "/cuenta/seguridad"],
     ]);
   });

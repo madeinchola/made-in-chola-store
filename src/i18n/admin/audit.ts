@@ -99,5 +99,7 @@ export const adminAudit = {
     order_return_items: "Productos devueltos",
     order_incidents: "Incidencias de entrega",
     blacklist_entries: "Lista negra",
+    notification_templates: "Plantillas de notificaciones",
+    notification_preferences: "Preferencias de notificaciones",
   },
 } as const;

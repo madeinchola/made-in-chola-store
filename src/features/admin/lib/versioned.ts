@@ -40,7 +40,8 @@ export type VersionedTable =
   | "discount_targets"
   | "customer_groups"
   | "customer_group_members"
-  | "payment_methods";
+  | "payment_methods"
+  | "notification_templates";
 
 interface Outcome<T> {
   data: T | null;

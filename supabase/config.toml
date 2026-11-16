@@ -44,3 +44,11 @@ verify_jwt = false
 
 [functions.payment-reconcile]
 verify_jwt = false
+
+# Notificaciones (S13). `notify-worker` solo acepta la clave de servicio (la comprueba ella misma, en tiempo constante) y la despierta el
+# cron de la base; `notify-admin` verifica la sesión con Auth y exige ser administrador (vista previa y envío de prueba de plantillas).
+[functions.notify-worker]
+verify_jwt = false
+
+[functions.notify-admin]
+verify_jwt = false

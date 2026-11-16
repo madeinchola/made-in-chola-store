@@ -12,6 +12,7 @@ import { acctProfile } from "./account/profile";
 import { acctTax } from "./account/tax";
 import { acctSecurity } from "./account/security";
 import { acctOrders } from "./account/orders";
+import { acctNotifications } from "./account/notifications";
 import { cart } from "./cart";
 import { checkout } from "./checkout";
 import { pay } from "./payments";
@@ -144,6 +145,7 @@ export const es = {
     tax: acctTax,
     security: acctSecurity,
     orders: acctOrders,
+    notifications: acctNotifications,
   },
   // Los textos del panel se cargan con el panel (`./admin/register`): aquí solo se declara su FORMA para tipar las claves.
   admin: {} as AdminMessages,

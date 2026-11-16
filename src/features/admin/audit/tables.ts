@@ -41,6 +41,8 @@ export const AUDIT_TABLES = [
   "order_return_items",
   "order_incidents",
   "blacklist_entries",
+  "notification_templates",
+  "notification_preferences",
 ] as const;
 
 export type AuditTable = (typeof AUDIT_TABLES)[number];

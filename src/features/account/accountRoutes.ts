@@ -5,6 +5,7 @@ export const accountRoutes = {
   tax: "/cuenta/datos-fiscales",
   orders: "/cuenta/pedidos",
   security: "/cuenta/seguridad",
+  notifications: "/cuenta/notificaciones",
 } as const;
 
 /** Detalle de un pedido (la pantalla real llega con S10). */

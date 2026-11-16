@@ -129,6 +129,18 @@ export const adminConfig = {
         label: "Horas antes de recordarte un pedido sin confirmar",
         hint: "Entre 1 y 720. Si un pedido por WhatsApp o contra entrega sigue sin confirmarse pasado este tiempo, se te avisa; el aviso se repite cada 24 horas hasta que lo confirmes o canceles.",
       },
+      returns_enabled: {
+        label: "Aceptar devoluciones de productos",
+        hint: "Apagado hasta que la tienda redacte su política de devoluciones: mientras tanto el panel no abre devoluciones nuevas.",
+      },
+      return_window_days: {
+        label: "Días para devolver un producto, contados desde la entrega",
+        hint: "Entre 1 y 365. Pasado este plazo una devolución solo se acepta con una justificación escrita.",
+      },
+      order_undo_window_minutes: {
+        label: "Minutos para deshacer un cambio de estado de un pedido",
+        hint: "Entre 1 y 60. Los avisos a la clienta («empacado», «enviado», «entregado») esperan este tiempo antes de salir: si deshaces el paso, la clienta nunca los recibe.",
+      },
       payment_reminder_hours: {
         label: "Horas antes de vencer en que se le recuerda a la clienta que le falta pagar",
         hint: "Entre 0 y 720. 0 = sin recordatorio. Por ejemplo, con 6 se le avisa 6 horas antes de que venza el tiempo para pagar con QR.",
@@ -140,6 +152,12 @@ export const adminConfig = {
       open_orders_max: {
         label: "Pedidos sin confirmar que una clienta puede tener a la vez",
         hint: "Entre 1 y 200. Cada pedido sin confirmar aparta stock; con este tope una sola cuenta no puede dejar sin inventario a la tienda. Al llegar al tope debe esperar a que confirmes o cancele alguno.",
+      },
+    },
+    behaviorByKey: {
+      returns_enabled: {
+        true: "Sí: se aceptan devoluciones",
+        false: "No: no se abren devoluciones",
       },
     },
     behavior: {
