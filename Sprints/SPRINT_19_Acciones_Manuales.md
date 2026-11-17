@@ -208,6 +208,22 @@ Todo está construido y probado contra la nube con un proveedor de pruebas; **ni
 - [ ] **[S13 · seguridad · al terminar]** Lo anotado en §N a §Q sigue vigente: **revoca el token de acceso de Supabase** pegado en el chat y rota la contraseña de la base y la clave de servicio. Si guardas la clave de servicio en el Vault, esa copia se rota junto con ella.
 - [ ] **[S13 · licencias]** Sin cambios de licencias en este sprint (no se agregó ninguna librería).
 
+## S. Resumen, reportes y carga masiva (Sprint 14)
+
+Todo está construido y probado contra la nube. Estas son las decisiones y tareas tuyas (detalle en `docs/reportes.md` y `docs/importacion.md`). **Ninguna clave ni secreto se pega en el chat ni en el repo.**
+
+- [ ] **[S14 · decisión · BR-ADM]** Confirmar la **definición de «venta» y de «utilidad»** (están escritas en el propio Resumen, «¿Cómo se calculan estas cifras?»): venta = pedido pagado o confirmado (fecha del pago, hora de La Paz), neto de reembolsos; utilidad = margen menos las incidencias de entrega que asumió la tienda. **¿Quieres restar también** las comisiones de la pasarela o del QR, y el costo real que te cobra el transportista por cada envío? Hoy el envío que cobras se supone que paga el envío.
+- [ ] **[S14 · datos]** Cargar el **costo de cada producto** (campo «costo» del producto o columna `costo` de la importación). Sin costo, el margen de esos pedidos es «desconocido» y el Resumen avisa cuántos pedidos faltan.
+- [ ] **[S14 · verificación · BR-ADM]** **Cuadrar las cifras con tus primeras ventas reales**: compara con tu cuaderno o libro, de un mismo período, las ventas netas, los reembolsos y el margen del Resumen. Las cifras se verificaron con datos conocidos y contra una cuenta independiente sobre los datos de prueba, pero **no con tus ventas**.
+- [ ] **[S14 · UX]** Mirar el Resumen con quien administra la tienda: **¿qué métrica miras primero?** Se reordenan las tarjetas según eso.
+- [ ] **[S14 · PENDIENTES_ADMIN §F]** Definir el **formato de las etiquetas y la guía de despacho**: ¿impresora térmica de 10 × 15 cm o hoja A4 recortable?, ¿logotipo y datos del remitente?, ¿qué más debe llevar la guía? Hoy se ofrecen A4, carta y 10 × 15 cm. **Probar una impresión real en papel** con tu impresora (los PDF se verificaron con el número de hojas y el tamaño correctos, no en papel).
+- [ ] **[S14 · decisión]** **¿Necesitas importar directamente desde Excel (`.xlsx`)?** Hoy se importa CSV UTF-8 (Excel lo guarda con «Guardar como → CSV UTF-8»; la pantalla lo explica). **¿Y subir imágenes en masa?** Hoy las imágenes se suben desde cada producto y los productos importados nacen en borrador.
+- [ ] **[S14 · decisión]** **¿Necesitas exportaciones de más de 50 000 filas** (con enlace de descarga) **o reportes programados por correo?** Quedaron fuera de este sprint (se descarga hasta 50 000 filas desde el navegador).
+- [ ] **[S14 · pruebas]** Hacer una **importación real de tu catálogo** con la plantilla (categorías → productos → precios → stock) y avisar de cualquier columna o regla que falte. Cada carga se puede **revertir** desde «Cargas anteriores».
+- [ ] **[S14 · datos personales · BR-LEG-01]** Los reportes de **clientas** y de **ventas** incluyen nombres y correos, y descargarlos los guarda en la computadora de quien los baja. Solo los ven los administradores; las descargas **no quedan en la auditoría**. Decide con quien lleve lo legal si hace falta una política (dónde se guardan, cuánto tiempo).
+- [ ] **[S14 · licencias]** Se usan `recharts` (MIT) y `papaparse` (MIT): ya estaban en `package.json` desde S0 y ahora tienen uso. No se agregó ninguna librería.
+- [ ] **[S14 · seguridad · al terminar]** Lo anotado en §N a §R sigue vigente: **revoca el token de acceso de Supabase** pegado en el chat y rota la contraseña de la base y la clave de servicio.
+
 ## Criterios de aceptación
 1. Cada tarea **[S5]** marcada antes de empezar el Sprint 5 (o acordado explícitamente que se avanza sin ella).
 2. Todas las **[LANZAMIENTO]** marcadas antes de S16.
