@@ -360,6 +360,22 @@ export function OrdersPage() {
           <Download className="h-4 w-4" aria-hidden="true" />
           {selected.size > 0 ? t(`${L}.bulk.exportSelected`) : t(`${L}.bulk.exportAll`)}
         </Button>
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className={selected.size === 0 ? "pointer-events-none opacity-50" : ""}
+        >
+          <Link
+            to={`/admin/pedidos/imprimir?ids=${[...selected].join(",")}`}
+            aria-disabled={selected.size === 0}
+            tabIndex={selected.size === 0 ? -1 : undefined}
+          >
+            {selected.size > 0
+              ? t("admin.analytics.print.openSelected", { count: selected.size })
+              : t("admin.analytics.print.open")}
+          </Link>
+        </Button>
       </div>
 
       <DataTable

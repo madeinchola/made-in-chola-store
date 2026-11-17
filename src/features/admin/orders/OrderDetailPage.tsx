@@ -182,6 +182,9 @@ export function OrderDetailPage() {
       )}
 
       <div className="flex flex-wrap gap-2" role="group" aria-label={t(`${D}.actions`)}>
+        <Button asChild variant="outline">
+          <Link to={`/admin/pedidos/imprimir?ids=${o.id}`}>{t("admin.analytics.print.open")}</Link>
+        </Button>
         {canEdit(o.status) && (
           <Button type="button" variant="outline" onClick={() => setDialog({ kind: "edit" })}>
             {t(`${D}.edit`)}

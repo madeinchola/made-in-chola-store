@@ -58,7 +58,14 @@ export function DataTable<T>({
   return (
     // `relative`: los textos `sr-only` (encabezado de acciones, caption) son `position:absolute`; sin un ancestro posicionado
     // dentro del contenedor con scroll, escapan de su recorte y estiran el ancho de la PÁGINA (856 px en un móvil de 412).
-    <div className="relative overflow-x-auto rounded-lg border" aria-busy={refreshing || undefined}>
+    <div
+      // Una región que se desplaza (la tabla ancha) debe poder recorrerse con el teclado (WCAG 2.1.1, axe `scrollable-region-focusable`).
+      role="group"
+      aria-label={caption}
+      tabIndex={0}
+      className="relative overflow-x-auto rounded-lg border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      aria-busy={refreshing || undefined}
+    >
       <table className={cn("w-full text-left text-sm", refreshing && "opacity-60")}>
         <caption className="sr-only">{caption}</caption>
         <thead className="border-b bg-muted/60">

@@ -6,6 +6,10 @@ import { PageHeader, SectionCard } from "../ui/PageHeader";
 import { ErrorState, LoadingState } from "../ui/StateViews";
 import { StockLightBadge } from "../ui/badges";
 import { useStockAlertSummary, useStockAlertVariants } from "../stock/hooks";
+import { AttentionCard } from "../analytics/AttentionCard";
+import { Definitions } from "../analytics/Definitions";
+import { InventoryCard } from "../analytics/InventoryCard";
+import { SalesSection } from "../analytics/SalesSection";
 
 function Counter({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
@@ -16,7 +20,7 @@ function Counter({ label, value, tone }: { label: string; value: number; tone: s
   );
 }
 
-/** Resumen del panel: lo que necesita atención hoy (alertas de stock) y accesos rápidos. */
+/** Resumen del panel: cómo va el negocio (ventas del período), lo que necesita atención hoy (stock, pedidos) y accesos rápidos. */
 export function DashboardPage() {
   const { profile } = useAuth();
   const summary = useStockAlertSummary();
@@ -26,9 +30,15 @@ export function DashboardPage() {
     <>
       <PageHeader
         title={t("admin.title")}
-        description={t("admin.dashboard.welcome", { name: profile?.full_name ?? "" })}
+        description={t("admin.analytics.dashboard.welcome", { name: profile?.full_name ?? "" })}
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/reportes">{t("admin.analytics.dashboard.reportsLink")}</Link>
+          </Button>
+        }
       />
-      <div className="grid gap-6 lg:grid-cols-3">
+      <SalesSection />
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <SectionCard id="alerts" title={t("admin.dashboard.alerts.title")}>
             {summary.isError ? (
@@ -100,19 +110,26 @@ export function DashboardPage() {
             )}
           </SectionCard>
         </div>
-        <SectionCard id="shortcuts" title={t("admin.dashboard.shortcuts.title")}>
-          <div className="flex flex-col gap-2">
-            <Button asChild>
-              <Link to="/admin/productos/nuevo">{t("admin.dashboard.shortcuts.newProduct")}</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/admin/productos">{t("admin.dashboard.shortcuts.products")}</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link to="/admin/ajustes">{t("admin.dashboard.shortcuts.settings")}</Link>
-            </Button>
-          </div>
-        </SectionCard>
+        <div className="space-y-6">
+          <AttentionCard />
+          <InventoryCard />
+          <SectionCard id="shortcuts" title={t("admin.dashboard.shortcuts.title")}>
+            <div className="flex flex-col gap-2">
+              <Button asChild>
+                <Link to="/admin/productos/nuevo">{t("admin.dashboard.shortcuts.newProduct")}</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/admin/productos">{t("admin.dashboard.shortcuts.products")}</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/admin/ajustes">{t("admin.dashboard.shortcuts.settings")}</Link>
+              </Button>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+      <div className="mt-8">
+        <Definitions />
       </div>
     </>
   );

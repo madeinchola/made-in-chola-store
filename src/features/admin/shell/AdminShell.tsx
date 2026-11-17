@@ -68,14 +68,14 @@ export function AdminShell() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 print:min-h-0 print:bg-white">
       <a
         href="#admin-main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 print:hidden"
       >
         {t("admin.skipToContent")}
       </a>
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-3">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-3 print:hidden">
         <Button
           type="button"
           variant="ghost"
@@ -116,6 +116,7 @@ export function AdminShell() {
             // un cajón solo desplazado fuera de la pantalla seguiría siendo alcanzable con el teclado y por lectores de pantalla.
             drawerOpen ? "visible translate-x-0" : "invisible -translate-x-full md:visible",
             collapsed ? "md:w-16" : "md:w-60",
+            "print:hidden",
           )}
         >
           <AdminSidebar
@@ -128,9 +129,11 @@ export function AdminShell() {
           ref={mainRef}
           id="admin-main"
           tabIndex={-1}
-          className="min-w-0 flex-1 p-4 focus-visible:ring-0 focus-visible:ring-offset-0 sm:p-6"
+          className="min-w-0 flex-1 p-4 focus-visible:ring-0 focus-visible:ring-offset-0 sm:p-6 print:p-0"
         >
-          <Breadcrumbs />
+          <div className="print:hidden">
+            <Breadcrumbs />
+          </div>
           <Outlet />
         </main>
       </div>

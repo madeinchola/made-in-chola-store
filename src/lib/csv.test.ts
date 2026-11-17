@@ -266,3 +266,31 @@ describe("downloadCsv", () => {
     expect(sessionStorage.length).toBe(0);
   });
 });
+
+describe("separador «;» (Excel en español)", () => {
+  it("con «;» una celda con «;» va entre comillas y una con «,» no", () => {
+    expect(csvCell("a;b", ";")).toBe('"a;b"');
+    expect(csvCell("a,b", ";")).toBe("a,b");
+    expect(csvCell("a;b")).toBe("a;b");
+    expect(csvCell("a,b")).toBe('"a,b"');
+  });
+  it("une las celdas con «;», con CRLF y un solo BOM", () => {
+    expect(
+      toCsv(
+        [
+          ["a", "b"],
+          ["1,5", "x;y"],
+        ],
+        { delimiter: ";" },
+      ),
+    ).toBe(`${BOM}a;b\r\n1,5;"x;y"\r\n`);
+  });
+  it("sigue neutralizando fórmulas con cualquier separador", () => {
+    expect(toCsv([["=cmd|' /C calc'!A0", "ok"]], { delimiter: ";" })).toBe(
+      `${BOM}'=cmd|' /C calc'!A0;ok\r\n`,
+    );
+  });
+  it('un registro de una sola celda vacía sigue yendo como «""»', () => {
+    expect(toCsv([[""]], { delimiter: ";" })).toBe(`${BOM}""\r\n`);
+  });
+});

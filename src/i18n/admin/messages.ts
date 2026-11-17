@@ -1,3 +1,4 @@
+import { adminAnalytics } from "./analytics";
 import { adminAudit } from "./audit";
 import { adminCommon } from "./common";
 import { adminConfig } from "./config";
@@ -24,6 +25,7 @@ export const adminMessages = {
   orders: adminOrders,
   notifications: adminNotifications,
   payments: adminPayments,
+  analytics: adminAnalytics,
 } as const;
 
 export type AdminMessages = typeof adminMessages;

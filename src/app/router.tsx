@@ -313,6 +313,13 @@ export const routes: RouteObject[] = [
                 ),
               },
               {
+                path: "imprimir",
+                element: lazyPage(
+                  () => import("@/features/admin/analytics/print/PrintPage"),
+                  "PrintPage",
+                ),
+              },
+              {
                 path: ":id",
                 element: lazyPage(
                   () => import("@/features/admin/orders/OrderDetailPage"),
@@ -351,6 +358,72 @@ export const routes: RouteObject[] = [
                 ),
               },
             ],
+          },
+          {
+            path: "reportes",
+            // El marco con pestañas envuelve cada reporte (ventas, productos, inventario, descuentos, pagos, devoluciones, clientas).
+            element: lazyPage(
+              () => import("@/features/admin/analytics/ReportsLayout"),
+              "ReportsLayout",
+            ),
+            children: [
+              {
+                index: true,
+                element: lazyPage(
+                  () => import("@/features/admin/analytics/ReportPage"),
+                  "SalesReport",
+                ),
+              },
+              {
+                path: "productos",
+                element: lazyPage(
+                  () => import("@/features/admin/analytics/ReportPage"),
+                  "ProductsReport",
+                ),
+              },
+              {
+                path: "inventario",
+                element: lazyPage(
+                  () => import("@/features/admin/analytics/ReportPage"),
+                  "InventoryReport",
+                ),
+              },
+              {
+                path: "descuentos",
+                element: lazyPage(
+                  () => import("@/features/admin/analytics/ReportPage"),
+                  "DiscountsReport",
+                ),
+              },
+              {
+                path: "pagos",
+                element: lazyPage(
+                  () => import("@/features/admin/analytics/ReportPage"),
+                  "PaymentsReport",
+                ),
+              },
+              {
+                path: "devoluciones",
+                element: lazyPage(
+                  () => import("@/features/admin/analytics/ReportPage"),
+                  "ReturnsReport",
+                ),
+              },
+              {
+                path: "clientas",
+                element: lazyPage(
+                  () => import("@/features/admin/analytics/ReportPage"),
+                  "CustomersReport",
+                ),
+              },
+            ],
+          },
+          {
+            path: "importar",
+            element: lazyPage(
+              () => import("@/features/admin/analytics/import/ImportPage"),
+              "ImportPage",
+            ),
           },
           {
             path: "ajustes",

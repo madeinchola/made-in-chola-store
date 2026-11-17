@@ -14,6 +14,8 @@ const SECTION_CRUMBS: Record<string, MessageKey> = {
   descuentos: "admin.nav.discounts",
   pedidos: "admin.nav.orders",
   pagos: "admin.nav.payments",
+  reportes: "admin.analytics.nav.reports",
+  importar: "admin.analytics.nav.import",
   notificaciones: "admin.nav.notifications",
   ajustes: "admin.nav.settings",
   auditoria: "admin.nav.audit",
