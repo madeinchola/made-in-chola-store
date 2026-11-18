@@ -169,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: input.phone || undefined,
         phone_country: input.phoneCountry,
         password: input.password,
+        ...input.legal,
       });
       if (!res.ok)
         return { ok: false, code: res.code, retryAfter: res.retryAfter, failures: res.failures };

@@ -1,3 +1,4 @@
+import { usePageMeta } from "@/features/storefront/seo/usePageMeta";
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -28,6 +29,7 @@ function identifierFormatError(value: string): string | null {
 }
 
 export function LoginPage() {
+  usePageMeta({ title: t("auth.login.title"), robots: "noindex,nofollow" });
   const { signIn, status } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

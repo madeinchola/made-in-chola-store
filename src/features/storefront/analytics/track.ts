@@ -1,6 +1,8 @@
+import { hasConsent, type ConsentCategory } from "@/features/consent/consentStore";
+
 /**
- * Capa de analítica SIN proveedor (hasta tener IDs y consentimiento, S15): la tienda llama a `track(...)` y no pasa
- * nada hasta que alguien se suscriba. Así las pantallas ya emiten sus eventos y conectar Meta/GA4 después es añadir un
+ * Capa de analítica: la tienda llama a `track(...)` y no pasa nada hasta que un proveedor se suscriba, y un proveedor de
+ * terceros (Meta, GA4) solo recibe eventos con el consentimiento de su categoría (S15, `consentStore`). Así las pantallas ya emiten sus eventos y conectar Meta/GA4 después es añadir un
  * suscriptor, no tocar pantallas. Los eventos NO llevan datos personales.
  */
 export interface TrackedItem {
@@ -38,19 +40,27 @@ export type TrackEvent =
 
 export type TrackListener = (event: TrackEvent) => void;
 
-const listeners = new Set<TrackListener>();
+// Cada proveedor declara su categoría: si la persona no la aceptó (o la retiró), el evento NI SIQUIERA se le entrega.
+const listeners = new Map<TrackListener, ConsentCategory | null>();
 
-/** Registra un proveedor. Devuelve la función para darlo de baja. */
-export function subscribeToTracking(listener: TrackListener): () => void {
-  listeners.add(listener);
+/**
+ * Registra un proveedor. Con `category`, solo recibe eventos mientras haya consentimiento de esa categoría (S15); sin ella, recibe
+ * todo (solo para suscriptores propios que no envían nada a terceros). Devuelve la función para darlo de baja.
+ */
+export function subscribeToTracking(
+  listener: TrackListener,
+  category: ConsentCategory | null = null,
+): () => void {
+  listeners.set(listener, category);
   return () => {
     listeners.delete(listener);
   };
 }
 
-/** Emite un evento a todos los proveedores; el fallo de uno no afecta a los demás ni a la pantalla. */
+/** Emite un evento a los proveedores con consentimiento; el fallo de uno no afecta a los demás ni a la pantalla. */
 export function track(event: TrackEvent): void {
-  for (const listener of [...listeners]) {
+  for (const [listener, category] of [...listeners]) {
+    if (category !== null && !hasConsent(category)) continue;
     try {
       listener(event);
     } catch {

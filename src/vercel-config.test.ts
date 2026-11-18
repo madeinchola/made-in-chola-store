@@ -76,6 +76,84 @@ describe("vercel.json", () => {
     );
     expect(csp["img-src"]).toContain("https:");
   });
+  it("S15: lo privado lleva `X-Robots-Tag: noindex, nofollow` desde el servidor (los rastreadores no ejecutan JavaScript) y lo público NO", () => {
+    // Convierte el `source` de Vercel (grupos «(a|b)» y «:path*») a una expresión para probar rutas concretas.
+    const toRegExp = (source: string) => new RegExp(`^${source.replace(/:path\*/g, ".*")}$`);
+    const noindex = config.headers
+      .filter((h) => h.headers.some((x) => x.key === "X-Robots-Tag" && /noindex/.test(x.value)))
+      .map((h) => toRegExp(h.source));
+    const covered = (path: string) => noindex.some((re) => re.test(path));
+    for (const path of [
+      "/carrito",
+      "/checkout",
+      "/login",
+      "/registro",
+      "/recuperar",
+      "/restablecer",
+      "/buscar",
+      "/cuenta",
+      "/cuenta/pedidos",
+      "/cuenta/pedidos/123",
+      "/admin",
+      "/admin/productos/nuevo",
+      "/pedido/MIC-000123",
+    ])
+      expect(covered(path), path).toBe(true);
+    for (const path of [
+      "/",
+      "/tienda",
+      "/producto/chaqueta-roja",
+      "/categoria/ropa",
+      "/coleccion/verano",
+      "/legal/terminos",
+      "/nosotros",
+      "/contacto",
+    ])
+      expect(covered(path), path).toBe(false);
+  });
+  it("S15: cada ruta privada que robots.txt cierra también tiene su cabecera noindex (las dos defensas van juntas)", async () => {
+    const { buildRobots } = await import("./server/seo/sitemap");
+    const disallowed = buildRobots({ env: {}, fetch }, "https://x.test")
+      .split("\n")
+      .filter((line) => line.startsWith("Disallow: /"))
+      .map((line) => line.slice("Disallow: ".length));
+    const noindex = config.headers
+      .filter((h) => h.headers.some((x) => x.key === "X-Robots-Tag"))
+      .map((h) => new RegExp(`^${h.source.replace(/:path\*/g, ".*")}$`));
+    expect(disallowed.length).toBeGreaterThan(5);
+    for (const path of disallowed)
+      expect(
+        noindex.some((re) => re.test(path)),
+        path,
+      ).toBe(true);
+  });
+  it("S15: los feeds de catálogo se sirven por su dirección pública y antes del comodín de la SPA", () => {
+    const sources = config.rewrites.map((r) => r.source);
+    for (const [source, destination] of [
+      ["/feeds/google.xml", "/api/feed?target=google"],
+      ["/feeds/meta.xml", "/api/feed?target=meta"],
+    ] as const) {
+      expect(config.rewrites).toContainEqual({ source, destination });
+      expect(sources.indexOf(source)).toBeLessThan(sources.indexOf(SPA_SOURCE));
+    }
+  });
+  it("CSP (S15): Meta y GA4 pueden cargar su script y enviar sus eventos, sin abrir más de lo necesario ni permitir scripts inline", () => {
+    expect(csp["script-src"]).toEqual(
+      expect.arrayContaining(["https://connect.facebook.net", "https://www.googletagmanager.com"]),
+    );
+    expect(csp["connect-src"]).toEqual(
+      expect.arrayContaining([
+        "https://www.facebook.com",
+        "https://graph.facebook.com",
+        "https://*.google-analytics.com",
+        "https://*.analytics.google.com",
+        "https://*.googletagmanager.com",
+      ]),
+    );
+    expect(csp["script-src"]).not.toContain("https:");
+    expect(csp["script-src"]).not.toContain("'unsafe-inline'");
+    expect(csp["connect-src"]).not.toContain("https:");
+  });
   it("CSP: el selector de ubicación (S6) puede pedir teselas de OpenStreetMap (img-src https:) y buscar en Nominatim (connect-src), y nada más amplio", () => {
     expect(csp["connect-src"]).toContain("https://nominatim.openstreetmap.org");
     expect(csp["connect-src"]).not.toContain("https://*.openstreetmap.org");

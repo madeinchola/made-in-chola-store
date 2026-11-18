@@ -47,6 +47,8 @@ export const layout = {
     refunds: "Reembolsos",
     shipping: "Envíos",
     terms: "Términos de servicio",
+    cookies: "Política de cookies",
+    complaints: "Reclamos",
     copyright: "Copyright © {year}",
     privacyPolicies: "Políticas de Privacidad",
     termsAndConditions: "Términos y Condiciones",

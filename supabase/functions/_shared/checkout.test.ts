@@ -87,7 +87,14 @@ Deno.test(
     ]) {
       assertEquals(ok({ ...CREATE, ...extra }), false, JSON.stringify(extra));
     }
-    assertEquals(ok({ action: "preview", shipping_method: "delivery", p_profile_id: USER }), false);
+    assertEquals(
+      ok({
+        action: "preview",
+        shipping_method: "delivery",
+        p_profile_id: USER,
+      }),
+      false,
+    );
   },
 );
 
@@ -128,7 +135,10 @@ Deno.test("la llave de idempotencia tiene 8 a 64 caracteres seguros", () => {
 });
 
 Deno.test("el nombre se recorta y no puede quedar vacío ni pasar de 120", () => {
-  const parsed = checkoutRequestSchema.parse({ ...CREATE, contact_name: "  Ana  " });
+  const parsed = checkoutRequestSchema.parse({
+    ...CREATE,
+    contact_name: "  Ana  ",
+  });
   assertEquals((parsed as { contact_name: string }).contact_name, "Ana");
   assertEquals(ok({ ...CREATE, contact_name: "   " }), false);
   assertEquals(ok({ ...CREATE, contact_name: "a".repeat(121) }), false);
@@ -169,7 +179,10 @@ Deno.test("cancelar pide el pedido y un motivo opcional corto", () => {
 
 Deno.test("planRpc de la vista previa usa la identidad del JWT y pone null a lo que falta", () => {
   const plan = planRpc(
-    checkoutRequestSchema.parse({ action: "preview", shipping_method: "delivery" }),
+    checkoutRequestSchema.parse({
+      action: "preview",
+      shipping_method: "delivery",
+    }),
     USER,
   );
   assertEquals(plan, {
@@ -207,7 +220,11 @@ Deno.test("planRpc de crear mapea cada campo a su parámetro", () => {
 
 Deno.test("planRpc de cancelar usa la clienta del JWT: nunca una que venga en el cuerpo", () => {
   const plan = planRpc(
-    checkoutRequestSchema.parse({ action: "cancel", order_id: ORDER, reason: "x" }),
+    checkoutRequestSchema.parse({
+      action: "cancel",
+      order_id: ORDER,
+      reason: "x",
+    }),
     USER,
   );
   assertEquals(plan, {
@@ -221,15 +238,27 @@ Deno.test("planRpc de cancelar usa la clienta del JWT: nunca una que venga en el
 });
 
 Deno.test("los topes: crear es el más estricto y cada acción tiene el suyo", () => {
-  assertEquals(userLimit("create"), { name: "create", ...LIMITS.createPerUser });
-  assertEquals(userLimit("preview"), { name: "preview", ...LIMITS.previewPerUser });
-  assertEquals(userLimit("cancel"), { name: "cancel", ...LIMITS.cancelPerUser });
+  assertEquals(userLimit("create"), {
+    name: "create",
+    ...LIMITS.createPerUser,
+  });
+  assertEquals(userLimit("preview"), {
+    name: "preview",
+    ...LIMITS.previewPerUser,
+  });
+  assertEquals(userLimit("cancel"), {
+    name: "cancel",
+    ...LIMITS.cancelPerUser,
+  });
   assert(LIMITS.createPerUser.max < LIMITS.previewPerUser.max);
   assert(LIMITS.createPerUser.max <= 10);
 });
 
 Deno.test("un cuerpo de más de 2 kB se corta con 413 sin leerlo entero", async () => {
-  const big = JSON.stringify({ ...CREATE, contact_name: "x".repeat(MAX_BODY_BYTES) });
+  const big = JSON.stringify({
+    ...CREATE,
+    contact_name: "x".repeat(MAX_BODY_BYTES),
+  });
   const req = new Request("http://x", { method: "POST", body: big });
   const error = await assertRejects(
     () => parseBodyLimited(req, checkoutRequestSchema, MAX_BODY_BYTES),
@@ -259,3 +288,71 @@ Deno.test("un JSON roto y un cuerpo válido pero inválido para el esquema dan 4
   );
   assertEquals((e2 as HttpError).status, 400);
 });
+
+// ── Textos legales (S15): las versiones aceptadas viajan como dos enteros sueltos ─────────────────────────────────────────────
+Deno.test(
+  "crear admite las versiones aceptadas de términos y de privacidad (enteros positivos), juntas o por separado",
+  () => {
+    assert(ok({ ...CREATE, legal_terms: 3, legal_privacy: 2 }));
+    assert(ok({ ...CREATE, legal_terms: 1 }));
+    assert(ok({ ...CREATE, legal_privacy: 7 }));
+    assert(ok(CREATE)); // sin textos publicados no se manda nada
+  },
+);
+
+Deno.test(
+  "las versiones legales deben ser enteros de 1 a 100000: nada de listas, objetos, cadenas ni decimales",
+  () => {
+    for (const bad of [0, -1, 1.5, 100001, "3", null, true, [3], { v: 3 }]) {
+      assertEquals(
+        ok({ ...CREATE, legal_terms: bad }),
+        false,
+        `legal_terms=${JSON.stringify(bad)}`,
+      );
+      assertEquals(
+        ok({ ...CREATE, legal_privacy: bad }),
+        false,
+        `legal_privacy=${JSON.stringify(bad)}`,
+      );
+    }
+    // el esquema sigue siendo estricto: un campo legal inventado se rechaza
+    assertEquals(ok({ ...CREATE, legal: { terms: 3 } }), false);
+    assertEquals(ok({ ...CREATE, legal_cookies: 1 }), false);
+  },
+);
+
+Deno.test("solo crear lleva versiones legales: la vista previa y cancelar las rechazan", () => {
+  const preview = { action: "preview", shipping_method: "pickup" };
+  assert(ok(preview));
+  assertEquals(ok({ ...preview, legal_terms: 3 }), false);
+  assertEquals(ok({ action: "cancel", order_id: ORDER, legal_terms: 3 }), false);
+});
+
+Deno.test(
+  "las versiones legales NO llegan a la función SQL de crear el pedido (se registran aparte, tras crearlo)",
+  () => {
+    const parsed = checkoutRequestSchema.parse({
+      ...CREATE,
+      legal_terms: 3,
+      legal_privacy: 2,
+    });
+    const plan = planRpc(parsed, USER);
+    assertEquals(
+      Object.keys(plan.args).filter((key) => key.includes("legal")),
+      [],
+    );
+    assertEquals(JSON.stringify(plan.args).includes("legal"), false);
+  },
+);
+
+Deno.test(
+  "una petición de creación con ambas versiones sigue cabiendo con holgura en el tope de cuerpo",
+  () => {
+    const body = JSON.stringify({
+      ...CREATE,
+      legal_terms: 100000,
+      legal_privacy: 100000,
+    });
+    assert(new TextEncoder().encode(body).length < MAX_BODY_BYTES / 2);
+  },
+);

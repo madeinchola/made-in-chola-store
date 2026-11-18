@@ -57,7 +57,25 @@ export const VARIABLE_CATALOG: readonly VariableInfo[] = [
   { name: "channel", description: "Canal del aviso (correo o WhatsApp)", audience: "admin" },
   { name: "error", description: "Último error al enviar", audience: "admin" },
   { name: "template_key", description: "Clave de la plantilla dañada", audience: "admin" },
+  {
+    name: "complaint_number",
+    description: "Número del reclamo, p. ej. REC-000123",
+    audience: "admin",
+  },
+  {
+    name: "complaint_kind",
+    description: "Tipo del reclamo: producto, entrega, cobro o pago, atención u otro",
+    audience: "admin",
+  },
 ] as const;
+
+const COMPLAINT_KIND_LABELS: Record<string, string> = {
+  product: "producto",
+  delivery: "entrega",
+  payment: "cobro o pago",
+  service: "atención",
+  other: "otro",
+};
 
 const REVIEW_REASONS: Record<string, string> = {
   late: "el pago llegó cuando el pedido ya estaba cancelado o vencido",
@@ -119,6 +137,7 @@ function adminPath(row: OutboxRow): string {
   if (row.type.startsWith("payment_") || row.type === "webhook_signature_invalid")
     return "/admin/pagos";
   if (row.type === "stock_alert") return "/admin/productos";
+  if (row.type === "complaint_new") return "/admin/reclamos";
   if (row.type === "notification_dead" || row.type === "template_fallback")
     return "/admin/notificaciones";
   if (row.order_id) return `/admin/pedidos/${row.order_id}`;
@@ -164,6 +183,8 @@ export function buildVariables(
     channel: CHANNEL_LABELS[text(payload.channel)] ?? text(payload.channel),
     error: text(payload.error),
     template_key: text(payload.template_key),
+    complaint_number: text(payload.complaint_number),
+    complaint_kind: COMPLAINT_KIND_LABELS[text(payload.kind)] ?? text(payload.kind),
   };
 }
 
@@ -203,5 +224,7 @@ export function sampleVariables(
     channel: "correo",
     error: "provider_down",
     template_key: "order_shipped",
+    complaint_number: "REC-000123",
+    complaint_kind: "producto",
   };
 }

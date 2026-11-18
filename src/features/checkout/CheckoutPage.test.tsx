@@ -1,4 +1,5 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
+import { focusManager } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,6 +34,12 @@ const tax = vi.hoisted(() => ({ listTaxProfiles: vi.fn() }));
 vi.mock("@/features/account/tax/api", async (original) => ({
   ...(await original<typeof import("@/features/account/tax/api")>()),
   ...tax,
+}));
+// Textos legales (S15): por omisión no hay nada publicado, así que no se exige ni se muestra nada.
+const legal = vi.hoisted(() => ({ fetchRequiredLegal: vi.fn() }));
+vi.mock("@/features/legal/legalApi", async (original) => ({
+  ...(await original<typeof import("@/features/legal/legalApi")>()),
+  ...legal,
 }));
 vi.mock("./checkoutHooks", async (original) => ({
   ...(await original<typeof import("./checkoutHooks")>()),
@@ -71,6 +78,7 @@ beforeEach(() => {
   addresses.listActiveAddresses.mockResolvedValue([ADDRESS]);
   addresses.listDeliveryCountries.mockResolvedValue([{ code: "BO", name: "Bolivia" }]);
   tax.listTaxProfiles.mockResolvedValue([]);
+  legal.fetchRequiredLegal.mockResolvedValue({});
   api.previewCheckout.mockImplementation(async (choices: CheckoutChoices) =>
     ok({ outcome: "preview", checkout: previewFor(choices) }),
   );
@@ -544,5 +552,133 @@ describe("CheckoutPage · validación y envío", () => {
     expect(
       screen.queryByRole("button", { name: "Enviar pedido por WhatsApp" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("CheckoutPage · textos legales (S15)", () => {
+  const consent = () => screen.getByRole("checkbox", { name: /Leí y acepto/ });
+
+  it("sin textos publicados NO muestra la casilla, mantiene el aviso de siempre y manda el pedido sin versiones", async () => {
+    api.createOrder.mockResolvedValue(ok(createdResponse()));
+    renderPage();
+    await ready();
+    expect(screen.queryByRole("checkbox", { name: /Leí y acepto/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/Al enviar tu pedido aceptas/)).toBeInTheDocument();
+    await userEvent.click(button("Enviar pedido por WhatsApp"));
+    await screen.findByTestId("confirmation");
+    expect(api.createOrder.mock.calls[0]![4]).toEqual({});
+  });
+
+  it("con términos y privacidad publicados exige marcar la casilla: sin marcar NO envía, explica y lleva el foco a la casilla", async () => {
+    legal.fetchRequiredLegal.mockResolvedValue({ terms: 3, privacy: 2 });
+    renderPage();
+    await ready();
+    expect(consent()).not.toBeChecked();
+    // el aviso estático se reemplaza por la casilla con enlaces a los dos textos
+    expect(screen.queryByText(/Al enviar tu pedido aceptas/)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Términos y condiciones/ })).toHaveAttribute(
+      "href",
+      "/legal/terminos",
+    );
+    expect(screen.getByRole("link", { name: /Política de privacidad/ })).toHaveAttribute(
+      "href",
+      "/legal/privacidad",
+    );
+    await userEvent.click(button("Enviar pedido por WhatsApp"));
+    expect(api.createOrder).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("Para continuar, acepta los textos legales."),
+    ).toBeInTheDocument();
+    expect(consent()).toHaveFocus();
+  });
+
+  it("al marcar la casilla el pedido sale con la versión vigente de cada texto", async () => {
+    legal.fetchRequiredLegal.mockResolvedValue({ terms: 3, privacy: 2 });
+    api.createOrder.mockResolvedValue(ok(createdResponse()));
+    renderPage();
+    await ready();
+    await userEvent.click(consent());
+    await userEvent.click(button("Enviar pedido por WhatsApp"));
+    await screen.findByTestId("confirmation");
+    expect(api.createOrder.mock.calls[0]![4]).toEqual({ legal_terms: 3, legal_privacy: 2 });
+  });
+
+  it("si solo hay términos publicados, la casilla habla solo de ellos y no manda la privacidad", async () => {
+    legal.fetchRequiredLegal.mockResolvedValue({ terms: 1 });
+    api.createOrder.mockResolvedValue(ok(createdResponse()));
+    renderPage();
+    await ready();
+    expect(screen.queryByRole("link", { name: /Política de privacidad/ })).not.toBeInTheDocument();
+    await userEvent.click(consent());
+    await userEvent.click(button("Enviar pedido por WhatsApp"));
+    await screen.findByTestId("confirmation");
+    expect(api.createOrder.mock.calls[0]![4]).toEqual({ legal_terms: 1 });
+  });
+
+  it("si el servidor dice que un texto cambió (legal_outdated) NO crea nada, vuelve a pedir las versiones y hay que aceptar de nuevo", async () => {
+    legal.fetchRequiredLegal.mockResolvedValue({ terms: 3, privacy: 2 });
+    api.createOrder.mockResolvedValueOnce({
+      ok: false as const,
+      status: 409,
+      code: "legal_outdated",
+      message: "legal_outdated",
+    });
+    renderPage();
+    await ready();
+    await userEvent.click(consent());
+    // mientras tanto el administrador publicó la versión 4 de los términos
+    legal.fetchRequiredLegal.mockResolvedValue({ terms: 4, privacy: 2 });
+    await userEvent.click(button("Enviar pedido por WhatsApp"));
+    expect(
+      await screen.findByText(/Actualizamos los textos legales mientras leías/),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(consent()).not.toBeChecked());
+    expect(screen.queryByTestId("confirmation")).not.toBeInTheDocument();
+    // al aceptar de nuevo se manda la versión nueva
+    api.createOrder.mockResolvedValue(ok(createdResponse()));
+    await userEvent.click(consent());
+    await userEvent.click(button("Enviar pedido por WhatsApp"));
+    await screen.findByTestId("confirmation");
+    expect(api.createOrder.mock.calls.at(-1)![4]).toEqual({ legal_terms: 4, legal_privacy: 2 });
+  });
+
+  it("si un texto cambia DESPUÉS de marcar la casilla, la aceptación deja de valer (no se acepta lo que no se vio)", async () => {
+    legal.fetchRequiredLegal.mockResolvedValue({ terms: 3, privacy: 2 });
+    renderPage();
+    await ready();
+    await userEvent.click(consent());
+    expect(consent()).toBeChecked();
+    legal.fetchRequiredLegal.mockResolvedValue({ terms: 4, privacy: 2 });
+    // volver a la pestaña vuelve a consultar los textos vigentes
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(() => expect(consent()).not.toBeChecked());
+    await userEvent.click(button("Enviar pedido por WhatsApp"));
+    expect(api.createOrder).not.toHaveBeenCalled();
+  });
+
+  it("si cambia la PRIVACIDAD (no los términos) después de marcar la casilla, la aceptación también deja de valer", async () => {
+    legal.fetchRequiredLegal.mockResolvedValue({ terms: 3, privacy: 2 });
+    renderPage();
+    await ready();
+    await userEvent.click(consent());
+    expect(consent()).toBeChecked();
+    legal.fetchRequiredLegal.mockResolvedValue({ terms: 3, privacy: 3 });
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(() => expect(consent()).not.toBeChecked());
+  });
+
+  it("si no se pueden leer los textos legales lo dice y no deja enviar a ciegas", async () => {
+    legal.fetchRequiredLegal.mockRejectedValue(new Error("boom"));
+    renderPage();
+    expect(
+      await screen.findByText("No se pudieron cargar los textos legales. Intenta de nuevo."),
+    ).toBeInTheDocument();
+    expect(button("Enviar pedido por WhatsApp")).toBeDisabled();
   });
 });

@@ -1,8 +1,10 @@
 import { adminAnalytics } from "./analytics";
 import { adminAudit } from "./audit";
 import { adminCommon } from "./common";
+import { adminComplaints } from "./complaints";
 import { adminConfig } from "./config";
 import { adminDiscounts } from "./discounts";
+import { adminLegal } from "./legal";
 import { adminNotifications } from "./notifications";
 import { adminOrders } from "./orders";
 import { adminPayments } from "./payments";
@@ -26,6 +28,8 @@ export const adminMessages = {
   notifications: adminNotifications,
   payments: adminPayments,
   analytics: adminAnalytics,
+  legal: adminLegal,
+  complaints: adminComplaints,
 } as const;
 
 export type AdminMessages = typeof adminMessages;

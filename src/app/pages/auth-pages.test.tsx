@@ -1,11 +1,23 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
-import type { AuthResult } from "@/features/auth/auth-context";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AuthResult, RegisterInput } from "@/features/auth/auth-context";
 import { asCustomer, fakeAuth, WithAuth } from "@/test/auth-test-utils";
 import { LoginPage } from "./LoginPage";
 import { RegisterPage } from "./RegisterPage";
+
+// Textos legales (S15): por omisión no hay nada publicado, así que el registro no muestra ni exige la casilla.
+const legal = vi.hoisted(() => ({ fetchRequiredLegal: vi.fn() }));
+vi.mock("@/features/legal/legalApi", async (original) => ({
+  ...(await original<typeof import("@/features/legal/legalApi")>()),
+  ...legal,
+}));
+beforeEach(() => {
+  legal.fetchRequiredLegal.mockReset();
+  legal.fetchRequiredLegal.mockResolvedValue({});
+});
 
 function Where() {
   const l = useLocation();
@@ -17,16 +29,19 @@ function renderPage(
   auth = fakeAuth(),
   entry: string | { pathname: string; state: unknown } = "/login",
 ) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <WithAuth value={auth}>
-      <MemoryRouter initialEntries={[entry]}>
-        <Routes>
-          <Route path="/login" element={ui} />
-          <Route path="/registro" element={ui} />
-          <Route path="*" element={<Where />} />
-        </Routes>
-      </MemoryRouter>
-    </WithAuth>,
+    <QueryClientProvider client={client}>
+      <WithAuth value={auth}>
+        <MemoryRouter initialEntries={[entry]}>
+          <Routes>
+            <Route path="/login" element={ui} />
+            <Route path="/registro" element={ui} />
+            <Route path="*" element={<Where />} />
+          </Routes>
+        </MemoryRouter>
+      </WithAuth>
+    </QueryClientProvider>,
   );
 }
 
@@ -300,5 +315,81 @@ describe("RegisterPage", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("demasiado común");
     expect(alert).toHaveTextContent("secuencias");
+  });
+
+  describe("textos legales (S15)", () => {
+    const consent = () => screen.getByRole("checkbox", { name: /Leí y acepto/ });
+    const start = async (
+      signUp = vi.fn(async (_input: RegisterInput): Promise<AuthResult> => ({ ok: true })),
+    ) => {
+      const user = userEvent.setup();
+      renderPage(<RegisterPage />, fakeAuth({ signUp }), "/registro");
+      await screen.findByRole("checkbox", { name: /Leí y acepto/ });
+      await user.type(screen.getByLabelText("Email"), "ana@test.com");
+      await fill(user, "Chola-Cielo-2026!");
+      return { user, signUp };
+    };
+
+    it("sin textos publicados no hay casilla y el registro sale sin versiones", async () => {
+      const signUp = vi.fn(async (_input: RegisterInput): Promise<AuthResult> => ({ ok: true }));
+      const user = userEvent.setup();
+      renderPage(<RegisterPage />, fakeAuth({ signUp }), "/registro");
+      await user.type(screen.getByLabelText("Email"), "ana@test.com");
+      await fill(user, "Chola-Cielo-2026!");
+      expect(screen.queryByRole("checkbox", { name: /Leí y acepto/ })).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
+      await waitFor(() => expect(signUp).toHaveBeenCalledTimes(1));
+      expect(signUp.mock.calls[0]![0]).not.toHaveProperty("legal");
+    });
+
+    it("con textos publicados sin marcar la casilla NO crea la cuenta y lo explica", async () => {
+      legal.fetchRequiredLegal.mockResolvedValue({ terms: 2, privacy: 1 });
+      const { user, signUp } = await start();
+      await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
+      expect(
+        await screen.findByText("Para continuar, acepta los textos legales."),
+      ).toBeInTheDocument();
+      expect(signUp).not.toHaveBeenCalled();
+    });
+
+    it("con la casilla marcada manda la versión vigente de cada texto", async () => {
+      legal.fetchRequiredLegal.mockResolvedValue({ terms: 2, privacy: 1 });
+      const { user, signUp } = await start();
+      await user.click(consent());
+      await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
+      await waitFor(() => expect(signUp).toHaveBeenCalledTimes(1));
+      expect(signUp.mock.calls[0]![0]).toMatchObject({
+        legal: { legal_terms: 2, legal_privacy: 1 },
+      });
+    });
+
+    it("si el servidor dice que un texto cambió: lo explica, desmarca la casilla y manda la versión nueva al aceptar de nuevo", async () => {
+      legal.fetchRequiredLegal.mockResolvedValue({ terms: 2, privacy: 1 });
+      const signUp = vi
+        .fn<(input: RegisterInput) => Promise<AuthResult>>()
+        .mockResolvedValueOnce({ ok: false, code: "legal_outdated" })
+        .mockResolvedValue({ ok: true });
+      const { user } = await start(signUp);
+      await user.click(consent());
+      legal.fetchRequiredLegal.mockResolvedValue({ terms: 3, privacy: 1 });
+      await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(/Actualizamos los textos legales/);
+      await waitFor(() => expect(consent()).not.toBeChecked());
+      await user.click(consent());
+      await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
+      await waitFor(() => expect(signUp).toHaveBeenCalledTimes(2));
+      expect(signUp.mock.calls[1]![0]).toMatchObject({
+        legal: { legal_terms: 3, legal_privacy: 1 },
+      });
+    });
+
+    it("si no se pueden leer los textos lo dice y no deja crear la cuenta a ciegas", async () => {
+      legal.fetchRequiredLegal.mockRejectedValue(new Error("boom"));
+      renderPage(<RegisterPage />, fakeAuth(), "/registro");
+      expect(
+        await screen.findByText("No se pudieron cargar los textos legales. Intenta de nuevo."),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Crear cuenta" })).toBeDisabled();
+    });
   });
 });

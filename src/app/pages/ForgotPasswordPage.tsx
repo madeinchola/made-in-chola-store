@@ -1,3 +1,4 @@
+import { usePageMeta } from "@/features/storefront/seo/usePageMeta";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -9,6 +10,7 @@ import { t, type MessageKey } from "@/i18n";
 import { normalizeEmail } from "@shared/identity";
 
 export function ForgotPasswordPage() {
+  usePageMeta({ title: t("auth.forgot.title"), robots: "noindex,nofollow" });
   const [sent, setSent] = useState(false);
   const {
     register,

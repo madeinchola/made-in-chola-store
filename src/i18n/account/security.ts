@@ -40,6 +40,17 @@ export const acctSecurity = {
     success: "Contraseña actualizada. Cerramos tus otras sesiones por seguridad.",
     successRelogin: "Contraseña actualizada. Inicia sesión de nuevo con la contraseña nueva.",
   },
+  myData: {
+    title: "Descargar mis datos",
+    intro:
+      "Tienes derecho a saber qué guardamos de ti. Descarga un archivo con tus datos en un formato que cualquier programa puede leer.",
+    includes:
+      "Incluye tu perfil, direcciones, datos fiscales, pedidos (con sus productos, cobros e historial), lo que aceptaste, tus preferencias de avisos y tus reclamos. No incluye datos internos del negocio ni de otras personas.",
+    download: "Descargar mis datos",
+    downloading: "Preparando tu archivo…",
+    done: "Tu archivo se descargó.",
+    error: "No pudimos preparar tu archivo. Inténtalo de nuevo en unos minutos.",
+  },
   deactivate: {
     title: "Desactivar mi cuenta",
     intro: "Si desactivas tu cuenta ya no podrás ingresar ni comprar con ella.",

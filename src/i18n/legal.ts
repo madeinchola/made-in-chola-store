@@ -1,0 +1,41 @@
+/** Textos legales (Sprint 15): las páginas públicas, la casilla de aceptación y el aviso de «actualizamos los textos». */
+export const legal = {
+  page: {
+    version: "Versión {version} · vigente desde el {date}",
+    notPublished: "Este documento todavía no está publicado.",
+    notPublishedHelp: "Vuelve pronto: estamos terminando de redactarlo.",
+    loadError: "No se pudo cargar el documento.",
+    missingData: "[dato por definir]",
+    print: "Imprimir este documento",
+    otherDocs: "Otros documentos",
+  },
+  titles: {
+    terms: "Términos y condiciones",
+    privacy: "Política de privacidad",
+    cookies: "Política de cookies",
+    shipping: "Envíos",
+    returns: "Devoluciones y cambios",
+  },
+  consent: {
+    label: "Leí y acepto los {terms} y la {privacy}.",
+    labelTerms: "Leí y acepto los {terms}.",
+    labelPrivacy: "Leí y acepto la {privacy}.",
+    termsLink: "Términos y condiciones",
+    privacyLink: "Política de privacidad",
+    opensNew: "(se abre en otra pestaña)",
+    required: "Para continuar, acepta los textos legales.",
+    outdated: "Actualizamos los textos legales mientras leías. Léelos de nuevo y vuelve a aceptar.",
+    loadError: "No se pudieron cargar los textos legales. Intenta de nuevo.",
+  },
+  reaccept: {
+    title: "Actualizamos nuestros textos legales",
+    body: "Para seguir comprando necesitas aceptar la versión vigente de estos textos. Si algo cambió, aquí te lo contamos:",
+    change: "{title} (versión {version}): {note}",
+    changeNoNote: "{title} (versión {version})",
+    read: "Leer {title}",
+    accept: "Acepto",
+    later: "Ahora no",
+    saving: "Guardando…",
+    error: "No se pudo guardar tu aceptación. Intenta de nuevo.",
+  },
+} as const;

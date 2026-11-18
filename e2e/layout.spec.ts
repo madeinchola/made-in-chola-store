@@ -184,18 +184,27 @@ test.describe("pie del diseño (1366 px)", () => {
   test("los enlaces legales y de índice llevan a pantallas que existen (sin 404)", async ({
     page,
   }) => {
-    for (const [name, url] of [
-      ["Política de privacidad", /\/legal\/privacidad$/],
-      ["Reembolsos", /\/legal\/reembolsos$/],
-      ["Envíos", /\/legal\/envios$/],
-      ["Términos de servicio", /\/legal\/terminos$/],
-      ["Nosotros", /\/nosotros$/],
+    // Los textos legales (S15) y los reclamos son páginas reales con su título; «Nosotros» sigue siendo provisional.
+    for (const [name, url, title] of [
+      ["Política de privacidad", /\/legal\/privacidad$/, "Política de privacidad"],
+      ["Reembolsos", /\/legal\/reembolsos$/, "Devoluciones y cambios"],
+      ["Envíos", /\/legal\/envios$/, "Envíos"],
+      ["Términos de servicio", /\/legal\/terminos$/, "Términos y condiciones"],
+      ["Política de cookies", /\/legal\/cookies$/, "Política de cookies"],
+      ["Reclamos", /\/reclamos$/, "Reclamos"],
     ] as const) {
       await ready(page, "/login");
       await page.getByRole("contentinfo").getByRole("link", { name, exact: true }).click();
       await expect(page).toHaveURL(url);
-      await expect(page.getByText(/disponible pronto/i)).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
     }
+    await ready(page, "/login");
+    await page
+      .getByRole("contentinfo")
+      .getByRole("link", { name: "Nosotros", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/nosotros$/);
+    await expect(page.getByText(/disponible pronto/i)).toBeVisible();
   });
 
   test("el pie y la cabecera pasan axe también con el menú de cuenta y la tienda abiertos", async ({

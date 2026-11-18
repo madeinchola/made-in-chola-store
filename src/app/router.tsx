@@ -26,6 +26,8 @@ const orderDetail = () => import("@/features/account/orders/OrderDetailPage");
 // Bolsa: la página (y con ella sus líneas, el resumen y las sugerencias) no entra en la carga inicial.
 const cartPage = () => import("@/features/cart/CartPage");
 // Checkout y confirmación (S10): solo las descarga quien llega a pagar.
+const legalPages = () => import("@/features/legal/LegalPage");
+const complaintPage = () => import("@/features/complaints/ComplaintPage");
 const checkoutPage = () => import("@/features/checkout/CheckoutPage");
 const confirmationPage = () => import("@/features/checkout/OrderConfirmationPage");
 
@@ -80,13 +82,16 @@ export const routes: RouteObject[] = [
         ],
       },
       // Enlaces del pie del diseño: pantallas provisionales hasta que lleguen sus contenidos (nosotros/contacto con la
-      // diseñadora; legales en S15).
+      // diseñadora). Los textos legales (S15) son páginas reales, con su versión publicada desde el panel.
       { path: "nosotros", element: <PlaceholderPage /> },
       { path: "contacto", element: <PlaceholderPage /> },
-      { path: "legal/privacidad", element: <PlaceholderPage /> },
-      { path: "legal/reembolsos", element: <PlaceholderPage /> },
-      { path: "legal/envios", element: <PlaceholderPage /> },
-      { path: "legal/terminos", element: <PlaceholderPage /> },
+      { path: "legal/privacidad", element: lazyPage(legalPages, "PrivacyPage") },
+      { path: "legal/reembolsos", element: lazyPage(legalPages, "ReturnsPage") },
+      { path: "legal/envios", element: lazyPage(legalPages, "ShippingPage") },
+      { path: "legal/terminos", element: lazyPage(legalPages, "TermsPage") },
+      { path: "legal/cookies", element: lazyPage(legalPages, "CookiesPage") },
+      // Canal de reclamos (S15): formulario público, con o sin cuenta.
+      { path: "reclamos", element: lazyPage(complaintPage, "ComplaintPage") },
       // Guía de componentes: solo en desarrollo o en el build del E2E (nunca en producción).
       ...(UI_GUIDE_ENABLED
         ? [
@@ -358,6 +363,33 @@ export const routes: RouteObject[] = [
                 ),
               },
             ],
+          },
+          {
+            path: "legal",
+            // Textos legales (S15): la lista de documentos y el editor de cada uno (borrador, vista previa, publicar).
+            children: [
+              {
+                index: true,
+                element: lazyPage(
+                  () => import("@/features/admin/legal/LegalListPage"),
+                  "LegalListPage",
+                ),
+              },
+              {
+                path: ":kind",
+                element: lazyPage(
+                  () => import("@/features/admin/legal/LegalEditorPage"),
+                  "LegalEditorPage",
+                ),
+              },
+            ],
+          },
+          {
+            path: "reclamos",
+            element: lazyPage(
+              () => import("@/features/admin/complaints/ComplaintsPage"),
+              "ComplaintsPage",
+            ),
           },
           {
             path: "reportes",

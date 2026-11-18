@@ -15,6 +15,11 @@ export const adminConfig = {
         title: "Negocio y contacto",
         description: "Se muestran en el pie de la tienda y en los botones de contacto.",
       },
+      analytics: {
+        title: "Analítica y publicidad",
+        description:
+          "Conecta Meta (Pixel) y Google Analytics 4. Vacíos, la tienda no carga ninguna herramienta de terceros ni muestra el aviso de cookies. Con un ID, solo se activa cuando la clienta acepta las cookies de su categoría y puede retirar su permiso cuando quiera. El token de la API de conversiones de Meta NO va aquí: es un secreto del servidor.",
+      },
       social: {
         title: "Redes sociales",
         description: "Enlaces completos que empiecen con https://",
@@ -53,6 +58,26 @@ export const adminConfig = {
       contact_phone: {
         label: "Teléfono de contacto",
         hint: "Con código de país, sin espacios. Ej.: +59171234567",
+      },
+      legal_tax_id: {
+        label: "NIT del negocio",
+        hint: "Aparece en los términos y la política de privacidad. Déjalo vacío hasta tenerlo: el texto que lo cite no se podrá publicar.",
+      },
+      complaints_response_days: {
+        label: "Días para responder un reclamo",
+        hint: "Entre 1 y 60. Se muestra en el formulario de reclamos y marca como «vencido» el que pasa de ese plazo. Confírmalo con tu abogado.",
+      },
+      analytics_meta_pixel_id: {
+        label: "ID del Pixel de Meta",
+        hint: "Solo números (de 8 a 20 dígitos). Se activa con las cookies de marketing.",
+      },
+      analytics_ga4_id: {
+        label: "ID de medición de Google Analytics 4",
+        hint: "Empieza con G- (por ejemplo, G-ABC123DEF4), en mayúsculas. Se activa con las cookies de analítica.",
+      },
+      legal_address: {
+        label: "Dirección legal del negocio",
+        hint: "Aparece en los términos y la política de privacidad. Ej.: Av. Ejemplo 123, La Paz.",
       },
       whatsapp_orders: {
         label: "WhatsApp de pedidos",
@@ -179,6 +204,9 @@ export const adminConfig = {
       email: "Escribe un correo válido, por ejemplo info@tutienda.com.",
       phone: "Escribe el teléfono con código de país, por ejemplo +59171234567.",
       option: "Elige una de las opciones.",
+      pixel:
+        "El ID del Pixel son solo números (de 8 a 20 dígitos). Déjalo vacío para no usar Meta.",
+      ga4: "El ID de medición empieza con G- y va en mayúsculas, por ejemplo G-ABC123DEF4. Déjalo vacío para no usar GA4.",
       thresholdOrder: "El umbral crítico ({critical}) no puede superar al de aviso ({low}).",
       staleKey: "Otra persona cambió este ajuste mientras editabas. Recarga para ver su versión.",
       saveKey: "No se pudo guardar: {message}",

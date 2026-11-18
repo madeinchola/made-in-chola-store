@@ -15,6 +15,9 @@ import { acctOrders } from "./account/orders";
 import { acctNotifications } from "./account/notifications";
 import { cart } from "./cart";
 import { checkout } from "./checkout";
+import { complaints } from "./complaints";
+import { cookies } from "./cookies";
+import { legal } from "./legal";
 import { pay } from "./payments";
 import { shipping } from "./shipping";
 
@@ -101,6 +104,9 @@ export const es = {
       invalid_email: "El email no es válido.",
       invalid_phone: "El teléfono no es válido.",
       identifier_required: "Ingresa un email o un teléfono.",
+      legal_required: "Para crear la cuenta, acepta los textos legales.",
+      legal_outdated:
+        "Actualizamos los textos legales mientras llenabas el formulario. Léelos de nuevo y vuelve a aceptar.",
       network: "No pudimos conectar con el servidor. Revisa tu conexión.",
       unknown: "Ocurrió un error inesperado. Inténtalo de nuevo.",
       required: "Este campo es obligatorio.",
@@ -136,6 +142,9 @@ export const es = {
   shop: { home: shopHome, listing: shopListing, product: shopProduct, seo: shopSeo },
   cart,
   checkout,
+  legal,
+  cookies,
+  complaints,
   pay,
   shipping,
   acct: {

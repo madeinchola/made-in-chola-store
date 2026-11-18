@@ -23,21 +23,26 @@ const problem = (key: string, raw: string) => {
 };
 
 describe("definiciones", () => {
-  it("cubren exactamente las 33 claves que el panel muestra (S12: returns_enabled, return_window_days y order_undo_window_minutes; las 30 anteriores: 15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8 + 2 de pedidos de S10 + 2 de pagos de S11), sin repetir", () => {
+  it("cubren exactamente las 38 claves que el panel muestra (S15: legal_tax_id, legal_address, analytics_meta_pixel_id, analytics_ga4_id y complaints_response_days; S12: returns_enabled, return_window_days y order_undo_window_minutes; las 30 anteriores: 15 de S2 + tax_id_validation de S6 + 7 del carrito de S7 + 3 de envíos de S8 + 2 de pedidos de S10 + 2 de pagos de S11), sin repetir", () => {
     expect(SETTING_DEFS.map((d) => d.key).sort()).toEqual(
       [
+        "analytics_ga4_id",
+        "analytics_meta_pixel_id",
         "base_currency",
         "business_name",
         "cart_max_lines",
         "cart_max_qty_per_variant",
         "cart_max_reserved_units",
         "cart_max_units_per_ip",
+        "complaints_response_days",
         "contact_email",
         "contact_phone",
         "default_out_of_stock_behavior",
         "delivery_max_days_ahead",
         "delivery_min_lead_hours",
         "guest_cart_retention_days",
+        "legal_address",
+        "legal_tax_id",
         "open_orders_max",
         "order_reminder_hours",
         "order_undo_window_minutes",
@@ -391,5 +396,31 @@ describe("ajustes de la operación de pedidos (S12)", () => {
     expect(toJsonValue(d, "true")).toBe(true);
     expect(toJsonValue(d, "false")).toBe(false);
     expect(settingProblem(d, "quizás")).toBe("option");
+  });
+});
+
+describe("ajustes de analítica (S15)", () => {
+  it.each([
+    ["analytics_meta_pixel_id", "", null],
+    ["analytics_meta_pixel_id", "1234567890123", null],
+    ["analytics_meta_pixel_id", "12345678", null],
+    ["analytics_meta_pixel_id", "1234567", "pattern"],
+    ["analytics_meta_pixel_id", "123456789012345678901", "pattern"],
+    ["analytics_meta_pixel_id", "abc12345", "pattern"],
+    ["analytics_meta_pixel_id", "12345678');alert(1);//", "pattern"],
+    ["analytics_ga4_id", "", null],
+    ["analytics_ga4_id", "G-ABC123DEF4", null],
+    ["analytics_ga4_id", "G-ABC123", null],
+    ["analytics_ga4_id", "g-abc123def4", "pattern"],
+    ["analytics_ga4_id", "G-abc123def4", "pattern"],
+    ["analytics_ga4_id", "UA-12345-1", "pattern"],
+    ["analytics_ga4_id", "G-</script>", "pattern"],
+  ] as const)("%s = «%s» → %s (la misma regla que la base)", (key, value, expected) => {
+    expect(problem(key, value)).toBe(expected);
+  });
+
+  it("el mensaje dice cuál es el formato correcto de cada ID", () => {
+    expect(settingMessage("pattern", def("analytics_meta_pixel_id"))).toMatch(/solo números/);
+    expect(settingMessage("pattern", def("analytics_ga4_id"))).toMatch(/G-/);
   });
 });

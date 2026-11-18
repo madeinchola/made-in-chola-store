@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { escapeHtml, excerpt } from "./escape";
-import { handleRobots, handleSeo, handleSitemap } from "./handlers";
+import { handleFeed, handleRobots, handleSeo, handleSitemap } from "./handlers";
 import { isSlug, type SeoDeps } from "./supabaseRest";
 
 const SUPABASE = "https://abc.supabase.co";
@@ -529,5 +529,247 @@ describe("sitemap y robots", () => {
     }
     expect(text).not.toMatch(/Disallow: \/\s*$/m);
     expect(text).toContain("Sitemap: https://madeinchola.com/sitemap.xml");
+  });
+});
+
+describe("sitemap · textos legales (S15)", () => {
+  const sitemap = async (extra: Record<string, Table>, deps?: Partial<SeoDeps>) => {
+    const fake = fakeRest({ ...TABLES, public_products: [{ slug: "a" }], ...extra });
+    const response = await handleSitemap(new Request("https://madeinchola.com/sitemap.xml"), {
+      ...fake.deps,
+      ...deps,
+    });
+    return { response, xml: await response.text() };
+  };
+
+  it("lista SOLO los textos legales con una versión vigente (el que no está publicado no se indexa)", async () => {
+    const { xml } = await sitemap({
+      "rpc/public_legal_index": [
+        { kind: "terms", version: 3 },
+        { kind: "privacy", version: 1 },
+        { kind: "cookies", version: null },
+        { kind: "shipping", version: null },
+        { kind: "returns", version: 2 },
+      ],
+    });
+    for (const path of ["/legal/terminos", "/legal/privacidad", "/legal/reembolsos"])
+      expect(xml).toContain(`<loc>https://madeinchola.com${path}</loc>`);
+    for (const path of ["/legal/cookies", "/legal/envios"])
+      expect(xml).not.toContain(`https://madeinchola.com${path}`);
+  });
+
+  it("sin ningún texto publicado, el mapa sale igual y sin páginas legales", async () => {
+    const { response, xml } = await sitemap({ "rpc/public_legal_index": [] });
+    expect(response.status).toBe(200);
+    expect(xml).not.toContain("/legal/");
+    expect(xml).toContain("https://madeinchola.com/producto/a");
+  });
+
+  it("si los textos legales no se pueden leer, el mapa NO se cae: sale con todo lo demás", async () => {
+    const fake = fakeRest({ ...TABLES, public_products: [{ slug: "a" }] });
+    const failing = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes("public_legal_index")
+        ? new Response("boom", { status: 500 })
+        : fake.fetchFake(input, init),
+    );
+    const response = await handleSitemap(new Request("https://madeinchola.com/sitemap.xml"), {
+      env,
+      fetch: failing as unknown as typeof fetch,
+    });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("/producto/a");
+  });
+
+  it("un tipo de documento desconocido que llegara de la base no inventa una dirección", async () => {
+    const { xml } = await sitemap({
+      "rpc/public_legal_index": [
+        { kind: "otro", version: 1 },
+        { kind: "constructor", version: 1 },
+      ],
+    });
+    expect(xml).not.toContain("/legal/");
+  });
+});
+
+describe("feeds de catálogo (Google Merchant y Meta) — S15", () => {
+  const FEED_TABLES: Record<string, Table> = {
+    public_products: [
+      {
+        id: "p1",
+        slug: "chaqueta-japandi",
+        name: "Chaqueta <Japandi> & Cía",
+        price_bob: 560,
+        cover_path: "products/p1/portada.jpg",
+      },
+      { id: "p2", slug: "sin-imagen", name: "Sin imagen", price_bob: 100, cover_path: null },
+      {
+        id: "p3",
+        slug: "sin-precio",
+        name: "Sin precio",
+        price_bob: 0,
+        cover_path: "products/p3/x.jpg",
+      },
+    ],
+    public_product_detail: [
+      { id: "p1", description: "Cuero vegano.\u0007 Corte holgado.\nSegunda línea." },
+      { id: "p2", description: null },
+      { id: "p3", description: "x" },
+    ],
+    public_product_variants: [
+      { id: "v1", product_id: "p1", color_id: "c1", size_id: "s1", stock_status: "in_stock" },
+      { id: "v2", product_id: "p1", color_id: "c2", size_id: "s1", stock_status: "low" },
+      { id: "v3", product_id: "p1", color_id: "c2", size_id: "s2", stock_status: "out" },
+      { id: "v4", product_id: "p2", color_id: "c3", size_id: null, stock_status: "in_stock" },
+      { id: "v5", product_id: "p3", color_id: "c4", size_id: null, stock_status: "in_stock" },
+    ],
+    public_product_colors: [
+      { id: "c1", name: "Blanco" },
+      { id: "c2", name: "Negro" },
+      { id: "c3", name: "Rojo" },
+      { id: "c4", name: "Azul" },
+    ],
+    public_product_sizes: [
+      { id: "s1", label: "M" },
+      { id: "s2", label: "L" },
+    ],
+    public_product_images: [
+      { product_id: "p1", color_id: "c1", path: "products/p1/blanco.jpg", sort_order: 1 },
+      { product_id: "p1", color_id: null, path: "products/p1/general ñ.jpg", sort_order: 2 },
+    ],
+    public_product_categories: [{ product_id: "p1", category_id: "k2" }],
+    public_categories: [{ id: "k2", name: "Chaquetas" }],
+    public_store_settings: [{ key: "business_name", value: "Made In Chola" }],
+  };
+  const feed = async (target: string, tables = FEED_TABLES, init: RequestInit = {}) => {
+    const fake = fakeRest(tables);
+    const response = await handleFeed(
+      new Request(`https://madeinchola.com/api/feed?target=${target}`, init),
+      fake.deps,
+    );
+    return { response, xml: await response.text(), fake };
+  };
+  const items = (xml: string) => [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => m[1]!);
+  const field = (item: string, name: string) =>
+    new RegExp(`<g:${name}>([\\s\\S]*?)</g:${name}>`).exec(item)?.[1];
+
+  it("un <item> por VARIANTE con su identificador, el del producto como grupo, precio en bolivianos, color y talla", async () => {
+    const { response, xml } = await feed("google");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/xml; charset=utf-8");
+    expect(response.headers.get("Cache-Control")).toContain("s-maxage=900");
+    expect(xml).toContain('<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">');
+    // p2 (sin imagen) y p3 (sin precio) NO salen: Google y Meta rechazan el feed entero por un item incompleto
+    const list = items(xml);
+    expect(list.map((i) => field(i, "id"))).toEqual(["v1", "v2", "v3"]);
+    expect(new Set(list.map((i) => field(i, "item_group_id")))).toEqual(new Set(["p1"]));
+    expect(field(list[0]!, "price")).toBe("560.00 BOB");
+    expect(field(list[0]!, "link")).toBe("https://madeinchola.com/producto/chaqueta-japandi");
+    expect(field(list[0]!, "color")).toBe("Blanco");
+    expect(field(list[0]!, "size")).toBe("M");
+    expect(field(list[0]!, "condition")).toBe("new");
+    expect(field(list[0]!, "product_type")).toBe("Chaquetas");
+    expect(field(list[0]!, "brand")).toBe("Made In Chola");
+  });
+
+  it("la disponibilidad NO revela cantidades: «pocas unidades» sigue siendo «in stock» y solo lo agotado es «out of stock»", async () => {
+    const list = items((await feed("meta")).xml);
+    expect(list.map((i) => field(i, "availability"))).toEqual([
+      "in stock",
+      "in stock",
+      "out of stock",
+    ]);
+  });
+
+  it("la imagen es la del color de la variante, y si ese color no tiene, la general del producto o la portada", async () => {
+    const list = items((await feed("google")).xml);
+    expect(field(list[0]!, "image_link")).toBe(
+      "https://abc.supabase.co/storage/v1/object/public/product-images/products/p1/blanco.jpg",
+    );
+    // v2/v3 (Negro) no tienen imagen propia → la general (sin color), con el nombre codificado
+    expect(field(list[1]!, "image_link")).toBe(
+      "https://abc.supabase.co/storage/v1/object/public/product-images/products/p1/general%20%C3%B1.jpg",
+    );
+  });
+
+  it("el texto se escapa y se limpia: sin etiquetas, sin & crudos y sin caracteres de control (un XML con ellos se rechaza entero)", async () => {
+    const { xml } = await feed("google");
+    expect(xml).not.toContain("<Japandi>");
+    expect(xml).toContain("Chaqueta &lt;Japandi&gt; &amp; Cía");
+    expect(xml).not.toMatch(/(?![\t\n\r])\p{Cc}/u);
+    const description = field(items(xml)[0]!, "description")!;
+    expect(description).toBe("Cuero vegano. Corte holgado. Segunda línea.");
+  });
+
+  it("sin descripción usa una por omisión con la marca", async () => {
+    const tables = {
+      ...FEED_TABLES,
+      public_products: [{ ...FEED_TABLES.public_products![1]!, cover_path: "products/p2/a.jpg" }],
+    };
+    const list = items((await feed("google", tables)).xml);
+    expect(field(list[0]!, "description")).toBe(
+      "Sin imagen de Made In Chola, hecho a mano en Bolivia.",
+    );
+  });
+
+  it("Google exige decir que no hay código de barras; Meta no lo usa", async () => {
+    expect(items((await feed("google")).xml)[0]).toContain(
+      "<g:identifier_exists>no</g:identifier_exists>",
+    );
+    expect(items((await feed("meta")).xml)[0]).not.toContain("identifier_exists");
+  });
+
+  it("recorta títulos y descripciones larguísimos al tope de cada proveedor", async () => {
+    const tables = {
+      ...FEED_TABLES,
+      public_products: [{ ...FEED_TABLES.public_products![0]!, name: "N".repeat(400) }],
+      public_product_detail: [{ id: "p1", description: "D".repeat(9000) }],
+    };
+    const item = items((await feed("google", tables)).xml)[0]!;
+    expect(field(item, "title")!.length).toBeLessThanOrEqual(150);
+    expect(field(item, "description")!.length).toBeLessThanOrEqual(5000);
+  });
+
+  it("pagina por bloques de 1000: 2 300 variantes salen completas y sin repetidos", async () => {
+    const variants = Array.from({ length: 2300 }, (_, i) => ({
+      id: `v${String(i).padStart(5, "0")}`,
+      product_id: "p1",
+      color_id: "c1",
+      size_id: "s1",
+      stock_status: "in_stock",
+    }));
+    const { xml } = await feed("google", { ...FEED_TABLES, public_product_variants: variants });
+    const ids = items(xml).map((i) => field(i, "id"));
+    expect(ids).toHaveLength(2300);
+    expect(new Set(ids).size).toBe(2300);
+  });
+
+  it("solo usa la clave anónima y vistas públicas (nunca tablas internas, ni costos ni cantidades)", async () => {
+    const { fake } = await feed("google");
+    for (const call of fake.calls) {
+      expect(call.headers.apikey).toBe("anon-key");
+      expect(new URL(call.url).pathname).toMatch(/\/rest\/v1\/public_[a-z_]+$/);
+    }
+    expect(fake.calls.map((c) => c.url).join(" ")).not.toMatch(/cost|stock_on_hand|available/);
+  });
+
+  it("un destino desconocido es 404; solo GET y HEAD; HEAD no trae cuerpo; si la base falla, 502 genérico; sin configuración, 503", async () => {
+    expect((await feed("otro")).response.status).toBe(404);
+    expect((await feed("constructor")).response.status).toBe(404);
+    expect((await feed("google", FEED_TABLES, { method: "POST" })).response.status).toBe(405);
+    const head = await feed("google", FEED_TABLES, { method: "HEAD" });
+    expect(head.response.status).toBe(200);
+    expect(head.xml).toBe("");
+    const broken = fakeRest(FEED_TABLES, { fail: true });
+    const failed = await handleFeed(
+      new Request("https://madeinchola.com/api/feed?target=google"),
+      broken.deps,
+    );
+    expect(failed.status).toBe(502);
+    expect(await failed.text()).toBe("Servicio no disponible");
+    const noConfig = await handleFeed(
+      new Request("https://madeinchola.com/api/feed?target=google"),
+      { env: {}, fetch },
+    );
+    expect(noConfig.status).toBe(503);
   });
 });

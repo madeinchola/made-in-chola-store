@@ -1,5 +1,6 @@
 import { createContext } from "react";
 import type { Session } from "@supabase/supabase-js";
+import type { AcceptedLegal } from "@/features/legal/types";
 
 export interface Profile {
   id: string;
@@ -25,6 +26,8 @@ export interface RegisterInput {
   phone?: string;
   phoneCountry?: string;
   password: string;
+  /** Las versiones de los textos legales que aceptó (el servidor exige las vigentes). */
+  legal?: AcceptedLegal;
 }
 
 export interface AuthContextValue {

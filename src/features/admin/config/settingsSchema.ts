@@ -3,7 +3,15 @@ import { charLength, btrimSpaces, EMAIL_RE, HTTPS_URL_RE, INT_RE, PHONE_E164_RE 
 
 export type SettingType = "text" | "int" | "bool" | "url" | "email" | "phone_e164";
 export type SettingSection =
-  "business" | "social" | "pdp" | "inventory" | "customers" | "cart" | "shipping" | "orders";
+  | "business"
+  | "analytics"
+  | "social"
+  | "pdp"
+  | "inventory"
+  | "customers"
+  | "cart"
+  | "shipping"
+  | "orders";
 export type SettingControl = "input" | "textarea" | "number" | "select";
 
 export interface SettingDef {
@@ -18,6 +26,8 @@ export interface SettingDef {
   options?: readonly string[];
   /** Obligatorio en la interfaz aunque la base acepte vacío (no es una regla de la base). */
   requiredUi?: true;
+  /** Formato que la base exige a un texto (vacío siempre vale): el panel dice lo mismo antes de enviar. */
+  pattern?: { regex: RegExp; messageKey: "pixel" | "ga4" };
   /** Rango [mínimo, máximo] que la base impone a un entero (su trigger lo rechaza fuera de él): el panel dice lo mismo. */
   range?: readonly [min: number, max: number];
 }
@@ -27,6 +37,32 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   { key: "business_name", type: "text", section: "business", control: "input", requiredUi: true },
   { key: "contact_email", type: "email", section: "business", control: "input" },
   { key: "contact_phone", type: "phone_e164", section: "business", control: "input" },
+  // Datos legales del negocio (S15): los textos legales los citan como {{nit}} y {{direccion}}.
+  { key: "legal_tax_id", type: "text", section: "business", control: "input" },
+  { key: "legal_address", type: "text", section: "business", control: "input" },
+  // Reclamos (S15): el plazo que se promete en el formulario. Los rangos son los de `store_settings_validate_s15()` en la base.
+  {
+    key: "complaints_response_days",
+    type: "int",
+    section: "orders",
+    control: "number",
+    range: [1, 60],
+  },
+  // Analítica (S15): vacíos = la tienda no carga nada de terceros ni muestra el aviso de cookies.
+  {
+    key: "analytics_meta_pixel_id",
+    type: "text",
+    section: "analytics",
+    control: "input",
+    pattern: { regex: /^[0-9]{8,20}$/, messageKey: "pixel" },
+  },
+  {
+    key: "analytics_ga4_id",
+    type: "text",
+    section: "analytics",
+    control: "input",
+    pattern: { regex: /^G-[A-Z0-9]{6,14}$/, messageKey: "ga4" },
+  },
   { key: "whatsapp_orders", type: "phone_e164", section: "business", control: "input" },
   { key: "base_currency", type: "text", section: "business", control: "input", readOnly: true },
   { key: "social_instagram", type: "url", section: "social", control: "input" },
@@ -129,7 +165,7 @@ export const LOW_KEY = "stock_low_threshold";
 export const CRITICAL_KEY = "stock_critical_threshold";
 
 export type SettingProblem =
-  "required" | "too_long" | "int" | "range" | "url" | "email" | "phone" | "option";
+  "required" | "too_long" | "int" | "range" | "url" | "email" | "phone" | "option" | "pattern";
 
 /**
  * Deja el texto como la base lo acepta: recorta espacios; el correo va en minúsculas (la base exige `lower(btrim())`); el
@@ -154,7 +190,9 @@ export function settingProblem(def: SettingDef, value: string): SettingProblem |
   switch (def.type) {
     case "text":
       if (def.requiredUi && value === "") return "required";
-      return charLength(value) > 4000 ? "too_long" : null;
+      if (charLength(value) > 4000) return "too_long";
+      if (def.pattern && value !== "" && !def.pattern.regex.test(value)) return "pattern";
+      return null;
     case "int": {
       if (!INT_RE.test(value)) return "int";
       if (def.range && (Number(value) < def.range[0] || Number(value) > def.range[1]))
@@ -199,6 +237,10 @@ export function settingMessage(problem: SettingProblem, def?: SettingDef): strin
       return t("admin.config.settings.errors.phone");
     case "option":
       return t("admin.config.settings.errors.option");
+    case "pattern":
+      return def?.pattern?.messageKey === "ga4"
+        ? t("admin.config.settings.errors.ga4")
+        : t("admin.config.settings.errors.pixel");
   }
 }
 

@@ -1,4 +1,6 @@
+import { usePageMeta } from "@/features/storefront/seo/usePageMeta";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -9,6 +11,10 @@ import { PasswordStrength } from "@/components/ui/password-strength";
 import { useAuth } from "@/features/auth/useAuth";
 import { authErrorMessage } from "@/features/auth/messages";
 import { safeRedirectPath } from "@/features/auth/redirect";
+import { LegalConsent } from "@/features/legal/LegalConsent";
+import { sameRequired, toAccepted } from "@/features/legal/legalApi";
+import type { RequiredLegal } from "@/features/legal/types";
+import { legalKeys, useLegalRequired } from "@/features/legal/hooks";
 import { COUNTRIES } from "@/lib/countries";
 import { applyPhoneMask } from "@/lib/phoneMask";
 import { t, type MessageKey } from "@/i18n";
@@ -27,12 +33,23 @@ interface FormValues {
 type Mode = "email" | "phone";
 
 export function RegisterPage() {
+  usePageMeta({ title: t("auth.register.title"), robots: "noindex,nofollow" });
   const { signUp, status } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = safeRedirectPath((location.state as { from?: unknown } | null)?.from);
   const [mode, setMode] = useState<Mode>("email");
   const [formError, setFormError] = useState<string | null>(null);
+  // Textos legales: la casilla solo aparece si hay textos publicados que exigen aceptación. Lo que se manda es siempre la
+  // versión VIGENTE al enviar (la consulta no se guarda), así que un texto que cambió mientras se llenaba se detecta.
+  const queryClient = useQueryClient();
+  const legalRequired = useLegalRequired();
+  const required = legalRequired.data ?? {};
+  const needsConsent = required.terms !== undefined || required.privacy !== undefined;
+  // Se guardan las versiones que había al marcar la casilla: si un texto cambia después, la aceptación deja de valer.
+  const [acceptedVersions, setAcceptedVersions] = useState<RequiredLegal | null>(null);
+  const accepted = acceptedVersions !== null && sameRequired(acceptedVersions, required);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -54,15 +71,29 @@ export function RegisterPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
+    if (needsConsent && !accepted) {
+      setConsentError(t("legal.consent.required"));
+      return;
+    }
+    setConsentError(null);
     const result = await signUp({
       fullName: values.fullName.trim(),
       ...(mode === "email"
         ? { email: values.email }
         : { phone: values.phone, phoneCountry: values.country }),
       password: values.password,
+      ...(needsConsent ? { legal: toAccepted(required) } : {}),
     });
-    if (result.ok) navigate(from, { replace: true });
-    else setFormError(authErrorMessage(result));
+    if (result.ok) {
+      navigate(from, { replace: true });
+      return;
+    }
+    if (result.code === "legal_outdated" || result.code === "legal_required") {
+      // Los textos cambiaron mientras se llenaba el formulario: se vuelven a pedir y hay que aceptar de nuevo.
+      setAcceptedVersions(null);
+      await queryClient.invalidateQueries({ queryKey: legalKeys.required() });
+    }
+    setFormError(authErrorMessage(result));
   });
 
   return (
@@ -182,7 +213,27 @@ export function RegisterPage() {
             })}
           />
         </Field>
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {legalRequired.isError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {t("legal.consent.loadError")}
+          </p>
+        ) : (
+          <LegalConsent
+            required={required}
+            checked={accepted}
+            onChange={(value) => {
+              setAcceptedVersions(value ? required : null);
+              if (value) setConsentError(null);
+            }}
+            error={consentError}
+            id="register-legal"
+          />
+        )}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isSubmitting || legalRequired.isPending || legalRequired.isError}
+        >
           {isSubmitting ? t("auth.register.submitting") : t("auth.register.submit")}
         </Button>
       </form>

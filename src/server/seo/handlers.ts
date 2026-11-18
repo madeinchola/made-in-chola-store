@@ -6,6 +6,7 @@ import {
   shopPage,
   type SeoPage,
 } from "./pages";
+import { buildFeed, type FeedTarget } from "./feed";
 import { buildRobots, buildSitemap } from "./sitemap";
 import { isSlug, SeoConfigError, type SeoDeps } from "./supabaseRest";
 
@@ -112,4 +113,26 @@ export function handleRobots(request: Request, deps: SeoDeps): Response {
       ...SECURITY,
     },
   });
+}
+
+/** `/api/feed?target=google|meta` (lo invoca la rewrite de `/feeds/google.xml` y `/feeds/meta.xml`). Datos públicos: puede cachearse. */
+export async function handleFeed(request: Request, deps: SeoDeps): Promise<Response> {
+  if (request.method !== "GET" && request.method !== "HEAD")
+    return plain(405, "Método no permitido");
+  const url = new URL(request.url);
+  const target = url.searchParams.get("target");
+  if (target !== "google" && target !== "meta") return plain(404, "No encontrado");
+  try {
+    const xml = await buildFeed(deps, url.origin, target as FeedTarget);
+    return new Response(request.method === "HEAD" ? null : xml, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
+        "Cache-Control": "public, s-maxage=900, stale-while-revalidate=3600",
+        ...SECURITY,
+      },
+    });
+  } catch (error) {
+    return plain(error instanceof SeoConfigError ? 503 : 502, "Servicio no disponible");
+  }
 }

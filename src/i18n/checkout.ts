@@ -97,6 +97,12 @@ export const checkout = {
     coupon: "¿Tienes un cupón?",
     couponLabel: "Cupón",
   },
+  bump: {
+    title: "Suma a tu pedido",
+    add: "Agregar",
+    adding: "Agregando…",
+    addLabel: "Agregar {name} por {price} a tu pedido",
+  },
   submit: {
     whatsapp: "Enviar pedido por WhatsApp",
     generic: "Confirmar pedido",

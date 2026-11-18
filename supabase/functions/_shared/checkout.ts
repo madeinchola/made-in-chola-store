@@ -1,4 +1,5 @@
 import { z } from "https://esm.sh/zod@3.25.76";
+import { legalFields } from "./legal.ts";
 
 /**
  * Lógica pura de la función `checkout` (sin red ni base): el esquema de las peticiones, los topes y qué función SQL corresponde a
@@ -53,6 +54,8 @@ export const checkoutRequestSchema = z.discriminatedUnion("action", [
       // El total que la persona VIO: si ya no es el que corresponde, no se crea y se le muestra la diferencia (BR-CHK-04).
       expected_total: z.number().min(0).max(1_000_000_000),
       idempotency_key: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
+      // Las versiones de los textos legales que la persona aceptó (S15): se comprueban contra lo vigente antes de crear el pedido.
+      ...legalFields,
     })
     .strict(),
   z

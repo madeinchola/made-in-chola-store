@@ -281,17 +281,32 @@ describe("cabecera según sesión", () => {
     expect(screen.getByRole("banner")).toHaveClass("border-b", "bg-background");
     expect(screen.getByRole("banner")).not.toHaveClass("absolute");
   });
-  it("las pantallas que enlaza el pie existen (provisionales hasta S15) y no dan 404", () => {
+  it("las pantallas provisionales que enlaza el pie (nosotros y contacto) existen y no dan 404", () => {
     for (const [path, name] of [
       ["/nosotros", /disponible pronto/i],
       ["/contacto", /disponible pronto/i],
-      ["/legal/privacidad", /disponible pronto/i],
-      ["/legal/reembolsos", /disponible pronto/i],
-      ["/legal/envios", /disponible pronto/i],
-      ["/legal/terminos", /disponible pronto/i],
     ] as const) {
       const { unmount } = renderAt(path);
       expect(screen.getByText(name), path).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Página no encontrada" }),
+      ).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+  it("los cinco textos legales (S15) tienen su página real, con su título, y no dan 404", async () => {
+    for (const [path, title] of [
+      ["/legal/terminos", "Términos y condiciones"],
+      ["/legal/privacidad", "Política de privacidad"],
+      ["/legal/cookies", "Política de cookies"],
+      ["/legal/envios", "Envíos"],
+      ["/legal/reembolsos", "Devoluciones y cambios"],
+    ] as const) {
+      const { unmount } = renderAt(path);
+      expect(
+        await screen.findByRole("heading", { level: 1, name: title }),
+        path,
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("heading", { name: "Página no encontrada" }),
       ).not.toBeInTheDocument();

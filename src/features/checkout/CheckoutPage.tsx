@@ -15,8 +15,14 @@ import {
 import { useActiveAddresses, useDeliveryCountries } from "@/features/account/addresses/hooks";
 import type { Address } from "@/features/account/addresses/types";
 import { useTaxProfiles } from "@/features/account/tax/hooks";
+import { useAnalyticsConfig } from "@/features/analytics/config";
+import { afterOrderCreated, markPurchaseTracked } from "@/features/analytics/purchase";
 import { useAuth } from "@/features/auth/useAuth";
 import { useCart } from "@/features/cart/cart-context";
+import { LegalConsent } from "@/features/legal/LegalConsent";
+import { legalKeys, useLegalRequired } from "@/features/legal/hooks";
+import { sameRequired, toAccepted } from "@/features/legal/legalApi";
+import type { RequiredLegal } from "@/features/legal/types";
 import { formatCartMoney } from "@/features/cart/format";
 import type { ScheduleChoice } from "@/features/shipping/destination";
 import { track } from "@/features/storefront/analytics/track";
@@ -40,6 +46,7 @@ import {
 } from "./checkoutForm";
 import { useCheckoutPreview, useShippingMethods } from "./checkoutHooks";
 import { ContactSection, type ContactRefs } from "./ContactSection";
+import { OrderBump } from "./OrderBump";
 import { OrderSummary } from "./OrderSummary";
 import { PaymentSection } from "./PaymentSection";
 import { RevalidationDialog } from "./RevalidationDialog";
@@ -94,7 +101,8 @@ export function CheckoutPage() {
   usePageMeta({ title: t("checkout.title"), robots: "noindex,nofollow" });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
+  const analytics = useAnalyticsConfig();
   const cart = useCart();
   const methodsQuery = useShippingMethods();
   const addressesQuery = useActiveAddresses(profile?.id);
@@ -114,6 +122,15 @@ export function CheckoutPage() {
   const [revalidation, setRevalidation] = useState<Revalidation | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [addressTarget, setAddressTarget] = useState<AddressFormTarget | null>(null);
+
+  // Textos legales: la casilla solo aparece si hay textos publicados que exigen aceptación. La aceptación vale para las versiones
+  // que la persona tenía delante al marcarla: si un texto cambia después, hay que aceptar de nuevo.
+  const legalRequired = useLegalRequired();
+  const required = legalRequired.data ?? {};
+  const needsConsent = required.terms !== undefined || required.privacy !== undefined;
+  const [acceptedVersions, setAcceptedVersions] = useState<RequiredLegal | null>(null);
+  const accepted = acceptedVersions !== null && sameRequired(acceptedVersions, required);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   const submittingRef = useRef(false);
   const keyRef = useRef({ signature: "", key: newIdempotencyKey() });
@@ -259,6 +276,12 @@ export function CheckoutPage() {
       );
       return;
     }
+    if (needsConsent && !accepted) {
+      setConsentError(t("legal.consent.required"));
+      document.getElementById("checkout-legal")?.focus();
+      return;
+    }
+    setConsentError(null);
     const expected = expectedOverride ?? preview.totals.total;
     if (
       expected === null ||
@@ -285,8 +308,16 @@ export function CheckoutPage() {
             check.value.phone,
           ]),
         ),
+        needsConsent ? toAccepted(required) : {},
       );
       if (!result.ok) {
+        if (result.code === "legal_outdated" || result.code === "legal_required") {
+          // Un texto cambió mientras se llenaba el formulario: se pide de nuevo y hay que aceptar la versión vigente.
+          setAcceptedVersions(null);
+          void queryClient.invalidateQueries({ queryKey: legalKeys.required() });
+          setConsentError(t("legal.consent.outdated"));
+          return;
+        }
         setSubmitError(
           result.status === 401
             ? t("checkout.errors.login")
@@ -300,15 +331,23 @@ export function CheckoutPage() {
       }
       const data = result.data;
       if (data.outcome === "created" || data.outcome === "existing") {
-        track({
-          name: "purchase",
-          transactionId: data.order.number,
-          value: data.order.total,
-          currency: data.order.currency,
-          items: data.order.items.length,
-          shipping: data.order.shipping_cost - data.order.shipping_discount,
-          discount: data.order.discount_total,
-        });
+        // `purchase` se cuenta UNA vez por pedido (un reintento con la misma llave devuelve «existing» y no repite nada).
+        if (markPurchaseTracked(data.order.number)) {
+          track({
+            name: "purchase",
+            transactionId: data.order.number,
+            value: data.order.total,
+            currency: data.order.currency,
+            items: data.order.items.length,
+            shipping: data.order.shipping_cost - data.order.shipping_discount,
+            discount: data.order.discount_total,
+          });
+          if (data.outcome === "created")
+            afterOrderCreated(data.order.number, {
+              token: session?.access_token ?? null,
+              metaPixelId: analytics.metaPixelId,
+            });
+        }
         void cart.store.refetch();
         void queryClient.invalidateQueries({ queryKey: ["account", "orders"] });
         navigate(storeRoutes.order(data.order.number), {
@@ -553,11 +592,27 @@ export function CheckoutPage() {
                 {submitError}
               </p>
             )}
+            {legalRequired.isError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {t("legal.consent.loadError")}
+              </p>
+            ) : (
+              <LegalConsent
+                required={required}
+                checked={accepted}
+                onChange={(value) => {
+                  setAcceptedVersions(value ? required : null);
+                  if (value) setConsentError(null);
+                }}
+                error={consentError}
+                id="checkout-legal"
+              />
+            )}
             <Button
               type="submit"
               size="lg"
               className="min-h-12 w-full"
-              disabled={submitting || stale}
+              disabled={submitting || stale || legalRequired.isPending || legalRequired.isError}
             >
               {submitting
                 ? t("checkout.submit.sending")
@@ -565,12 +620,18 @@ export function CheckoutPage() {
                   ? t("checkout.submit.calculating")
                   : t(submitLabelKey(provider))}
             </Button>
-            <p className="text-xs text-muted-foreground">{t("checkout.submit.help")}</p>
+            {!needsConsent && (
+              <p className="text-xs text-muted-foreground">{t("checkout.submit.help")}</p>
+            )}
           </div>
         </form>
 
         <aside className="min-w-0 lg:sticky lg:top-6 lg:max-h-[calc(100svh-3rem)] lg:overflow-y-auto">
           <OrderSummary preview={preview} refreshing={previewQuery.isFetching} />
+          {/* «Suma a tu pedido» (S15): un clic y el pago recalcula el total (el servidor vuelve a revisar stock y precio al crear). */}
+          <div className="mt-6">
+            <OrderBump onAdded={() => void refreshPreview()} />
+          </div>
         </aside>
       </div>
 

@@ -71,7 +71,7 @@ describe("Footer", () => {
     expect(within(index).queryByRole("link", { name: "Hombre" })).not.toBeInTheDocument();
   });
 
-  it("Legal: privacidad, reembolsos, envíos y términos apuntan a sus pantallas", async () => {
+  it("Legal: privacidad, reembolsos, envíos, términos, cookies y reclamos apuntan a sus pantallas", async () => {
     renderWithApp(<Footer />);
     const legal = await column("Legal");
     expect(
@@ -83,6 +83,8 @@ describe("Footer", () => {
       ["Reembolsos", "/legal/reembolsos"],
       ["Envíos", "/legal/envios"],
       ["Términos de servicio", "/legal/terminos"],
+      ["Política de cookies", "/legal/cookies"],
+      ["Reclamos", "/reclamos"],
     ]);
   });
 

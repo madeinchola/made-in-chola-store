@@ -15,28 +15,46 @@ const TOTAL = 27;
 const SEED_CODE = /^[A-Z]{3}-\d{3}$/;
 let parked: string[] = [];
 
+/**
+ * Cambia el estado de los productos en tandas: con cientos de productos de prueba en la base, una sola petición con todos los
+ * identificadores en la dirección pasa del límite de longitud y la base la rechaza (400), y con ella caía todo el archivo.
+ * Devuelve el peor código de respuesta.
+ */
+async function setStatus(ids: string[], status: "draft" | "active"): Promise<number> {
+  let worst = 0;
+  for (let i = 0; i < ids.length; i += 100) {
+    const batch = await svcRest("PATCH", `products?id=in.(${ids.slice(i, i + 100).join(",")})`, {
+      status,
+    });
+    worst = Math.max(worst, batch.status);
+  }
+  return worst;
+}
+
 // Otros E2E dejan productos activos en la base compartida: aquí se apartan (a borrador) mientras corre este archivo,
 // para que los números calculados a mano desde la semilla sigan siendo exactos, y se devuelven al terminar.
 test.beforeAll(async () => {
-  const active = await svcRest(
-    "GET",
-    "products?select=id,code&status=eq.active&archived_at=is.null",
-  );
-  parked = (active.body as { id: string; code: string }[])
-    .filter((product) => !SEED_CODE.test(product.code))
-    .map((product) => product.id);
-  if (parked.length > 0) {
-    const hidden = await svcRest("PATCH", `products?id=in.(${parked.join(",")})`, {
-      status: "draft",
-    });
-    expect(hidden.status).toBeLessThan(300);
+  // con cientos de productos de prueba, apartarlos y devolverlos tarda mucho más que los 30 s de un gancho normal
+  test.setTimeout(600_000);
+  // la API devuelve como mucho 1 000 filas por petición: se pide por páginas para no dejar productos sin apartar
+  const active: { id: string; code: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const page = await svcRest(
+      "GET",
+      `products?select=id,code&status=eq.active&archived_at=is.null&order=id&limit=1000&offset=${from}`,
+    );
+    const rows = page.body as { id: string; code: string }[];
+    active.push(...rows);
+    if (rows.length < 1000) break;
   }
+  parked = active.filter((product) => !SEED_CODE.test(product.code)).map((product) => product.id);
+  const hidden = await setStatus(parked, "draft");
+  expect(hidden).toBeLessThan(300);
 });
 
 test.afterAll(async () => {
-  if (parked.length > 0) {
-    await svcRest("PATCH", `products?id=in.(${parked.join(",")})`, { status: "active" });
-  }
+  test.setTimeout(600_000);
+  await setStatus(parked, "active");
 });
 const cards = (page: Page) => page.getByRole("main").locator("article");
 const count = (page: Page) =>

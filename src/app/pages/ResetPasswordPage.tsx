@@ -1,3 +1,4 @@
+import { usePageMeta } from "@/features/storefront/seo/usePageMeta";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
@@ -18,6 +19,7 @@ import { validatePassword } from "@shared/password-policy";
 const LINK_TIMEOUT_MS = 6000;
 
 export function ResetPasswordPage() {
+  usePageMeta({ title: t("auth.reset.title"), robots: "noindex,nofollow" });
   const { session, status, profile } = useAuth();
   const navigate = useNavigate();
   const [timedOut, setTimedOut] = useState(false);

@@ -1,5 +1,6 @@
 import { callFunction, type FunctionResult } from "@/lib/functions";
 import { getSupabase } from "@/lib/supabase";
+import type { AcceptedLegal } from "@/features/legal/types";
 import type { CancelResponse, CheckoutChoices, CreateResponse, PreviewResponse } from "./types";
 
 async function sessionToken(): Promise<string | undefined> {
@@ -50,9 +51,12 @@ export const createOrder = (
   contact: ContactInput,
   expectedTotal: number,
   idempotencyKey: string,
+  /** Las versiones de los textos legales que aceptó (solo si hay textos publicados que lo exigen). */
+  legal: AcceptedLegal = {},
 ) =>
   request<CreateResponse>({
     action: "create",
+    ...legal,
     ...destination(choices),
     contact_name: contact.name,
     contact_email: contact.email ?? undefined,

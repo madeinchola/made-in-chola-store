@@ -17,6 +17,8 @@ const SECTION_CRUMBS: Record<string, MessageKey> = {
   reportes: "admin.analytics.nav.reports",
   importar: "admin.analytics.nav.import",
   notificaciones: "admin.nav.notifications",
+  legal: "admin.nav.legal",
+  reclamos: "admin.nav.complaints",
   ajustes: "admin.nav.settings",
   auditoria: "admin.nav.audit",
 };

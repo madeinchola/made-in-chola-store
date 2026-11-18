@@ -2,6 +2,12 @@ import { z } from "https://esm.sh/zod@3.25.76";
 import { corsHeaders, getAllowedOrigins, handlePreflight } from "../_shared/cors.ts";
 import { errorResponse, HttpError, jsonResponse } from "../_shared/errors.ts";
 import { normalizeEmail, normalizePhone, syntheticEmailFor } from "../_shared/identity.ts";
+import {
+  assertLegalAccepted,
+  defaultLegalDeps,
+  legalFields,
+  recordLegalAcceptance,
+} from "../_shared/legal.ts";
 import { createLogger } from "../_shared/logger.ts";
 import { validatePassword } from "../_shared/password-policy.ts";
 import { checkPasswordPwned } from "../_shared/pwned.ts";
@@ -15,6 +21,8 @@ const bodySchema = z.object({
   phone: z.string().max(40).optional(),
   phone_country: z.string().length(2).optional(),
   password: z.string().max(1024),
+  // S15: las versiones de los textos legales aceptadas (solo se exigen cuando hay textos publicados que exigen aceptación).
+  ...legalFields,
 });
 
 const allowedOrigins = getAllowedOrigins();
@@ -57,6 +65,10 @@ Deno.serve(async (req) => {
       phone = r.e164;
     }
 
+    // Antes de crear nada: lo que aceptó tiene que ser lo vigente (si un texto cambió mientras leía, se le pide leerlo de nuevo).
+    const legal = defaultLegalDeps();
+    const legalVersions = await assertLegalAccepted(body, legal);
+
     const policy = validatePassword(body.password, { email, phone });
     if (!policy.ok) {
       throw new HttpError(
@@ -91,6 +103,12 @@ Deno.serve(async (req) => {
       throw REGISTER_FAILED;
     }
 
+    await recordLegalAcceptance(
+      { profileId: data.user.id, orderId: null, context: "register", versions: legalVersions, req },
+      legal,
+      (e) =>
+        log.error("no se pudo registrar la aceptación de los textos legales", { error: String(e) }),
+    );
     log.info("registro ok", { userId: data.user.id });
     return jsonResponse({ ok: true }, 201, cors);
   } catch (error) {

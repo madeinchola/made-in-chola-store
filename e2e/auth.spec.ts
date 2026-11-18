@@ -356,7 +356,9 @@ test("el bundle público no contiene la service key ni secretos", async ({ reque
   for (const a of assets) {
     const body = await (await request.get(a)).text();
     // (No se busca el texto "service_role": supabase-js lo menciona en sus mensajes. Lo peligroso es una CLAVE.)
-    expect(body, a).not.toMatch(/sb_secret_/);
+    // Una CLAVE secreta es «sb_secret_» seguido de un texto largo: la librería de Supabase trae el prefijo suelto en una comparación
+    // (`startsWith("sb_secret_")`), que no es una clave.
+    expect(body, a).not.toMatch(/sb_secret_[A-Za-z0-9_-]{16,}/);
     // ningún JWT con rol service_role (payload base64url de {"role":"service_role"})
     for (const jwt of body.match(/eyJ[\w-]{10,}\.eyJ[\w-]{10,}\.[\w-]{10,}/g) ?? []) {
       const payload = JSON.parse(Buffer.from(jwt.split(".")[1]!, "base64url").toString());

@@ -21,6 +21,8 @@ export const storeRoutes = {
   refunds: "/legal/reembolsos",
   shipping: "/legal/envios",
   terms: "/legal/terminos",
+  cookies: "/legal/cookies",
+  complaints: "/reclamos",
   /** Página de resultados de búsqueda. null = no existe (el buscador del cajón queda desactivado con «próximamente»). */
   search: "/buscar" as string | null,
   product: (slug: string) => `/producto/${encodeURIComponent(slug)}`,

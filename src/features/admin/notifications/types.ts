@@ -38,6 +38,7 @@ export const NOTIFICATION_TYPES: readonly string[] = [
   "notification_dead",
   "template_fallback",
   "webhook_signature_invalid",
+  "complaint_new",
 ];
 
 export interface NotificationRow {

@@ -52,3 +52,12 @@ verify_jwt = false
 
 [functions.notify-admin]
 verify_jwt = false
+
+[functions.legal-accept]
+verify_jwt = false
+
+[functions.meta-capi]
+verify_jwt = false
+
+[functions.complaint]
+verify_jwt = false

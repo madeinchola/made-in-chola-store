@@ -8,6 +8,7 @@ import {
 } from "../_shared/checkout.ts";
 import { corsHeaders, getAllowedOrigins, handlePreflight } from "../_shared/cors.ts";
 import { errorResponse, HttpError, jsonResponse } from "../_shared/errors.ts";
+import { assertLegalAccepted, defaultLegalDeps, recordLegalAcceptance } from "../_shared/legal.ts";
 import { createLogger } from "../_shared/logger.ts";
 import { completeCharge } from "../_shared/payments/charge.ts";
 import { defaultRegistry } from "../_shared/payments/registry.ts";
@@ -72,6 +73,11 @@ Deno.serve(async (req) => {
       );
     }
 
+    // S15: si hay textos legales que exigen aceptación, hay que mandar EXACTAMENTE su versión vigente (y se registra al crear).
+    const legal = defaultLegalDeps();
+    const legalVersions =
+      request.action === "create" ? await assertLegalAccepted(request, legal) : {};
+
     const plan = planRpc(request, userId);
     const { data, error } = await serviceClient().rpc(plan.fn, plan.args);
     if (error) {
@@ -99,6 +105,23 @@ Deno.serve(async (req) => {
         payment_method: string;
         payment_provider: string;
       };
+      // Solo al CREAR (un reintento por la misma llave devuelve el pedido existente y no vuelve a registrar nada).
+      if (result.outcome === "created") {
+        await recordLegalAcceptance(
+          {
+            profileId: userId,
+            orderId: order.id,
+            context: "checkout",
+            versions: legalVersions,
+            req,
+          },
+          legal,
+          (e) =>
+            log.error("no se pudo registrar la aceptación de los textos legales", {
+              error: String(e),
+            }),
+        );
+      }
       const charge = await completeCharge(
         registry,
         {

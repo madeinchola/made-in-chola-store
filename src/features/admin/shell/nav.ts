@@ -6,6 +6,8 @@ import {
   FileUp,
   CreditCard,
   Layers,
+  MessageSquareWarning,
+  Scale,
   BarChart3,
   LayoutDashboard,
   ScrollText,
@@ -38,6 +40,8 @@ export const ADMIN_NAV: readonly NavItem[] = [
   { to: "/admin/reportes", label: "admin.analytics.nav.reports", icon: BarChart3 },
   { to: "/admin/importar", label: "admin.analytics.nav.import", icon: FileUp },
   { to: "/admin/notificaciones", label: "admin.nav.notifications", icon: Bell },
+  { to: "/admin/legal", label: "admin.nav.legal", icon: Scale },
+  { to: "/admin/reclamos", label: "admin.nav.complaints", icon: MessageSquareWarning },
   { to: "/admin/ajustes", label: "admin.nav.settings", icon: Settings },
   { to: "/admin/auditoria", label: "admin.nav.audit", icon: ScrollText },
 ];

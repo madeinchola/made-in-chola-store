@@ -44,6 +44,7 @@ export const adminNotifications = {
     payment_unknown_reference: "Pago con referencia desconocida (alerta)",
     payment_proof_received: "Comprobante recibido (alerta)",
     stock_alert: "Stock bajo (alerta)",
+    complaint_new: "Nuevo reclamo (alerta)",
     notification_dead: "Aviso no entregado (alerta)",
     template_fallback: "Plantilla con error (alerta)",
     webhook_signature_invalid: "Aviso de pago con firma inválida (alerta)",

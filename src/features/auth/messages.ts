@@ -10,6 +10,8 @@ const KNOWN = new Set([
   "invalid_email",
   "invalid_phone",
   "identifier_required",
+  "legal_required",
+  "legal_outdated",
   "network",
 ]);
 

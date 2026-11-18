@@ -154,10 +154,10 @@ select throws_ok($$insert into public.notification_outbox (type, channel, dedupe
 delete from public.notification_outbox;
 
 -- Plantillas sembradas
-select is((select count(*)::int from public.notification_templates), 36, 'A4: 36 plantillas de arranque (13 de correo y 13 de WhatsApp para la clienta, 10 alertas internas)');
+select is((select count(*)::int from public.notification_templates), 37, 'A4: 37 plantillas de arranque (13 de correo y 13 de WhatsApp para la clienta, 11 alertas internas: 10 de S13 y complaint_new de S15)');
 select is((select count(*)::int from public.notification_templates where audience = 'customer' and channel = 'email'), 13, 'A4: 13 correos para la clienta');
 select is((select count(*)::int from public.notification_templates where audience = 'customer' and channel = 'whatsapp'), 13, 'A4: 13 WhatsApp para la clienta');
-select is((select count(*)::int from public.notification_templates where audience = 'admin' and channel = 'email'), 10, 'A4: 10 alertas internas por correo');
+select is((select count(*)::int from public.notification_templates where audience = 'admin' and channel = 'email'), 11, 'A4: 11 alertas internas por correo (la 11.ª, complaint_new, es de S15)');
 select is((select count(*)::int from public.notification_templates where audience = 'admin' and channel = 'whatsapp'), 0, 'A4: las alertas internas no van por WhatsApp');
 -- Propiedades que valen aunque la tienda ya haya editado alguna (el estado de los datos no es de esta prueba): de arranque, solo «completado» y
 -- «reembolsado» están apagadas (las cubren «entregado» y «devolución procesada»); y nada deja de ser texto de arranque sin quedar quién lo editó.
@@ -785,7 +785,7 @@ select throws_ok($$select count(*) from public.notification_templates$$, '42501'
 reset role;
 select pg_temp.as_(pg_temp.ad(1));
 set local role authenticated;
-select ok((select count(*) from public.notification_templates) = 36, 'M9: el administrador ve las 36');
+select ok((select count(*) from public.notification_templates) = 37, 'M9: el administrador ve las 37');
 select lives_ok($$update public.notification_templates set body = 'Hola {{customer_name}}' where key = 'order_delivered' and channel = 'whatsapp'$$, 'M9: y edita');
 select throws_ok($$update public.notification_templates set key = 'otra' where key = 'order_delivered' and channel = 'whatsapp'$$, '42501', null, 'M9: pero no cambia su clave (solo asunto, cuerpo, botón y si está activa)');
 select throws_ok($$delete from public.notification_templates$$, '42501', null, 'M9: ni las borra (se desactivan)');

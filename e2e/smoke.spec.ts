@@ -30,7 +30,10 @@ test.describe("humo", () => {
     const legal = await page.goto("/legal/privacidad");
     expect(legal?.status()).toBe(200);
     await page.reload();
-    await expect(page.getByText(/disponible pronto/i)).toBeVisible();
+    // Los textos legales (S15) son páginas reales: se ve su título (el contenido llega con lo que publique el administrador).
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Política de privacidad" }),
+    ).toBeVisible();
   });
 
   test("/admin sin sesión redirige a /login", async ({ page }) => {

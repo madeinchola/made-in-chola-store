@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { useAnalyticsConfig } from "@/features/analytics/config";
+import { OPEN_PREFERENCES_EVENT } from "@/features/consent/CookieBanner";
 import { useStoreSettings } from "@/features/catalog/hooks";
 import { t } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -66,6 +68,7 @@ function OutsideItem({ link, newTab = false }: { link: ContactLink; newTab?: boo
  */
 export function Footer() {
   const { data: settings } = useStoreSettings();
+  const analytics = useAnalyticsConfig();
   const { email, phone, whatsapp, socials } = contactLinks(settings);
   const hasContact = Boolean(email ?? phone ?? whatsapp);
 
@@ -113,6 +116,19 @@ export function Footer() {
             <Item to={storeRoutes.refunds}>{t("layout.footer.refunds")}</Item>
             <Item to={storeRoutes.shipping}>{t("layout.footer.shipping")}</Item>
             <Item to={storeRoutes.terms}>{t("layout.footer.terms")}</Item>
+            <Item to={storeRoutes.cookies}>{t("layout.footer.cookies")}</Item>
+            <Item to={storeRoutes.complaints}>{t("layout.footer.complaints")}</Item>
+            {analytics.hasOptional && (
+              <li>
+                <button
+                  type="button"
+                  className={linkClass}
+                  onClick={() => window.dispatchEvent(new Event(OPEN_PREFERENCES_EVENT))}
+                >
+                  {t("cookies.preferences.footerLink")}
+                </button>
+              </li>
+            )}
           </Column>
         </div>
       </div>

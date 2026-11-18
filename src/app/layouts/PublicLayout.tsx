@@ -8,6 +8,9 @@ import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { CartEffects } from "@/features/cart/CartEffects";
 import { CartScope } from "@/features/cart/CartScope";
 import { MiniCartDrawer } from "@/features/cart/MiniCartDrawer";
+import { AnalyticsManager } from "@/features/analytics/AnalyticsManager";
+import { CookieBanner } from "@/features/consent/CookieBanner";
+import { ReacceptGate } from "@/features/legal/ReacceptGate";
 
 /** Estructura de las páginas públicas: aviso · cabecera · contenido · pie, con enlace para saltar al contenido. */
 export function PublicLayout() {
@@ -28,6 +31,11 @@ export function PublicLayout() {
         {/* Bolsa: avisos globales (fusión, deshacer) y cajón lateral; sin carrito no pintan nada. El carrito se monta aquí (y no en `App`) para que `/admin` no lo cargue. */}
         <CartEffects />
         <MiniCartDrawer />
+        {/* Textos legales (S15): si publicaron una versión nueva, quien ya tiene cuenta la ve y la acepta. */}
+        <ReacceptGate />
+        {/* Cookies y analítica (S15): nada se carga ni se pregunta si la tienda no tiene herramientas conectadas; con ellas, solo con permiso. */}
+        <AnalyticsManager />
+        <CookieBanner />
         <a
           href="#contenido"
           onClick={skip}

@@ -1,3 +1,4 @@
+import { usePageMeta } from "@/features/storefront/seo/usePageMeta";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/features/auth/useAuth";
 import { t, type MessageKey } from "@/i18n";
@@ -19,6 +20,7 @@ const SECTIONS: AccountSection[] = [
  * cuenta en los PDF; usa tokens y tipografía del sistema de UI.
  */
 export function AccountLayout() {
+  usePageMeta({ title: t("acct.layout.title"), robots: "noindex,nofollow" });
   const { profile } = useAuth();
   return (
     <div className="container py-8 lg:py-12">
