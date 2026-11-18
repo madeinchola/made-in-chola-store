@@ -368,13 +368,18 @@ describe("seguridad de la API de Auth y de los permisos", () => {
 
   it("un cliente edita su nombre pero no su email/teléfono directamente", async () => {
     const u = await registerAndLogin({ name: "Nombre Viejo" });
-    const ok = await rest("PATCH", `profiles?id=eq.${u.id}`, u.token, {
+    // `select=` explícito: sin él PostgREST devuelve `RETURNING *` y S16 cerró las columnas internas (403 por el RETURNING, no por el UPDATE)
+    const ok = await rest("PATCH", `profiles?id=eq.${u.id}&select=id,full_name`, u.token, {
       full_name: "Nombre Nuevo",
     });
     expect(ok.status).toBe(200);
     expect(ok.body[0].full_name).toBe("Nombre Nuevo");
     expect([401, 403]).toContain(
-      (await rest("PATCH", `profiles?id=eq.${u.id}`, u.token, { email: "otro@x.com" })).status,
+      (
+        await rest("PATCH", `profiles?id=eq.${u.id}&select=id,full_name`, u.token, {
+          email: "otro@x.com",
+        })
+      ).status,
     );
   });
 

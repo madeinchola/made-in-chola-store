@@ -23,7 +23,7 @@ describe("Supabase: API", () => {
     const res = await rpc(
       "healthcheck",
       {},
-      "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.firma-falsa",
+      "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.firma-falsa", // secret-scan: allow (JWT de ejemplo, falso a propósito)
     );
     expect(res.status).toBe(401);
   });

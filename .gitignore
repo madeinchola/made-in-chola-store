@@ -24,3 +24,6 @@ docs/diseno/
 *.pem
 *.key
 supabase/.env*
+
+# copias de seguridad de la base (scripts/backup.mjs): contienen datos de clientas, nunca se suben
+backups/

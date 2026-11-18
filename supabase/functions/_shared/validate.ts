@@ -60,24 +60,21 @@ export async function parseBodyLimited<T extends z.ZodTypeAny>(
   return result.data;
 }
 
-/** Parsea el body JSON contra un esquema zod; 400 con detalle de campos si falla. */
+/**
+ * Tope por defecto de `parseBody`: 16 KiB. Todos los cuerpos de estas funciones son de unos cuantos campos de texto (el más
+ * grande, el registro, ronda 1 KiB); 16 KiB deja holgura de sobra y evita que `login`, `register` y el resto (todas se
+ * pueden llamar sin sesión o con una cuenta cualquiera) carguen en memoria un cuerpo de cientos de megas.
+ */
+export const DEFAULT_MAX_BODY_BYTES = 16 * 1024;
+
+/**
+ * Parsea el body JSON contra un esquema zod; 400 con detalle de campos si falla y 413 si pasa de `maxBytes`.
+ * Las funciones que aceptan listas o textos largos deben usar `parseBodyLimited` con su propio tope más ajustado.
+ */
 export async function parseBody<T extends z.ZodTypeAny>(
   req: Request,
   schema: T,
+  maxBytes: number = DEFAULT_MAX_BODY_BYTES,
 ): Promise<z.infer<T>> {
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    throw new HttpError(400, "invalid_json", "El cuerpo no es JSON válido");
-  }
-  const result = schema.safeParse(raw);
-  if (!result.success) {
-    throw new HttpError(
-      400,
-      "validation",
-      result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),
-    );
-  }
-  return result.data;
+  return await parseBodyLimited(req, schema, maxBytes);
 }

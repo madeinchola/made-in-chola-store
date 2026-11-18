@@ -427,27 +427,43 @@ describe("datos fiscales y preferencias del perfil (HTTP real)", () => {
   });
 
   it("preferencias: una moneda deshabilitada se rechaza, la habilitada y volver a NULL se aceptan; el rol sigue intocable", async () => {
-    const bad = await rest("PATCH", `profiles?id=eq.${ana.id}`, ana.token, {
-      preferred_currency: "USD",
-    });
+    const bad = await rest(
+      "PATCH",
+      `profiles?id=eq.${ana.id}&select=id,preferred_currency`,
+      ana.token,
+      {
+        preferred_currency: "USD",
+      },
+    );
     expect(bad.status).toBe(400);
     expect(
       (
-        await rest("PATCH", `profiles?id=eq.${ana.id}`, ana.token, {
+        await rest("PATCH", `profiles?id=eq.${ana.id}&select=id,preferred_currency`, ana.token, {
           preferred_currency: "BOB",
           preferred_locale: "es",
         })
       ).status,
     ).toBe(200);
     expect(
-      (await rest("PATCH", `profiles?id=eq.${ana.id}`, ana.token, { preferred_currency: null }))
-        .status,
+      (
+        await rest("PATCH", `profiles?id=eq.${ana.id}&select=id,preferred_currency`, ana.token, {
+          preferred_currency: null,
+        })
+      ).status,
     ).toBe(200);
     expect(
-      (await rest("PATCH", `profiles?id=eq.${ana.id}`, ana.token, { role: "admin" })).status,
+      (
+        await rest("PATCH", `profiles?id=eq.${ana.id}&select=id,preferred_currency`, ana.token, {
+          role: "admin",
+        })
+      ).status,
     ).toBe(403);
     expect(
-      (await rest("PATCH", `profiles?id=eq.${ana.id}`, ana.token, { email: "otro@x.com" })).status,
+      (
+        await rest("PATCH", `profiles?id=eq.${ana.id}&select=id,preferred_currency`, ana.token, {
+          email: "otro@x.com",
+        })
+      ).status,
     ).toBe(403);
   });
 

@@ -25,7 +25,7 @@ describe("dbUrl", () => {
         SUPABASE_DB_PASSWORD: "p@ss/w:rd#1?%",
         VITE_SUPABASE_URL: "https://abcdefgh.supabase.co",
       }),
-    ).toBe("postgresql://postgres:p%40ss%2Fw%3Ard%231%3F%25@db.abcdefgh.supabase.co:5432/postgres");
+    ).toBe("postgresql://postgres:p%40ss%2Fw%3Ard%231%3F%25@db.abcdefgh.supabase.co:5432/postgres"); // secret-scan: allow (URL de ejemplo con host y clave inventados)
   });
   it("devuelve null si falta la contraseña o la URL no es de un proyecto de Supabase", () => {
     expect(dbUrl({ VITE_SUPABASE_URL: "https://abcdefgh.supabase.co" })).toBeNull();
@@ -45,7 +45,7 @@ describe("dbUrl", () => {
 describe("psqlEnv", () => {
   it("separa host, puerto, usuario, contraseña y base; decodifica la contraseña y exige TLS", () => {
     const url =
-      "postgresql://postgres:p%40ss%2Fw%3Ard%231%3F%25@db.abcdefgh.supabase.co:5432/postgres";
+      "postgresql://postgres:p%40ss%2Fw%3Ard%231%3F%25@db.abcdefgh.supabase.co:5432/postgres"; // secret-scan: allow (URL de ejemplo con host y clave inventados)
     expect(psqlEnv(url)).toEqual({
       PGHOST: "db.abcdefgh.supabase.co",
       PGPORT: "5432",

@@ -22,6 +22,13 @@
     "test:integration": "node scripts/cloud-env.mjs vitest run --config vitest.integration.config.ts",
     "test:edge": "deno test --allow-net --allow-env supabase/functions/_shared",
     "admin:promote": "node scripts/promote-admin.mjs",
+    "security:secrets": "node scripts/scan-secrets.mjs",
+    "security:secrets:history": "node scripts/scan-secrets.mjs --history",
+    "security:auth-config": "node scripts/auth-config.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "health": "node scripts/health.mjs",
+    "backup": "node scripts/backup.mjs",
+    "docs:data-dictionary": "node scripts/data-dictionary.mjs",
     "verify": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run test:edge"
   },
   "dependencies": {

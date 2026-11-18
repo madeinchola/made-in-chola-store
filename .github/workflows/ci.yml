@@ -14,9 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 } # el escaneo de secretos recorre TODO el historial
       - uses: actions/setup-node@v4
         with: { node-version-file: .nvmrc, cache: npm }
       - run: npm ci
+      - run: npm run security:secrets
+      - run: npm run security:secrets:history
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck

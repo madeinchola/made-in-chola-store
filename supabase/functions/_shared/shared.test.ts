@@ -3,7 +3,7 @@ import { z } from "https://esm.sh/zod@3.25.76";
 import { corsHeaders, handlePreflight } from "./cors.ts";
 import { errorResponse, HttpError, jsonResponse } from "./errors.ts";
 import { formatLogLine, redact } from "./logger.ts";
-import { parseBody } from "./validate.ts";
+import { DEFAULT_MAX_BODY_BYTES, parseBody } from "./validate.ts";
 
 const ORIGINS = ["https://madeinchola.com", "https://staging.madeinchola.com"];
 const req = (origin?: string, init: RequestInit = {}) =>
@@ -74,6 +74,41 @@ Deno.test("validate: campo inválido → 400 validation con la ruta del campo", 
   assertEquals(e.status, 400);
   assertMatch(e.message, /^qty:/);
 });
+Deno.test(
+  "validate: parseBody tiene tope por defecto: justo en el tope pasa y un byte más → 413",
+  async () => {
+    assertEquals(DEFAULT_MAX_BODY_BYTES, 16384); // el valor es parte del contrato (README y auditoría de S16)
+    const schema = z.object({ s: z.string() });
+    const wrapper = '{"s":""}'.length; // 8 bytes de estructura
+    const exact = JSON.stringify({ s: "a".repeat(DEFAULT_MAX_BODY_BYTES - wrapper) });
+    assertEquals(exact.length, DEFAULT_MAX_BODY_BYTES);
+    assertEquals(
+      (await parseBody(new Request("http://x", { method: "POST", body: exact }), schema)).s.length,
+      16376,
+    );
+    const over = JSON.stringify({ s: "a".repeat(DEFAULT_MAX_BODY_BYTES - wrapper + 1) });
+    const e = await assertRejects(
+      () => parseBody(new Request("http://x", { method: "POST", body: over }), schema),
+      HttpError,
+    );
+    assertEquals([e.status, e.code], [413, "payload_too_large"]);
+  },
+);
+Deno.test(
+  "validate: parseBody respeta un tope propio y el 413 llega antes que el 400",
+  async () => {
+    const e = await assertRejects(
+      () =>
+        parseBody(
+          new Request("http://x", { method: "POST", body: "{no es json, y largo}" }),
+          z.object({}),
+          8,
+        ),
+      HttpError,
+    );
+    assertEquals([e.status, e.code], [413, "payload_too_large"]);
+  },
+);
 Deno.test("logger: redacta email y JWT", () => {
   assertEquals(redact("a ana@x.com t eyJhbGciOi.eyJyb2xlIjoi.sig"), "a [email] t [jwt]");
 });
