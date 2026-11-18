@@ -243,6 +243,41 @@ Todo está construido y probado contra la nube. **Nada de esto se publica ni se 
 - [ ] **[S15 · privacidad]** Revisión de punta a punta de **qué dato va a quién** (Supabase, Vercel, el proveedor de correo, Meta y Google si los activas): está listado en la política de privacidad de partida con sus `[COMPLETAR…]`.
 - [ ] **[S15 · seguridad · al terminar]** Lo anotado en §N a §S sigue vigente: **revoca el token de acceso de Supabase** pegado en el chat y rota la contraseña de la base y la clave de servicio.
 
+## U. Hardening y lanzamiento (Sprint 16)
+
+La auditoría, los contratos de seguridad, las herramientas (`npm run security:secrets`, `security:auth-config`, `smoke`, `health`, `backup`, `docs:data-dictionary`) y los runbooks están hechos y probados (`docs/seguridad.md`, `docs/runbooks.md`, `docs/despliegue.md`). Lo de abajo **no lo puede hacer el código**: necesita tu decisión, una cuenta tuya o personas reales. **Ninguna clave ni secreto se pega en el chat ni en el repositorio.**
+
+**Seguridad (bloquean el «cero hallazgos altos»; detalle en `docs/seguridad.md`)**
+
+- [ ] **[S16 · SEGURIDAD · BLOQUEA LANZAMIENTO · H-01]** **Decidir cómo proteger el inicio de sesión de Auth.** Hoy el bloqueo por intentos solo existe en la función `login`; quien llama a Auth directo puede probar contraseñas sin límite propio (comprobado: 12 intentos seguidos). Opciones, de más a menos eficaz: (a) **captcha** (hCaptcha o Cloudflare Turnstile, plan gratuito) en Auth + su widget en el inicio de sesión y en «Olvidé mi contraseña» (hay que construir esa parte); (b) **segundo factor (TOTP) para los administradores**; (c) contraseñas largas para los administradores. Dime cuál y lo hago en S19.
+- [ ] **[S16 · SEGURIDAD · H-02]** Activar en el panel de Supabase (Authentication → Sign In / Providers → Email) **«Secure password change / require reauthentication»** (`security_update_password_require_reauthentication`) y, **si tu plan lo permite**, la **protección contra contraseñas filtradas**. Después correr los E2E de cambio y recuperación de contraseña (yo los corro: avísame). `npm run security:auth-config` dice si quedó.
+- [ ] **[S16 · SEGURIDAD · BLOQUEA LANZAMIENTO · H-03]** **SMTP propio para Auth** (Authentication → SMTP Settings; Resend ofrece SMTP con el mismo dominio verificado de §R) y subir el tope de correos por hora (`rate_limit_email_sent`). Sin esto **nadie puede recuperar su contraseña** (Auth permite 2 correos por hora en todo el proyecto: comprobado).
+- [ ] **[S16 · SEGURIDAD · ya pendiente]** **Revocar** el token de acceso de Supabase pegado en un chat anterior y **rotar** la contraseña de la base y la clave de servicio (`docs/runbooks.md` §13). Después, `npm run security:secrets` y `security:secrets:history` deben seguir en 0.
+- [ ] **[S16 · SEGURIDAD · lanzamiento]** Al tener dominio: cambiar **`site_url`** y **`uri_allow_list`** de Auth (quitar `localhost` y `*.vercel.app`) y **`ALLOWED_ORIGINS`** de las funciones. Comprobar con `npm run security:auth-config -- --launch`. **No inscribas el dominio en la lista de precarga HSTS** hasta estar seguro de que todo será siempre HTTPS (la cabecera ya lleva `preload`).
+- [ ] **[S16 · SEGURIDAD · opcional]** Pasar **securityheaders.com / Mozilla Observatory** y, si el presupuesto lo permite, una **prueba de intrusión externa** (lo que hay es una auditoría propia).
+- [ ] **[S16 · SEGURIDAD · después del lanzamiento]** Autorizar una pasada de **versiones mayores** (vite 5→8, vitest 3→5, tailwind 3→4, zod 3→4) con toda la regresión: cierra los 23 avisos de `npm audit` (ver `docs/seguridad.md` «Dependencias»).
+
+**Copias de seguridad, entornos y datos (bloqueantes)**
+
+- [ ] **[S16 · BLOQUEA LANZAMIENTO]** **Hoy el proyecto NO tiene copias de seguridad** (comprobado con la API de gestión: ninguna copia, sin recuperación a un punto en el tiempo). Elegir un **plan de Supabase con copias diarias** (y la recuperación a un punto en el tiempo si el volumen lo justifica) y **copiar Storage aparte** (imágenes, QR y comprobantes no van en la copia de la base). `npm run backup` hace una copia manual de la base (sin Storage ni vault).
+- [ ] **[S16 · BLOQUEA LANZAMIENTO]** **Ensayar una restauración** en un **proyecto de Supabase vacío** (otro, no este) y anotar cuánto tardó: es el criterio «copia restaurada en los últimos 7 días» (`docs/runbooks.md` §11).
+- [ ] **[S16 · decisión]** **¿Entorno de ensayo (staging)?** Hoy hay **un solo** proyecto que es desarrollo, pruebas y será producción. O este pasa a ser producción tras el **vaciado de entrega** (`db reset --linked --no-seed`; también `drop extension pgtap`) y se crea otro para ensayar, o se crea uno nuevo para producción. Con la respuesta, yo preparo el procedimiento exacto.
+- [ ] **[S16 · lanzamiento]** **Dominio propio**: comprarlo, DNS, `www` → raíz, HTTPS y correo (SPF, DKIM, DMARC; ya listado en §B y §R). Después, `npm run smoke -- https://tu-dominio` debe dar 100 %.
+
+**Operación**
+
+- [ ] **[S16 · operación]** **Vigilancia desde fuera**: un monitor de disponibilidad (UptimeRobot, Better Stack…) que pida la portada y `…/rest/v1/rpc/healthcheck` cada minuto y te avise por correo o WhatsApp; y, si quieres **captura de errores** (Sentry u otro), crear la cuenta y pasarme el DSN (no está implementada: es una decisión de proveedor). `npm run health` es el informe interno; no sustituye a un monitor externo.
+- [ ] **[S16 · decisión]** **¿Un interruptor único de «tienda cerrada»?** Hoy parar las ventas es desactivar los métodos de pago (`docs/runbooks.md` §9). Un botón de «pausar tienda» es una función nueva.
+- [ ] **[S16 · operación]** **Segunda persona administradora** (hace falta para que nadie se quede sin acceso) y **capacitación** de las dos con los runbooks a mano.
+- [ ] **[S16 · operación]** Que **el worker de avisos** funcione: hoy el vault no tiene `notify_worker_url` ni `notify_worker_key` y `npm run health` lo marca (`notify.worker`); es el mismo trabajo de §R (Resend, remitente y vault).
+
+**Calidad con personas y dispositivos reales (no se puede automatizar)**
+
+- [ ] **[S16 · calidad]** **Prueba de usabilidad** con 5 personas reales comprando desde el teléfono y con las 2 administradoras; **revisión visual con la diseñadora**; **revisión de contenido** (datos reales, textos, enlaces, ortografía).
+- [ ] **[S16 · calidad]** **Safari y Firefox**: los E2E corren solo en Chromium (escritorio y móvil emulado). Probar a mano una compra en **iPhone** y **Android**.
+- [ ] **[S16 · lanzamiento]** **Soft launch**: un **pedido real de bajo monto** de punta a punta (pago por QR, WhatsApp, entrega y reembolso) y verificar la analítica con los IDs reales.
+- [ ] **[S16 · decisión]** **Pruebas de carga y de caos contra la nube**: se **excluyeron** a pedido tuyo (podrían agotar conexiones y cuotas y dejar datos de prueba). Si las quieres, dime con qué límites y las hago en una ventana que elijas (idealmente contra el proyecto de ensayo).
+
 ## Criterios de aceptación
 1. Cada tarea **[S5]** marcada antes de empezar el Sprint 5 (o acordado explícitamente que se avanza sin ella).
 2. Todas las **[LANZAMIENTO]** marcadas antes de S16.
