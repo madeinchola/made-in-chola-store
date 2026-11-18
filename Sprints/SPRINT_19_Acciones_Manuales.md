@@ -224,6 +224,25 @@ Todo está construido y probado contra la nube. Estas son las decisiones y tarea
 - [ ] **[S14 · licencias]** Se usan `recharts` (MIT) y `papaparse` (MIT): ya estaban en `package.json` desde S0 y ahora tienen uso. No se agregó ninguna librería.
 - [ ] **[S14 · seguridad · al terminar]** Lo anotado en §N a §R sigue vigente: **revoca el token de acceso de Supabase** pegado en el chat y rota la contraseña de la base y la clave de servicio.
 
+## T. Legal, cookies, analítica, SEO y reclamos (Sprint 15)
+
+Todo está construido y probado contra la nube. **Nada de esto se publica ni se activa solo**: son decisiones y tareas tuyas (detalle en `docs/legal.md`, `docs/analytics.md` y `docs/reclamos.md`). **Ninguna clave ni secreto se pega en el chat ni en el repo.**
+
+- [ ] **[S15 · legal · BLOQUEA PUBLICAR]** **Que un abogado revise** los cinco textos (términos, privacidad, cookies, envíos y devoluciones) **y el canal de reclamos**. Los textos de partida los redactó el equipo de desarrollo, no un abogado: llevan la marca `BORRADOR SIN REVISIÓN LEGAL` y huecos `[COMPLETAR…]`; el panel (`/admin/legal`) no deja publicarlos hasta que se quiten. **No lances la tienda (S16) sin esto.**
+- [ ] **[S15 · datos · PENDIENTES_ADMIN §E]** Cargar en **Ajustes → Negocio y contacto** la **razón social, el NIT y la dirección legal**. Sin ellos, los textos que los citan no se pueden publicar.
+- [ ] **[S15 · contenido]** **Escribir las políticas de envíos y de devoluciones** (zonas, plazos, quién paga un cambio, qué no se cambia, cuántos días) partiendo del texto de partida. Confirmar también la política real de **devoluciones de S12** (hoy apagada) para que no se contradigan.
+- [ ] **[S15 · decisión · abogado]** Preguntas concretas: ¿cuánto tiempo se conservan los datos?, ¿transferencias fuera de Bolivia (los servidores están fuera)?, ¿jurisdicción y foro?, ¿aplica un **libro de reclamaciones** con formato oficial y qué **plazo de respuesta** corresponde (hoy 10 días: Ajustes → Pedidos)?
+- [ ] **[S15 · acción]** **Publicar los textos** desde `/admin/legal` cuando el abogado los apruebe. Al publicar el primero, **el registro y el pago empiezan a exigir la aceptación** y las cuentas existentes verán un aviso. Probar **con un teléfono real** el registro y el pago con la casilla.
+- [ ] **[S15 · analítica · opcional]** Para activar **Meta**: ID del Pixel (Ajustes → Analítica y publicidad), y para la **API de conversiones** el token como secreto de Supabase `META_CAPI_ACCESS_TOKEN` (más `META_CAPI_TEST_EVENT_CODE` mientras pruebas). Para **GA4**: el ID de medición. Revisar la versión de la API de Meta (`META_GRAPH_VERSION`, hoy `v24.0`). **Probar con Test Events de Meta y DebugView de GA4** que un pedido llega **una sola vez** (Pixel y servidor deduplican por `event_id`). Hasta que pongas un ID no se carga nada y no aparece el aviso de cookies.
+- [ ] **[S15 · decisión]** **¿`Purchase` al crear el pedido o al confirmar el pago?** Hoy es al crear el pedido (pedido recibido); con WhatsApp y contra entrega la venta se confirma después.
+- [ ] **[S15 · cuentas]** Registrar `/feeds/google.xml` en **Google Merchant Center** y `/feeds/meta.xml` en el **catálogo de Meta**, revisar sus diagnósticos y corregir lo que marquen; verificar el dominio y enviar `/sitemap.xml` en **Search Console**. **Revisar las políticas de Meta/Google para comercio** con tus productos.
+- [ ] **[S15 · calidad]** Pasar **Lighthouse** (SEO ≥ 95) y **Web Vitals** en portada, categoría y ficha con tu dominio real (no se midió: queda para el hardening de S16).
+- [ ] **[S15 · reclamos]** Confirmar quién atiende `/admin/reclamos` y el plazo; que la **alerta por correo** llegue (necesita el proveedor de correo y los destinatarios de §R). La respuesta a la clienta la envías tú desde el propio reclamo (correo o WhatsApp).
+- [ ] **[S15 · decisión]** ¿Quieres la pantalla de **«ventas por origen»** (por campaña) ya, o en S16? El dato se guarda desde que activas la analítica.
+- [ ] **[S15 · contenido]** Cargar los **productos relacionados** de cada ficha: alimentan «Completa tu look» (carrito) y «Suma a tu pedido» (pago, solo los de **una sola variante**).
+- [ ] **[S15 · privacidad]** Revisión de punta a punta de **qué dato va a quién** (Supabase, Vercel, el proveedor de correo, Meta y Google si los activas): está listado en la política de privacidad de partida con sus `[COMPLETAR…]`.
+- [ ] **[S15 · seguridad · al terminar]** Lo anotado en §N a §S sigue vigente: **revoca el token de acceso de Supabase** pegado en el chat y rota la contraseña de la base y la clave de servicio.
+
 ## Criterios de aceptación
 1. Cada tarea **[S5]** marcada antes de empezar el Sprint 5 (o acordado explícitamente que se avanza sin ella).
 2. Todas las **[LANZAMIENTO]** marcadas antes de S16.
