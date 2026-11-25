@@ -1,7 +1,7 @@
 -- Sprint 6 · Cuenta del cliente: direcciones, datos fiscales, preferencias, cambio de teléfono, anonimización y RLS.
 -- Valores esperados calculados a mano (ver el comentario de cada bloque). Nada se borra (BR-ACC-07).
 begin;
-select plan(165);
+select plan(166);
 
 -- HERMÉTICO: parte de una BD vacía dentro de su transacción (se revierte al final).
 delete from public.carts;
@@ -496,20 +496,28 @@ select ok((select position('pg_advisory_xact_lock' in prosrc) < position('for up
 -- P4. Cambio de contacto «comparar y cambiar»: solo se aplica si el perfil sigue como lo leyó la función llamadora.
 set local role service_role;
 select throws_ok($$select public.change_profile_contact('cccccccc-0000-0000-0000-00000000000c', 'otro@test.com', null,
-  '{"email": "no-es-el-actual@test.com", "phone": null}'::jsonb)$$, '40001', null, 'si el perfil cambió desde la lectura, el cambio se rechaza (40001) en vez de pisar al otro');
+  '{"email": "no-es-el-actual@test.com", "phone": null}'::jsonb)$$, 'PT409', null, 'si el perfil cambió desde la lectura, el cambio se rechaza (PT409) en vez de pisar al otro');
 select throws_ok($$select public.change_profile_contact('cccccccc-0000-0000-0000-00000000000c', 'otro@test.com', null,
-  '{"email": "admin@test.com", "phone": "+59170000000"}'::jsonb)$$, '40001', null, 'se compara TAMBIÉN el teléfono: el email coincide pero el teléfono leído no es el actual → 40001');
+  '{"email": "admin@test.com", "phone": "+59170000000"}'::jsonb)$$, 'PT409', null, 'se compara TAMBIÉN el teléfono: el email coincide pero el teléfono leído no es el actual → PT409');
 select throws_ok($$select public.change_profile_contact('cccccccc-0000-0000-0000-00000000000c', 'otro@test.com', null,
-  '{"email": null, "phone": null}'::jsonb)$$, '40001', null, 'y el email: el teléfono coincide pero el email leído no es el actual → 40001');
+  '{"email": null, "phone": null}'::jsonb)$$, 'PT409', null, 'y el email: el teléfono coincide pero el email leído no es el actual → PT409');
 select lives_ok($$select public.change_profile_contact('cccccccc-0000-0000-0000-00000000000c', 'otro@test.com', null,
   '{"email": "admin@test.com", "phone": null}'::jsonb)$$, 'si sigue como se leyó, se aplica');
 select throws_ok($$select public.change_profile_contact('cccccccc-0000-0000-0000-00000000000c', 'admin@test.com', null,
-  '{"email": "admin@test.com", "phone": null}'::jsonb)$$, '40001', null, 'deshacer con el valor VIEJO como esperado falla si el perfil ya cambió (no se deshace lo que no es suyo)');
+  '{"email": "admin@test.com", "phone": null}'::jsonb)$$, 'PT409', null, 'deshacer con el valor VIEJO como esperado falla si el perfil ya cambió (no se deshace lo que no es suyo)');
 select lives_ok($$select public.change_profile_contact('cccccccc-0000-0000-0000-00000000000c', 'admin@test.com', null,
   '{"email": "otro@test.com", "phone": null}'::jsonb)$$, 'deshacer con el valor NUEVO como esperado sí funciona');
 select throws_ok($$select public.change_profile_contact('99999999-0000-0000-0000-000000000009', 'x@test.com', null,
-  '{"email": null, "phone": null}'::jsonb)$$, 'P0002', null, 'un perfil inexistente sigue dando P0002 (no 40001)');
+  '{"email": null, "phone": null}'::jsonb)$$, 'P0002', null, 'un perfil inexistente sigue dando P0002 (no PT409)');
 reset role;
+
+-- P5. Ninguna función propia puede lanzar 40001/40P01 a propósito: PostgREST repite esas transacciones sin límite.
+select is(
+  (select coalesce(string_agg(n.nspname || '.' || p.proname, ', ' order by 1), '')
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.prosrc ~* $re$(errcode\s*=\s*|sqlstate\s+)'(40001|40P01)'|raise\s+(exception\s+)?(serialization_failure|deadlock_detected)|errcode\s*=\s*'(serialization_failure|deadlock_detected)'$re$),
+  '', 'ninguna función de public lanza 40001 ni 40P01 (PostgREST reintentaría sin fin)');
 
 select * from finish();
 rollback;

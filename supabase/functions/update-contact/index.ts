@@ -123,7 +123,8 @@ Deno.serve(async (req) => {
       p_expect: { email: profile.email, phone: profile.phone_e164 },
     });
     if (rpcError) {
-      if (rpcError.code === "40001") throw CONTACT_CONFLICT;
+      // PT409 (HTTP 409) y NUNCA 40001: PostgREST repite sin límite las transacciones que fallan con 40001.
+      if (rpcError.code === "PT409") throw CONTACT_CONFLICT;
       // 23505: ya es de otra cuenta · 23514: formato o cuenta sin identificador
       if (rpcError.code === "23505" || rpcError.code === "23514") throw CONTACT_FAILED;
       throw rpcError;
